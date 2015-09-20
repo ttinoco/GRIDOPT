@@ -1,0 +1,77 @@
+#! /usr/bin/env python
+
+import pstats
+import argparse
+import cProfile
+import pfnet
+import gridopt
+
+methods_PF = ['DCPF','NRPF','AugLPF']
+
+methods_OPF = ['DCOPF','AugLOPF']
+
+def create_parser():
+    
+    # Construct parser
+    parser = argparse.ArgumentParser(description='Power flow optimization package.')
+    
+    # Case
+    parser.add_argument('case',type=str,
+                        help='filename of power flow case to solve.')
+
+    # Method
+    parser.add_argument('method',choices=methods_PF+methods_OPF,metavar='method',
+                        help='PF or OPF method { %(choices)s }.')
+    
+    # Params
+    class ParamAction(argparse.Action):
+        def __call__(self,parser,namespace,values,option_string=None):
+            for value in values:
+                if '=' not in value:
+                    raise argparse.ArgumentTypeError("invalid parameter name-value pair")
+                n,v = value.split('=')
+                params = getattr(namespace,self.dest)
+                setattr(namespace,self.dest,params+[(n,v)])
+    parser.add_argument('--params',action=ParamAction,dest='params',nargs='*',default=[],
+                        help='parameter name-value pairs.')
+
+    # Profile
+    parser.add_argument('--profile',action='store_true',default=False,
+                        help='flag for profiling execution.')
+
+    return parser
+
+def main():
+
+    parser = create_parser()
+    args = parser.parse_args()
+
+    try:
+        
+        # Network
+        net = pfnet.Network()
+        net.load(args.case)
+        net.show_components()
+            
+        # Method
+        if args.method in methods_PF:
+	    method = gridopt.power_flow.new_method(args.method)
+        else:
+            method = gridopt.optimal_power_flow.new_method(args.method)
+            
+        # Parameters
+        method.set_parameters(strparams=dict(args.params))
+            
+        # Solve
+        if args.profile:
+            cProfile.runctx('method.solve(net)',globals(),locals(),'.prof')
+            pstats.Stats('.prof').strip_dirs().sort_stats('cumulative').print_stats(20)
+        else:
+            results = method.solve(net)
+    
+    finally:
+        pass
+    
+# Main function            
+if __name__ == "__main__":
+    main()
