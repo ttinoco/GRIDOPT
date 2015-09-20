@@ -195,7 +195,7 @@ class NRPF(PFmethod):
         solver.problem.update_lin()
 
     def create_problem(self,net):
-
+        
         # Parameters
         params = self.parameters
         limit_gens = params['limit_gens']

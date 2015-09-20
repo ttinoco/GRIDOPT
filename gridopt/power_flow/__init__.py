@@ -7,7 +7,8 @@
 #*****************************************************#
 
 from nr import NRPF
-from dcpf import DCPF
+from dc import DCPF
+from augl import AugLPF
 
 def new_method(name):
     
@@ -15,6 +16,8 @@ def new_method(name):
         return NRPF()
     elif name == 'DCPF':
         return DCPF()
+    elif name == 'AugLPF':
+        return AugLPF()
     else:
         raise ValueError('invalid PF method name')
         

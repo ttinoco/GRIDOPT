@@ -6,7 +6,7 @@
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
 
-from dcopf import DCOPF
+from dc import DCOPF
 
 def new_method(name):
     
