@@ -34,12 +34,19 @@ class TwoStageDCOPF(StochProblem):
                        0 <= s <= r
     """
 
-    # Constants
+    # Problem constants
     P_MIN = 1e-5
     COST_FACTOR = 100.
     VANG_LIMIT = 1000.
     FLOW_LIMIT = 1000.
     FLOW_FACTOR = 1.
+
+    # Learning constants
+    SIGMA_MAX = 1e3
+    SIGMA_MIN = 1e-3
+    SIGMA_INIT = 1e0
+    QSLOPE_RATE = 0.01
+    QVALUE_RATE = 1./4.
 
     def __init__(self,net,penetration=100.,uncertainty=25.,corr_radius=1,corr_value=0.1):
         """
@@ -218,9 +225,9 @@ class TwoStageDCOPF(StochProblem):
         assert(norm(self.A.T*np.ones(self.num_bus)) < (1e-10)*np.sqrt(self.num_bus*1.))
 
         # Recourse approximation
-        self.Qapprox_sigma_max = 1e3
-        self.Qapprox_sigma_min = 1e-3
-        self.Qapprox_sigma = 1e0
+        self.Qapprox_sigma_max = self.SIGMA_MAX
+        self.Qapprox_sigma_min = self.SIGMA_MIN
+        self.Qapprox_sigma = self.SIGMA_INIT
         self.Qapprox_g = np.zeros(self.num_p)
         
     def eval_EQ(self,p,feastol=1e-4,samples=300,quiet=True):
@@ -351,6 +358,10 @@ class TwoStageDCOPF(StochProblem):
             r += (self.sample_w()-r)/(i+1)
         return r
 
+    def get_slope_correction(self):
+
+        return self.Qapprox_g
+
     def get_strong_convexity_constant(self):
 
         H0 = self.H0.tocoo()
@@ -428,10 +439,10 @@ class TwoStageDCOPF(StochProblem):
 
         if Fapprox != 0:
             self.Qapprox_sigma = np.maximum(self.Qapprox_sigma_min,
-                                            np.minimum(self.Qapprox_sigma*np.power(F/Fapprox,1./3.),
+                                            np.minimum(self.Qapprox_sigma*np.power(F/Fapprox,self.QVALUE_RATE),
                                                        self.Qapprox_sigma_max))
 
-        self.Qapprox_g += 0.05*(gF-gFapprox-self.Qapprox_g)
+        self.Qapprox_g += self.QSLOPE_RATE*(gF-gFapprox-self.Qapprox_g)
 
     def project_on_X(self,x):
 
