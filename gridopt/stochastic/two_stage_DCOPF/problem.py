@@ -41,13 +41,6 @@ class TwoStageDCOPF(StochProblem):
     FLOW_LIMIT = 1000.
     FLOW_FACTOR = 1.
 
-    # Learning constants
-    SIGMA_MAX = 1e3
-    SIGMA_MIN = 1e-3
-    SIGMA_INIT = 1e0
-    QSLOPE_RATE = 0.01
-    QVALUE_RATE = 1./4.
-
     def __init__(self,net,penetration=100.,uncertainty=25.,corr_radius=1,corr_value=0.1):
         """
         Class constructor.
@@ -223,14 +216,8 @@ class TwoStageDCOPF(StochProblem):
         assert(np.all(cost.Hphi.row == cost.Hphi.col))
         assert(np.all(cost.Hphi.data > 0))
         assert(norm(self.A.T*np.ones(self.num_bus)) < (1e-10)*np.sqrt(self.num_bus*1.))
-
-        # Recourse approximation
-        self.Qapprox_sigma_max = self.SIGMA_MAX
-        self.Qapprox_sigma_min = self.SIGMA_MIN
-        self.Qapprox_sigma = self.SIGMA_INIT
-        self.Qapprox_g = np.zeros(self.num_p)
         
-    def eval_EQ(self,p,feastol=1e-4,samples=300,quiet=True):
+    def eval_EQ(self,p,feastol=1e-4,samples=500,quiet=True):
         """
         Evaluates E[Q(p,r)].
         """
@@ -248,7 +235,7 @@ class TwoStageDCOPF(StochProblem):
             
             r = self.sample_w()
 
-            problem.u[self.num_p+self.num_w:self.num_p+self.num_w+self.num_r] = r
+            problem.u[self.num_p+self.num_w:self.num_p+self.num_w+self.num_r] = r # Important
             
             q,gq = self.eval_Q(p,r,feastol=feastol,problem=problem)
 
@@ -263,7 +250,7 @@ class TwoStageDCOPF(StochProblem):
                             
         return Q,gQ
 
-    def eval_EQ_parallel(self,p,feastol=1e-4,samples=300,quiet=True,num_procs=None):
+    def eval_EQ_parallel(self,p,feastol=1e-4,samples=500,quiet=True,num_procs=None):
     
         if not num_procs:
             num_procs = cpu_count()
@@ -351,16 +338,16 @@ class TwoStageDCOPF(StochProblem):
         except Exception,e:
             raise
 
-    def get_r_mean(self,samples=500):
+    def get_Ew(self,samples=500):
 
         r = 0
         for i in range(samples):
             r += (self.sample_w()-r)/(i+1)
         return r
 
-    def get_slope_correction(self):
+    def get_size_x(self):
 
-        return self.Qapprox_g
+        return self.num_p
 
     def get_strong_convexity_constant(self):
 
@@ -411,38 +398,21 @@ class TwoStageDCOPF(StochProblem):
         # Return
         return QuadProblem(H,g,A,b,l,u)
 
-    def eval_F(self,x,w,approx=False):
+    def eval_F(self,x,w):
         
         phi = 0.5*np.dot(x,self.H0*x)+np.dot(self.g0,x)
         gphi = self.H0*x + self.g0
-
-        if approx: 
-            Q,gQ = self.eval_Qapprox(x,w)
-        else:
-            Q,gQ = self.eval_Q(x,w)
+        Q,gQ = self.eval_Q(x,w)
 
         return (phi+Q,gphi+gQ)
 
-    def eval_EF(self,x,samples=300,approx=False):
+    def eval_EF(self,x,samples=500):
         
         phi = 0.5*np.dot(x,self.H0*x)+np.dot(self.g0,x)
         gphi = self.H0*x + self.g0
-
-        if approx:
-            Q,gQ = self.eval_EQapprox(x,samples=samples)
-        else:
-            Q,gQ = self.eval_EQ_parallel(x,samples=samples)
+        Q,gQ = self.eval_EQ_parallel(x,samples=samples)
 
         return (phi+Q,gphi+gQ)
-
-    def update_Fapprox(self,F,gF,Fapprox,gFapprox,k):
-
-        if Fapprox != 0:
-            self.Qapprox_sigma = np.maximum(self.Qapprox_sigma_min,
-                                            np.minimum(self.Qapprox_sigma*np.power(F/Fapprox,self.QVALUE_RATE),
-                                                       self.Qapprox_sigma_max))
-
-        self.Qapprox_g += self.QSLOPE_RATE*(gF-gFapprox-self.Qapprox_g)
 
     def project_on_X(self,x):
 
@@ -468,7 +438,7 @@ class TwoStageDCOPF(StochProblem):
         print 'correlation rad : %d (edges)' %(self.corr_radius)
         print 'correlation val : %.2f (unitless)' %(self.corr_value)
 
-    def solve_certainty_equivalent(self,feastol=1e-4,quiet=False):
+    def solve_certainty_equivalent(self,g_corr=None,Ew=None,feastol=1e-4,quiet=False,samples=500):
         
         # Constants
         num_p = self.num_p
@@ -485,14 +455,23 @@ class TwoStageDCOPF(StochProblem):
         os = np.zeros(num_r)
         oz = np.zeros(num_br)
         Iz = eye(num_br,format='coo')
+        
+        # Slope correction
+        if g_corr is None:
+            g_corr = np.zeros(num_p)
 
+        # Sample mean
+        if Ew is None:
+            Ew = self.get_Ew(samples=samples)
+
+        # Problem construction
         H = bmat([[self.H0+self.H1,-self.H1,None,None,None], # p
                   [-self.H1,self.H1,None,None,None],         # y = p + q
                   [None,None,Ow,None,None],                  # w
                   [None,None,None,Os,None],                  # s
                   [None,None,None,None,Oz]],                 # z
                  format='coo')
-        g = np.hstack((self.g0-self.g1,self.g1,ow,os,oz))
+        g = np.hstack((self.g0-self.g1+g_corr,self.g1,ow,os,oz))
         A = bmat([[Onp,self.G,-self.A,self.R,Onz],
                   [None,None,self.J,None,-Iz]],format='coo')
         b = np.hstack((self.b,oz))
@@ -504,7 +483,7 @@ class TwoStageDCOPF(StochProblem):
         u = np.hstack((self.p_max,
                        self.p_max,
                        self.w_max,
-                       self.get_r_mean(samples=500),
+                       Ew,
                        self.z_max))
 
         # Problem
@@ -532,93 +511,3 @@ class TwoStageDCOPF(StochProblem):
 
         # Return
         return x[:num_p]
-
-    def eval_Qapprox(self,p,r,linsolver=None):
-
-        # Local variables
-        num_p = self.num_p
-        num_w = self.num_w
-        num_r = self.num_r
-        num_bus = self.num_bus
-        num_br = self.num_br
-        
-        sigma = self.Qapprox_sigma
-        Ow = coo_matrix((num_w,num_w))
-        Om = coo_matrix((num_bus+num_br,num_bus+num_br))
-        ow = np.zeros(num_w)
-        oz = np.zeros(num_br)
-        Iz = eye(num_br,format='coo')
-        
-        Dp = spdiags(2.*sigma*np.square(2./(self.p_max-self.p_min)),0,num_p,num_p)
-        Ds = spdiags(2.*sigma*np.square(2./r),0,num_r,num_r)
-        Dz = spdiags(2.*sigma*np.square(2./(self.z_max-self.z_min)),0,num_br,num_br)
-
-        p_bar = 0.5*(self.p_max+self.p_min)
-        r_bar = r/2.
-        z_bar = 0.5*(self.z_max+self.z_min)
-
-        eta = np.hstack((-self.g1+Dp*p_bar,
-                         ow,
-                         Ds*r_bar,
-                         Dz*z_bar,
-                         self.b,
-                         oz))
-
-        Phi = bmat([[-Dp],
-                    [coo_matrix((num_w,num_p))],
-                    [coo_matrix((num_r,num_p))],
-                    [coo_matrix((num_br,num_p))],
-                    [-self.G],
-                    [coo_matrix((num_br,num_p))]],
-                   format='coo')
-
-        H = bmat([[self.H1/self.COST_FACTOR+Dp,None,None,None],
-                  [None,Ow,None,None],
-                  [None,None,Ds,None],
-                  [None,None,None,Dz]],format='coo')
-        
-        A = bmat([[self.G,-self.A,self.R,None],
-                  [None,self.J,None,-Iz]],format='coo')
-        
-        K = bmat([[H,None],[A,Om]],format='coo') # lower tri
-
-        I_bar = eye(num_p,K.shape[0],format='coo')
-
-        if linsolver is None:
-            linsolver = new_linsolver('mumps','symmetric')
-
-        if not linsolver.is_analyzed():
-            linsolver.analyze(K)
-        linsolver.factorize(K)
-                
-        q = I_bar*linsolver.solve(eta + Phi*p)
-        
-        Q = 0.5*np.dot(q,self.H1*q) + np.dot(self.g1,q)
-        gQ = Phi.T*linsolver.solve(I_bar.T*(self.H1*q + self.g1))
-        
-        return Q,gQ
-        
-    def eval_EQapprox(self,p,samples=300):
-        """
-        Evaluates E[Qapprox(p,r)].
-        """
-        
-        # Local vars
-        Q = 0.
-        gQ = np.zeros(self.num_p)
-        
-        # Linsolver
-        linsolver = new_linsolver('mumps','symmetric')
-        
-        # Sampling loop
-        np.random.seed()
-        for i in range(samples):
-            
-            r = self.sample_w()
-            
-            q,gq = self.eval_Qapprox(p,r,linsolver=linsolver)
-
-            Q += (q-Q)/(i+1.)
-            gQ += (gq-gQ)/(i+1.)
-                            
-        return Q,gQ        
