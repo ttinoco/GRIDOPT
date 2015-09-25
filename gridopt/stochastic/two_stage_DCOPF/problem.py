@@ -259,7 +259,7 @@ class TwoStageDCOPF(StochProblem):
         results = zip(*pool.map(ApplyFunc,num_procs*[(self,'eval_EQ',p,feastol,num,quiet)]))
         return map(lambda vals: sum(map(lambda val: num*val/float(num*num_procs),vals)), results)
         
-    def eval_Q(self,p,r,quiet=True,check=False,feastol=1e-4,problem=None):
+    def eval_Q(self,p,r,quiet=True,check=False,feastol=1e-4,problem=None,return_data=False):
         """
         Evaluates Q(p,r).
 
@@ -328,7 +328,11 @@ class TwoStageDCOPF(StochProblem):
             gQ = -(self.H1*q+self.g1)
 
             # Return
-            return Q,gQ
+            if not return_data:
+                return Q,gQ
+            else:
+                data = {'q':q}
+                return Q,gQ,data
 
         # Errors
         except OptSolverError_MaxIters:
