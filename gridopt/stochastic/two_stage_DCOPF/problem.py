@@ -328,15 +328,17 @@ class TwoStageDCOPF(StochProblem):
             # Gradient
             gQ = -(self.H1*q+self.g1)
 
-            # Sensitivity (linear operator)
-            dqdp = self.get_sol_sensitivity(problem,x,lam,mu,pi)
-
             # Return
             if not return_data:
                 return Q,gQ
             else:
+
+                # Sensitivity (linear operator)
+                dqdpT = self.get_sol_sensitivity(problem,x,lam,mu,pi)
+                
                 data = {'q': q,
-                        'dqdp': dqdp}
+                        'dqdpT': dqdpT}
+
                 return Q,gQ,data
 
         # Errors
@@ -536,7 +538,7 @@ class TwoStageDCOPF(StochProblem):
         
         Returns
         -------
-        dqdp : Linear Operator
+        dqdpT : Linear Operator
         """
 
         H = problem.H
@@ -561,6 +563,7 @@ class TwoStageDCOPF(StochProblem):
                   [-Dmu,None,Dux,None],
                   [Dpi,None,None,Dxl]],
                  format='coo')
+        KT = K.T
         
         Ibar = eye(self.num_p,K.shape[0])
         
@@ -578,11 +581,10 @@ class TwoStageDCOPF(StochProblem):
                      format='coo')
 
         linsolver = new_linsolver('mumps','unsymmetric')
-        linsolver.analyze(K)
-        linsolver.factorize(K)
+        linsolver.analyze(KT)
+        linsolver.factorize(KT)
         
-        dqdp = LinearOperator((self.num_p,self.num_p),
-                              lambda y : Ibar*linsolver.solve(eta_p*y),
-                              lambda y : eta_p.T*linsolver.solve(Ibar.T*y))
+        dqdpT = LinearOperator((self.num_p,self.num_p),
+                               lambda y : eta_p.T*linsolver.solve(Ibar.T*y))
         
-        return dqdp
+        return dqdpT
