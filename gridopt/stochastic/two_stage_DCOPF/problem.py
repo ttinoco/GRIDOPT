@@ -14,7 +14,8 @@ from optalg.opt_solver import OptSolverIQP, QuadProblem
 from optalg.lin_solver import new_linsolver
 from optalg.opt_solver.opt_solver_error import *
 from multiprocessing import Pool, cpu_count
-from scipy.sparse import triu,bmat,coo_matrix,eye,spdiags
+from scipy.sparse import triu,bmat,coo_matrix,eye,spdiags,tril
+from scipy.sparse.linalg import LinearOperator
 from optalg.stoch_solver import StochProblem
             
 class TwoStageDCOPF(StochProblem):
@@ -327,11 +328,15 @@ class TwoStageDCOPF(StochProblem):
             # Gradient
             gQ = -(self.H1*q+self.g1)
 
+            # Sensitivity (linear operator)
+            dqdp = self.get_sol_sensitivity(problem,x,lam,mu,pi)
+
             # Return
             if not return_data:
                 return Q,gQ
             else:
-                data = {'q':q}
+                data = {'q': q,
+                        'dqdp': dqdp}
                 return Q,gQ,data
 
         # Errors
@@ -515,3 +520,69 @@ class TwoStageDCOPF(StochProblem):
 
         # Return
         return x[:num_p]
+
+    def get_sol_sensitivity(self,problem,x,lam,mu,pi):
+        """
+        Computes sensitivity of optimal q with respect to p
+        as a linear operator.
+        
+        Parameters
+        ----------
+        problem : QuadProblem
+        x : primal
+        lam : dual var (eq constraints)
+        mu : dual var (upper bounds)
+        pi : dual var (lower bounds)
+        
+        Returns
+        -------
+        dqdp : Linear Operator
+        """
+
+        H = problem.H
+        g = problem.g
+        A = problem.A
+        b = problem.b
+        u = problem.u
+        l = problem.l
+
+        n = A.shape[1]
+        m = A.shape[0]
+
+        Dmu = spdiags(mu,0,n,n)
+        Dpi = spdiags(pi,0,n,n)
+        Dux = spdiags(u-x,0,n,n)
+        Dxl = spdiags(x-l,0,n,n)
+
+        In = eye(n)
+        
+        K = bmat([[H,-A.T,In,-In],
+                  [A,None,None,None],
+                  [-Dmu,None,Dux,None],
+                  [Dpi,None,None,Dxl]],
+                 format='coo')
+        
+        Ibar = eye(self.num_p,K.shape[0])
+        
+        Onp = coo_matrix((n,self.num_p))
+        bp = bmat([[-self.G],
+                   [coo_matrix((self.num_br,self.num_p))]],
+                  format='coo')
+        up = -eye(n,self.num_p)
+        lp = -eye(n,self.num_p)
+
+        eta_p = bmat([[Onp],
+                      [bp],
+                      [-Dmu*up],
+                      [Dpi*lp]],
+                     format='coo')
+
+        linsolver = new_linsolver('mumps','unsymmetric')
+        linsolver.analyze(K)
+        linsolver.factorize(K)
+        
+        dqdp = LinearOperator((self.num_p,self.num_p),
+                              lambda y : Ibar*linsolver.solve(eta_p*y),
+                              lambda y : eta_p.T*linsolver.solve(Ibar.T*y))
+        
+        return dqdp
