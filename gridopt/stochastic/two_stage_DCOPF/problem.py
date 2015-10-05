@@ -231,7 +231,6 @@ class TwoStageDCOPF(StochProblem):
         problem = self.get_problem_for_Q(p,np.ones(self.num_r))
         
         # Sampling loop
-        np.random.seed()
         for i in range(samples):
             
             r = self.sample_w()
