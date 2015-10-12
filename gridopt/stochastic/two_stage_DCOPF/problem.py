@@ -9,7 +9,7 @@
 import pfnet as pf
 import numpy as np
 from numpy.linalg import norm
-from utils import ApplyFunc, Cache
+from utils import ApplyFunc
 from optalg.opt_solver import OptSolverIQP, QuadProblem
 from optalg.lin_solver import new_linsolver
 from optalg.opt_solver.opt_solver_error import *
@@ -36,50 +36,26 @@ class TwoStageDCOPF(StochProblem):
     """
 
     # Problem constants
-    P_MIN = 1e-5
     COST_FACTOR = 100.
     VANG_LIMIT = 1000.
     FLOW_LIMIT = 1000.
     FLOW_FACTOR = 1.
 
-    def __init__(self,net,penetration=100.,uncertainty=25.,corr_radius=1,corr_value=0.1):
+    def __init__(self,net):
         """
         Class constructor.
         
         Parameters
         ----------
         net : PFNET Network
-        penetration : float (% of load)
-        uncertainty : float (% of load)
-        corr_radius : float (number of edges)
-        corr_value : float (correlation coefficient)
         """
 
-        # Configuration
-        self.penetration = penetration
-        self.uncertainty = uncertainty
-        self.corr_radius = corr_radius
-        self.corr_value = corr_value
-        assert(0. <= penetration)
-        assert(0. <= uncertainty)
-        assert(0 <= corr_radius and isinstance(corr_radius,int))
-        assert(-1. <= corr_value <= 1.)
-        
-        # Renewable sources
-        assert(net.num_vargens == 0)
-        gen_buses = net.get_gen_buses()
+        # Save info
         self.total_load = sum([l.P for l in net.loads])
-        vargen_array = pf.VarGeneratorArray(len(gen_buses))
-        net.set_vargen_array(vargen_array)
-        net.set_vargen_buses(gen_buses)
-        assert(net.num_vargens == len([b for b in net.buses if b.gens]))
-        for vg in net.var_generators:
-            vg.P_max = self.total_load/net.num_vargens
-            vg.P_std = (uncertainty/100.)*vg.P_max
-            assert(vg.P_max > 0)
-            assert(vg.P_std > 0)
-        assert(np.abs(sum([vg.P_max for vg in net.var_generators])-self.total_load) < 1e-10)
-        
+        self.uncertainty = 100.*sum([g.P_std for g in net.var_generators])/sum([g.P_max for g in net.var_generators])
+        self.corr_value = net.vargen_corr_value
+        self.corr_radius = net.vargen_corr_radius
+                
         # Generator limits
         for gen in net.generators:
             gen.P_min = 0.
@@ -168,6 +144,7 @@ class TwoStageDCOPF(StochProblem):
         self.w_max = self.VANG_LIMIT*np.ones(self.num_w)
         self.w_min = -self.VANG_LIMIT*np.ones(self.num_w)
         self.r_max = Pr*u
+        self.r_base = Pr*x
         self.z_max = hu
         self.z_min = hl 
         self.H0 = Pp*H*Pp.T
@@ -183,14 +160,9 @@ class TwoStageDCOPF(StochProblem):
         self.Pw = Pw
         self.Pr = Pr
 
-        # Rrenewable base
-        assert(0 <= penetration)
-        fraction = penetration*np.sum([l.P for l in net.loads])/(100.*np.sum(self.r_max))
-        self.r_base = fraction*self.r_max
-
         # Renewable covariance
         from scikits.sparse.cholmod import cholesky
-        r_cov = Pr*net.create_vargen_P_sigma(corr_radius,corr_value)*Pr.T
+        r_cov = Pr*net.create_vargen_P_sigma(self.corr_radius,self.corr_value)*Pr.T
         self.r_cov = (r_cov+r_cov.T-triu(r_cov)).tocsc()
         assert(self.r_cov.shape == (self.num_r,self.num_r))
         factor = cholesky(self.r_cov)
@@ -435,18 +407,18 @@ class TwoStageDCOPF(StochProblem):
     def show(self):
 
         Ctot = np.sum(self.r_max)
-        Rtot = np.sum(self.r_base)
+        Btot = np.sum(self.r_base)
         
         print 'Stochastic Two-Stage DCOPF'
         print '--------------------------'
-        print 'buses           : %d' %self.num_bus
-        print 'gens            : %d' %self.num_p
-        print 'vargens         : %d' %self.num_r
-        print 'penetration max : %.2f (%% of load)' %(100.*Ctot/self.total_load)
-        print 'penetration ave : %.2f (%% of load)' %(100.*Rtot/self.total_load)
-        print 'penetration std : %.2f (%% of local cap)' %(self.uncertainty)
-        print 'correlation rad : %d (edges)' %(self.corr_radius)
-        print 'correlation val : %.2f (unitless)' %(self.corr_value)
+        print 'buses            : %d' %self.num_bus
+        print 'gens             : %d' %self.num_p
+        print 'vargens          : %d' %self.num_r
+        print 'penetration cap  : %.2f (%% of load)' %(100.*Ctot/self.total_load)
+        print 'penetration base : %.2f (%% of load)' %(100.*Btot/self.total_load)
+        print 'penetration std  : %.2f (%% of local cap)' %self.uncertainty
+        print 'correlation rad  : %d (edges)' %(self.corr_radius)
+        print 'correlation val  : %.2f (unitless)' %(self.corr_value)
 
     def solve_certainty_equivalent(self,g_corr=None,Ew=None,feastol=1e-4,quiet=False,samples=500):
         
