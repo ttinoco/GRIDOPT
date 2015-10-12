@@ -8,8 +8,8 @@
 
 import pfnet as pf
 import numpy as np
-from numpy.linalg import norm
 from utils import ApplyFunc
+from numpy.linalg import norm
 from optalg.opt_solver import OptSolverIQP, QuadProblem
 from optalg.lin_solver import new_linsolver
 from optalg.opt_solver.opt_solver_error import *
@@ -18,7 +18,7 @@ from scipy.sparse import triu,bmat,coo_matrix,eye,spdiags,tril
 from scipy.sparse.linalg import LinearOperator
 from optalg.stoch_solver import StochProblem
             
-class TwoStageDCOPF(StochProblem):
+class TwoStageDCOPF_Problem(StochProblem):
     """"
     This class represents a problem of the form
     
