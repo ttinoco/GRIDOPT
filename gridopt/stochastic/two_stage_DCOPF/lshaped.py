@@ -17,9 +17,9 @@ class LShaped(TwoStageDCOPF_Method):
     """
     L-shaped method for solving two-stage DCOPF problems.
     """
-
+    
     parameters = {'scenarios':100,
-                  'maxiters':100,
+                  'maxiters':30,
                   'samples':300,
                   't_max':1e6,
                   'z_max':1e6}
