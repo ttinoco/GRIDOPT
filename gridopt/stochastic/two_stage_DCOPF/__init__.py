@@ -8,3 +8,6 @@
 
 from problem import TwoStageDCOPF_Problem
 from lshaped import LShaped
+from lshaped_multi import LShapedMulticut
+
+
