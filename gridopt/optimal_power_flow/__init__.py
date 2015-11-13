@@ -7,13 +7,14 @@
 #*****************************************************#
 
 from dc import DCOPF
+from augl import AugLOPF
 
 def new_method(name):
     
     if name == 'DCOPF':
         return DCOPF()
+    elif name == 'AugLOPF':
+        return AugLOPF()
     else:
         raise ValueError('invalid OPF method name')
-        
-    
     
