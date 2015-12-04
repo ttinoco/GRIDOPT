@@ -18,7 +18,7 @@ from scipy.sparse import triu,bmat,coo_matrix,eye,spdiags,tril
 from scipy.sparse.linalg import LinearOperator
 from optalg.stoch_solver import StochObj_Problem
             
-class TwoStageDCOPF_Problem(StochObj_Problem):
+class TS_DCOPF(StochObj_Problem):
     """"
     This class represents a problem of the form
     
@@ -35,11 +35,12 @@ class TwoStageDCOPF_Problem(StochObj_Problem):
                         0 <= s <= r.
     """
 
-    # Problem constants
+    # Problem constants (PUT THESE IN PARAMS DICT)
     COST_FACTOR = 100.   # factor for determining gen adjustment cost
     VANG_LIMIT = 1000.   # limit for votlage angles
     FLOW_LIMIT = 1000.   # value for unspecified thermal limits (p.u.)
     FLOW_FACTOR = 1.     # factor for relaxing thermal limits
+    SAMPLES = 2000       # number of samples
 
     def __init__(self,net):
         """
@@ -180,6 +181,11 @@ class TwoStageDCOPF_Problem(StochObj_Problem):
         for i in range(10):
             z = np.random.randn(self.num_r)
             assert(norm(self.r_cov*z-self.L*self.L.T*z) < 1e-10)
+
+        # Average renewables
+        self.Er = 0
+        for i in range(self.SAMPLES):
+            self.Er += (self.sample_w()-self.Er)/(i+1)
         
         # Checks
         assert(np.all(self.p_min == 0))
@@ -343,24 +349,6 @@ class TwoStageDCOPF_Problem(StochObj_Problem):
         except Exception,e:
             raise
 
-    def get_Ew(self,samples=500):
-        """
-        Computes expected renewable powers.
-
-        Parameters
-        ----------
-        samples : number of samples
-        
-        Returns
-        -------
-        Ew : vector.
-        """
-
-        r = 0
-        for i in range(samples):
-            r += (self.sample_w()-r)/(i+1)
-        return r
-
     def get_size_x(self):
         """
         Gets size of vector of first stage variables.
@@ -476,7 +464,8 @@ class TwoStageDCOPF_Problem(StochObj_Problem):
 
         Returns
         -------
-        val : float
+        F : float
+        gF : vector
         """
         
         phi = 0.5*np.dot(x,self.H0*x)+np.dot(self.g0,x)
@@ -484,6 +473,23 @@ class TwoStageDCOPF_Problem(StochObj_Problem):
         Q,gQ = self.eval_Q(x,w)
 
         return (phi+Q,gphi+gQ)
+
+    def eval_F_approx(self,x):
+        """
+        Evaluates certainty equivalent
+        version of objective function.
+
+        Parameters
+        ----------
+        x : generator powers
+
+        Returns
+        -------
+        F : float
+        gF : vector
+        """
+
+        return self.eval_F(x,self.Er)
 
     def eval_EF(self,x,samples=500):
         """
@@ -551,14 +557,14 @@ class TwoStageDCOPF_Problem(StochObj_Problem):
         print 'correlation rad  : %d (edges)' %(self.corr_radius)
         print 'correlation val  : %.2f (unitless)' %(self.corr_value)
 
-    def solve_certainty_equivalent(self,g_corr=None,Ew=None,tol=1e-4,quiet=False,samples=500):
+    def solve_approx(self,g_corr=None,tol=1e-4,quiet=False,samples=500):
         """
-        Solves certainty equivalent problem.
+        Solves certainty equivalent problem
+        with slope correction.
 
         Parameters
         ----------
         g_corr : slope correction
-        Ew : expected renewable powers
         tol : optimality tolerance
         quiet : flag
         samples : number of samples
@@ -588,10 +594,6 @@ class TwoStageDCOPF_Problem(StochObj_Problem):
         if g_corr is None:
             g_corr = np.zeros(num_p)
 
-        # Sample mean
-        if Ew is None:
-            Ew = self.get_Ew(samples=samples)
-
         # Problem construction
         H = bmat([[self.H0+self.H1,-self.H1,None,None,None], # p
                   [-self.H1,self.H1,None,None,None],         # y = p + q
@@ -611,7 +613,7 @@ class TwoStageDCOPF_Problem(StochObj_Problem):
         u = np.hstack((self.p_max,
                        self.p_max,
                        self.w_max,
-                       Ew,
+                       self.Er,
                        self.z_max))
 
         # Problem

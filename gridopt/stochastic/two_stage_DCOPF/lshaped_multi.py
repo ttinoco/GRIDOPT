@@ -8,12 +8,12 @@
 
 import time
 import numpy as np
-from method import TwoStageDCOPF_Method
-from problem import TwoStageDCOPF_Problem
+from method import TS_DCOPF_Method
+from problem import TS_DCOPF
 from scipy.sparse import eye,coo_matrix,bmat
 from optalg.opt_solver import OptSolverIQP,QuadProblem
 
-class LShapedMulticut(TwoStageDCOPF_Method):
+class LShapedMulticut(TS_DCOPF_Method):
     """
     L-shaped multi-cut method for solving two-stage DCOPF problems.
     """
@@ -26,12 +26,12 @@ class LShapedMulticut(TwoStageDCOPF_Method):
     
     def __init__(self):
 
-        TwoStageDCOPF_Method.__init__(self)
+        TS_DCOPF_Method.__init__(self)
         self.parameters = LShapedMulticut.parameters.copy()
     
     def create_problem(self,net):
 
-        return TwoStageDCOPF_Problem(net)
+        return TS_DCOPF(net)
 
     def solve(self,net):
 

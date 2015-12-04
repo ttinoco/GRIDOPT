@@ -6,7 +6,7 @@
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
 
-from problem import TwoStageDCOPF_Problem
+from problem import TS_DCOPF
 from lshaped import LShaped
 from lshaped_multi import LShapedMulticut
 
