@@ -372,6 +372,22 @@ class TwoStageDCOPF_Problem(StochObj_Problem):
 
         return self.num_p
 
+    def get_prop_x(self,x):
+        """
+        Gets some property of x that is useful for monitor 
+        progress.
+
+        Parameters
+        ----------
+        x : generator powers
+
+        Returns
+        -------
+        prop : float
+        """
+        
+        return np.average(x/self.p_max)
+
     def get_strong_convexity_constant(self):
         """
         Gets strong convexity constant, which for
