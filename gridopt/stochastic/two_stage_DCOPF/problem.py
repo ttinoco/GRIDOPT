@@ -16,9 +16,9 @@ from optalg.opt_solver.opt_solver_error import *
 from multiprocessing import Pool, cpu_count
 from scipy.sparse import triu,bmat,coo_matrix,eye,spdiags,tril
 from scipy.sparse.linalg import LinearOperator
-from optalg.stoch_solver import StochProblem
+from optalg.stoch_solver import StochObj_Problem
             
-class TwoStageDCOPF_Problem(StochProblem):
+class TwoStageDCOPF_Problem(StochObj_Problem):
     """"
     This class represents a problem of the form
     
