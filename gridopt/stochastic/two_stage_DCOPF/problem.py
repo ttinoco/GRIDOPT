@@ -22,24 +22,24 @@ class TwoStageDCOPF_Problem(StochProblem):
     """"
     This class represents a problem of the form
     
-    minimize(p)   \varphi_0(p) + E_r[Q(p,r)]
+    minimize(p)   varphi_0(p) + E_r[Q(p,r)]
     subject to    p_min <= p <= p_max
     
     where Q(p,r) is the optimal value of
 
-    minimize(q,w,s,z)  \varphi_1(q)
-    subjcet to         G(p+q) + Rs - Aw = b
-                       Jw - z = 0
-                       p_min <= p+q <= p_max
-                       z_min <= z <= z_max
-                       0 <= s <= r
+    minimize(q,w,s,z)   varphi_1(q)
+    subjcet to          G(p+q) + Rs - Aw = b
+                        Jw - z = 0
+                        p_min <= p+q <= p_max
+                        z_min <= z <= z_max
+                        0 <= s <= r.
     """
 
     # Problem constants
-    COST_FACTOR = 100.
-    VANG_LIMIT = 1000.
-    FLOW_LIMIT = 1000.
-    FLOW_FACTOR = 1.
+    COST_FACTOR = 100.   # factor for determining gen adjustment cost
+    VANG_LIMIT = 1000.   # limit for votlage angles
+    FLOW_LIMIT = 1000.   # value for unspecified thermal limits (p.u.)
+    FLOW_FACTOR = 1.     # factor for relaxing thermal limits
 
     def __init__(self,net):
         """
@@ -52,9 +52,9 @@ class TwoStageDCOPF_Problem(StochProblem):
 
         # Save info
         self.total_load = sum([l.P for l in net.loads])
-        self.uncertainty = 100.*sum([g.P_std for g in net.var_generators])/sum([g.P_max for g in net.var_generators])
-        self.corr_value = net.vargen_corr_value
-        self.corr_radius = net.vargen_corr_radius
+        self.uncertainty = 100.*sum([g.P_std for g in net.var_generators])/sum([g.P_max for g in net.var_generators]) # % of capacity
+        self.corr_value = net.vargen_corr_value    # correlation value  ([0,1)
+        self.corr_radius = net.vargen_corr_radius  # correlation radius (# of branches)
                 
         # Generator limits
         for gen in net.generators:
@@ -133,7 +133,7 @@ class TwoStageDCOPF_Problem(StochProblem):
         assert(np.all(Pp*l < Pp*u))
         assert(np.all(Pr*l < Pr*u))
         
-        # Problem data
+        # Save problem data
         self.num_w = num_w
         self.num_p = num_p
         self.num_r = num_r
@@ -190,9 +190,16 @@ class TwoStageDCOPF_Problem(StochProblem):
         assert(np.all(cost.Hphi.data > 0))
         assert(norm(self.A.T*np.ones(self.num_bus)) < (1e-10)*np.sqrt(self.num_bus*1.))
         
-    def eval_EQ(self,p,feastol=1e-4,samples=500,quiet=True):
+    def eval_EQ(self,p,tol=1e-4,samples=500,quiet=True):
         """
-        Evaluates E[Q(p,r)].
+        Evaluates E[Q(p,r)] and its gradient. 
+
+        Parameters
+        ----------
+        p : generator powers
+        tol : evaluation tolerance
+        samples : number of samples
+        quiet : flag
         """
         
         # Local vars
@@ -207,33 +214,47 @@ class TwoStageDCOPF_Problem(StochProblem):
             
             r = self.sample_w()
 
-            problem.u[self.num_p+self.num_w:self.num_p+self.num_w+self.num_r] = r # Important
+            problem.u[self.num_p+self.num_w:self.num_p+self.num_w+self.num_r] = r # Important (update bound)
             
-            q,gq = self.eval_Q(p,r,feastol=feastol,problem=problem)
+            q,gq = self.eval_Q(p,r,tol=tol,problem=problem)
 
+            # Show progress
             if not quiet and i > 0:
                 print '%d\t%.5e' %(i,Q)
 
+            # Infinity
             if not q < np.inf:
-                return np.inf, None
+                return np.inf,None
 
+            # Update
             Q += (q-Q)/(i+1.)
             gQ += (gq-gQ)/(i+1.)
                             
         return Q,gQ
 
-    def eval_EQ_parallel(self,p,feastol=1e-4,samples=500,quiet=True,num_procs=None):
+    def eval_EQ_parallel(self,p,tol=1e-4,samples=500,quiet=True,num_procs=None):
+        """
+        Evaluates E[Q(p,r)] and its gradient in parallel. 
+
+        Parameters
+        ----------
+        p : generator powers
+        tol : evaluation tolerance
+        samples : number of samples
+        quiet : flag
+        num_procs : number of parallel processes
+        """
     
         if not num_procs:
             num_procs = cpu_count()
         pool = Pool(num_procs)
         num = int(np.ceil(float(samples)/float(num_procs)))
-        results = zip(*pool.map(ApplyFunc,num_procs*[(self,'eval_EQ',p,feastol,num,quiet)]))
+        results = zip(*pool.map(ApplyFunc,num_procs*[(self,'eval_EQ',p,tol,num,quiet)]))
         return map(lambda vals: sum(map(lambda val: num*val/float(num*num_procs),vals)), results)
         
-    def eval_Q(self,p,r,quiet=True,check=False,feastol=1e-4,problem=None,return_data=False):
+    def eval_Q(self,p,r,quiet=True,check=False,tol=1e-4,problem=None,return_data=False):
         """
-        Evaluates Q(p,r).
+        Evaluates Q(p,r) and its gradient.
 
         Parameters
         ----------
@@ -241,7 +262,9 @@ class TwoStageDCOPF_Problem(StochProblem):
         r : renewable powers
         quiet : flag
         check : flag
+        tol : evaluation tolerance 
         problem : QuadProblem
+        return_data : flag
 
         Returns
         -------
@@ -268,7 +291,7 @@ class TwoStageDCOPF_Problem(StochProblem):
             # Solver
             solver = OptSolverIQP()
             solver.set_parameters({'quiet':quiet,
-                                   'feastol':feastol})
+                                   'tol':tol})
             
             # Solve
             solver.solve(problem)
@@ -304,8 +327,8 @@ class TwoStageDCOPF_Problem(StochProblem):
                 return Q,gQ
             else:
 
-                # Sensitivity (linear operator)
-                dqdpT = self.get_sol_sensitivity(problem,x,lam,mu,pi)
+                # Sensitivity (as linear operator)
+                dqdpT = self.get_sol_sensitivity(problem,x,lam,mu,pi) # NEED TO GENERALIZE THIS TO dxdpT
                 
                 data = {'q': q,
                         'dqdpT': dqdpT}
@@ -314,13 +337,24 @@ class TwoStageDCOPF_Problem(StochProblem):
 
         # Errors
         except OptSolverError_MaxIters:
-            return np.inf, None
+            return np.inf,None
         except OptSolverError_LineSearch:
-            return np.inf, None
+            return np.inf,None
         except Exception,e:
             raise
 
     def get_Ew(self,samples=500):
+        """
+        Computes expected renewable powers.
+
+        Parameters
+        ----------
+        samples : number of samples
+        
+        Returns
+        -------
+        Ew : vector.
+        """
 
         r = 0
         for i in range(samples):
@@ -328,10 +362,25 @@ class TwoStageDCOPF_Problem(StochProblem):
         return r
 
     def get_size_x(self):
+        """
+        Gets size of vector of first stage variables.
+        
+        Returns
+        -------
+        size : int
+        """
 
         return self.num_p
 
     def get_strong_convexity_constant(self):
+        """
+        Gets strong convexity constant, which for
+        this case is lambda_min(H0)/2.
+
+        Returns
+        -------
+        c : float
+        """
 
         H0 = self.H0.tocoo()
         assert(np.all(H0.row == H0.col))
@@ -340,6 +389,25 @@ class TwoStageDCOPF_Problem(StochProblem):
         return lmin/2.
 
     def get_problem_for_Q(self,p,r):
+        """
+        Constructs second-stage quadratic problem
+        in the form
+
+        minimize(x)   (1/2)x^THx + g^Tx
+        subject to    Ax = b
+                      l <= x <= u,
+
+        where x = (q,w,s,z).
+
+        Parameters
+        ----------
+        p : generator powers
+        r : renewable powers
+
+        Returns
+        -------
+        problem : QuadProblem
+        """
 
         # Constatns
         num_p = self.num_p
@@ -356,13 +424,13 @@ class TwoStageDCOPF_Problem(StochProblem):
         oz = np.zeros(num_br)
 
         H1 = self.H1/self.COST_FACTOR
-        g1 = self.g1
+        g1 = self.g1/self.COST_FACTOR
         
         # Form QP problem
-        H = bmat([[H1,None,None,None],
-                  [None,Ow,None,None],
-                  [None,None,Os,None],
-                  [None,None,None,Oz]],
+        H = bmat([[H1,None,None,None],  # q: gen power adjustments
+                  [None,Ow,None,None],  # w: bus voltage angles
+                  [None,None,Os,None],  # s: curtailed renewable powers
+                  [None,None,None,Oz]], # z: slack variables for thermal limits
                  format='coo')
         g = np.hstack((g1,ow,os,oz))
         A = bmat([[self.G,-self.A,self.R,None],
@@ -381,6 +449,19 @@ class TwoStageDCOPF_Problem(StochProblem):
         return QuadProblem(H,g,A,b,l,u)
 
     def eval_F(self,x,w):
+        """
+        Evaluates objective function for a given
+        realization of uncertainty.
+
+        Parameters
+        ----------
+        x : generator powers
+        w : renewable powers
+
+        Returns
+        -------
+        val : float
+        """
         
         phi = 0.5*np.dot(x,self.H0*x)+np.dot(self.g0,x)
         gphi = self.H0*x + self.g0
@@ -389,6 +470,18 @@ class TwoStageDCOPF_Problem(StochProblem):
         return (phi+Q,gphi+gQ)
 
     def eval_EF(self,x,samples=500):
+        """
+        Evaluates expected objective function.
+
+        Parameters
+        ----------
+        x : generator powers
+        samples : number of samples
+        
+        Returns
+        -------
+        val : float
+        """
         
         phi = 0.5*np.dot(x,self.H0*x)+np.dot(self.g0,x)
         gphi = self.H0*x + self.g0
@@ -397,14 +490,36 @@ class TwoStageDCOPF_Problem(StochProblem):
         return (phi+Q,gphi+gQ)
 
     def project_on_X(self,x):
+        """
+        Projects generator powers on the set
+        defined by generator limits.
+        
+        Parameters
+        ----------
+        x : generator powers
+
+        Returns
+        -------
+        y : vector
+        """
 
         return np.maximum(np.minimum(x,self.p_max),self.p_min)
 
     def sample_w(self):
+        """
+        Samples renewable powers.
+
+        Returns
+        -------
+        r : vector
+        """
 
         return np.minimum(np.maximum(self.r_base+self.L*np.random.randn(self.num_r),1e-3),self.r_max)
 
     def show(self):
+        """
+        Shows problem information.
+        """
 
         Ctot = np.sum(self.r_max)
         Btot = np.sum(self.r_base)
@@ -420,7 +535,22 @@ class TwoStageDCOPF_Problem(StochProblem):
         print 'correlation rad  : %d (edges)' %(self.corr_radius)
         print 'correlation val  : %.2f (unitless)' %(self.corr_value)
 
-    def solve_certainty_equivalent(self,g_corr=None,Ew=None,feastol=1e-4,quiet=False,samples=500):
+    def solve_certainty_equivalent(self,g_corr=None,Ew=None,tol=1e-4,quiet=False,samples=500):
+        """
+        Solves certainty equivalent problem.
+
+        Parameters
+        ----------
+        g_corr : slope correction
+        Ew : expected renewable powers
+        tol : optimality tolerance
+        quiet : flag
+        samples : number of samples
+
+        Returns
+        -------
+        p : generator powers
+        """
         
         # Constants
         num_p = self.num_p
@@ -474,7 +604,7 @@ class TwoStageDCOPF_Problem(StochProblem):
         # Solver
         solver = OptSolverIQP()
         solver.set_parameters({'quiet':quiet,
-                               'feastol':feastol})
+                               'tol':tol})
 
         # Solve
         solver.solve(problem)
@@ -498,6 +628,8 @@ class TwoStageDCOPF_Problem(StochProblem):
         """
         Computes sensitivity of optimal q with respect to p
         as a linear operator.
+
+        NEED TO EXTEND TO ALL x
         
         Parameters
         ----------
