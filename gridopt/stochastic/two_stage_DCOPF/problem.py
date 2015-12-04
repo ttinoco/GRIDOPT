@@ -511,7 +511,7 @@ class TS_DCOPF(StochObj_Problem):
 
         return (phi+Q,gphi+gQ)
 
-    def project_on_X(self,x):
+    def project_x(self,x):
         """
         Projects generator powers on the set
         defined by generator limits.
