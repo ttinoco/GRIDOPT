@@ -35,12 +35,12 @@ class TS_DCOPF(StochObj_Problem):
                         0 <= s <= r.
     """
 
-    # Problem constants (PUT THESE IN PARAMS DICT)
-    COST_FACTOR = 100.   # factor for determining gen adjustment cost
-    VANG_LIMIT = 1000.   # limit for votlage angles
-    FLOW_LIMIT = 1000.   # value for unspecified thermal limits (p.u.)
-    FLOW_FACTOR = 1.     # factor for relaxing thermal limits
-    SAMPLES = 2000       # number of samples
+    # Parameters
+    parameters = {'cost_factor' : 100.,   # factor for determining gen adjustment cost
+                  'vang_limit' : 1000.,   # limit for votlage angles
+                  'flow_limit' : 1000.,   # value for unspecified thermal limits (p.u.)
+                  'flow_factor' : 1.,     # factor for relaxing thermal limits
+                  'num_samples' : 2000}   # number of samples
 
     def __init__(self,net):
         """
@@ -50,6 +50,9 @@ class TS_DCOPF(StochObj_Problem):
         ----------
         net : PFNET Network
         """
+
+        # Parameters
+        self.parameters = TS_DCOPF.parameters.copy()
 
         # Save info
         self.total_load = sum([l.P for l in net.loads])
@@ -66,9 +69,9 @@ class TS_DCOPF(StochObj_Problem):
         # Branch flow limits
         for br in net.branches:
             if br.ratingA == 0.:
-                br.ratingA = self.FLOW_LIMIT
+                br.ratingA = self.parameters['flow_limit']
             else:
-                br.ratingA *= self.FLOW_FACTOR
+                br.ratingA *= self.parameters['flow_factor']
         
         # Counters
         num_w = net.num_buses-net.get_num_slack_buses() # voltage angles
@@ -142,15 +145,15 @@ class TS_DCOPF(StochObj_Problem):
         self.num_br = num_br
         self.p_max = Pp*u
         self.p_min = Pp*l
-        self.w_max = self.VANG_LIMIT*np.ones(self.num_w)
-        self.w_min = -self.VANG_LIMIT*np.ones(self.num_w)
+        self.w_max = self.parameters['vang_limit']*np.ones(self.num_w)
+        self.w_min = -self.parameters['vang_limit']*np.ones(self.num_w)
         self.r_max = Pr*u
         self.r_base = Pr*x
         self.z_max = hu
         self.z_min = hl 
         self.H0 = Pp*H*Pp.T
         self.g0 = Pp*g
-        self.H1 = self.H0*self.COST_FACTOR
+        self.H1 = self.H0*self.parameters['cost_factor']
         self.g1 = np.zeros(num_p)
         self.G = A*Pp.T
         self.R = A*Pr.T
@@ -184,7 +187,7 @@ class TS_DCOPF(StochObj_Problem):
 
         # Average renewables
         self.Er = 0
-        for i in range(self.SAMPLES):
+        for i in range(self.parameters['num_samples']):
             self.Er += (self.sample_w()-self.Er)/(i+1)
         
         # Checks
@@ -211,6 +214,9 @@ class TS_DCOPF(StochObj_Problem):
         # Local vars
         Q = 0.
         gQ = np.zeros(self.num_p)
+
+        # Seed
+        np.random.seed()
         
         # Problem
         problem = self.get_problem_for_Q(p,np.ones(self.num_r))
@@ -256,7 +262,7 @@ class TS_DCOPF(StochObj_Problem):
         pool = Pool(num_procs)
         num = int(np.ceil(float(samples)/float(num_procs)))
         results = zip(*pool.map(ApplyFunc,num_procs*[(self,'eval_EQ',p,tol,num,quiet)]))
-        return map(lambda vals: sum(map(lambda val: num*val/float(num*num_procs),vals)), results)
+        return map(lambda vals: sum(map(lambda val: num*val/float(num*num_procs),vals)),results)
         
     def eval_Q(self,p,r,quiet=True,check=False,tol=1e-4,problem=None,return_data=False):
         """
@@ -426,9 +432,10 @@ class TS_DCOPF(StochObj_Problem):
         ow = np.zeros(num_w)
         os = np.zeros(num_r)
         oz = np.zeros(num_br)
+        cost_factor = self.parameters['cost_factor']
 
-        H1 = self.H1/self.COST_FACTOR
-        g1 = self.g1/self.COST_FACTOR
+        H1 = self.H1/cost_factor
+        g1 = self.g1/cost_factor
         
         # Form QP problem
         H = bmat([[H1,None,None,None],  # q: gen power adjustments
