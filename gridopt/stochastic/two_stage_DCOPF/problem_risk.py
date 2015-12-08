@@ -32,7 +32,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
     """
 
     # Parameters
-    parameters = {'lam_max' : 1e2}   # max Lagrange multiplier
+    parameters = {'lam_max' : 1e3}   # max Lagrange multiplier
 
     def __init__(self,net,Qfac,gamma):
         """
@@ -57,9 +57,9 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
 
         # Qmax
         p_ce = self.ts_dcopf.solve_approx(quiet=True)
-        self.Qmax = Qfac*self.ts_dcopf.eval_Q(p_ce,self.ts_dcopf.Er)[0]
+        self.Qmax = Qfac*self.ts_dcopf.eval_EQ(p_ce,samples=100)[0]
 
-    def eval_FG(self,x,w,problem=None):
+    def eval_FG(self,x,w,problem=None,debug=False):
         """
         Evaluates F, G and their subgradients at x
         for the given w.
@@ -99,6 +99,10 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
             JG = csr_matrix(np.hstack((gQ,-1. + (1.-gamma))),shape=(1,x.size))
         else:
             JG = csr_matrix(np.hstack((np.zeros(p.size),1.-gamma)),shape=(1,x.size))
+
+        # Debug
+        if debug:
+            print Q,self.Qmax,t,sigma,self.ts_dcopf.get_prop_x(p)
 
         return F,gF,G,JG
 
@@ -208,8 +212,8 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         p = x[:-1]
         t = x[-1]
         
-        return self.ts_dcopf.get_prop_x(p)
-
+        return t#self.ts_dcopf.get_prop_x(p)
+        
     def project_x(self,x):
         
         p = x[:-1]
