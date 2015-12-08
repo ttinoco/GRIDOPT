@@ -9,8 +9,8 @@
 import numpy as np
 from utils import ApplyFunc
 from problem import TS_DCOPF
-from scipy.sparse import csr_matrix
-from multiprocessing import Pool, cpu_count
+from scipy.sparse import csr_matrix,eye
+from multiprocessing import Pool,cpu_count
 from optalg.stoch_solver import StochGen_Problem
 
 class TS_DCOPF_RiskAverse(StochGen_Problem):
@@ -240,9 +240,45 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         
         minimize(x)   F_approx + lam^TG_approx(x) + g^Tx + lam^TJx (slope correction)
         subject to    x in X
+
+        Returns
+        -------
+        x : vector
         """
 
-        pass
+        # Local variables
+        prob = self.ts_dcopf
         
+        num_p = prob.num_p
+        num_w = prob.num_w
+        num_r = prob.num_r
+        num_bus = prob.num_bus
+        num_br = prob.num_br
+        num_t = 1
+
+        Ont = coo_matrix((num_bus,num_t))
+        op = np.zeros(num_p)
+        oz = np.zeros(num_br)
+
+        Ip = eye(num_p,format='coo')
+        Iz = eye(num_br,format='coo')
+
+        Onp = coo_matrix((num_bus,num_p))
+        Onz = coo_matrix((num_bus,num_br))        
+        Ow = coo_matrix((num_w,num_w))
+        Os = coo_matrix((num_r,num_r))
+        Oz = coo_matrix((num_br,num_br))
+
+        # Corrections
+        if g_corr is None:
+            pass # do something
+        if J_corr is None:
+            pass # do something
+        
+        # Problem construction
+        A = bmat([[prob.G,Ont,prob.G,-prob.A,prob.R,None,None],
+                  [Ip,None,Ip,None,None,-Ip,None],
+                  [None,None,None,prob.J,None,None,-Iz]],format='coo')
+        b = np.hstack((prob.b,op,oz))
     
 
