@@ -33,8 +33,8 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
 
     # Parameters
     parameters = {'lam_max' : 1e3}   # max Lagrange multiplier
-
-    def __init__(self,net,Qfac,gamma):
+    
+    def __init__(self,net,Qfac,gamma,samples):
         """
         Class constructor.
         
@@ -57,7 +57,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
 
         # Qmax
         p_ce = self.ts_dcopf.solve_approx(quiet=True)
-        self.Qmax = Qfac*self.ts_dcopf.eval_EQ(p_ce,samples=100)[0]
+        self.Qmax = Qfac*self.ts_dcopf.eval_EQ(p_ce,samples=samples)[0]
 
     def eval_FG(self,x,w,problem=None,debug=False):
         """
@@ -233,6 +233,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
     def show(self):
 
         self.ts_dcopf.show()
+        print 'Qmax : %.5e' %self.Qmax
 
     def solve_Lrelaxed_approx(self,lam,g_corr=None,J_corr=None,tol=1e-4,quiet=False):
         """
