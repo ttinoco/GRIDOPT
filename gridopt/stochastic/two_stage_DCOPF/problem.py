@@ -10,13 +10,13 @@ import pfnet as pf
 import numpy as np
 from utils import ApplyFunc
 from numpy.linalg import norm
-from optalg.opt_solver import OptSolverIQP, QuadProblem
+from multiprocessing import Pool,cpu_count
 from optalg.lin_solver import new_linsolver
-from optalg.opt_solver.opt_solver_error import *
-from multiprocessing import Pool, cpu_count
-from scipy.sparse import triu,bmat,coo_matrix,eye,spdiags,tril
 from scipy.sparse.linalg import LinearOperator
+from optalg.opt_solver.opt_solver_error import *
 from optalg.stoch_solver import StochObj_Problem
+from optalg.opt_solver import OptSolverIQP,QuadProblem
+from scipy.sparse import triu,bmat,coo_matrix,eye,spdiags,tril
             
 class TS_DCOPF(StochObj_Problem):
     """"
@@ -36,11 +36,10 @@ class TS_DCOPF(StochObj_Problem):
     """
 
     # Parameters
-    parameters = {'cost_factor' : 100.,   # factor for determining gen adjustment cost
-                  'vang_limit' : 1000.,   # limit for votlage angles
-                  'flow_limit' : 1000.,   # value for unspecified thermal limits (p.u.)
-                  'flow_factor' : 1.,     # factor for relaxing thermal limits
-                  'num_samples' : 2000}   # number of samples
+    parameters = {'cost_factor' : 1e2,   # factor for determining gen adjustment cost
+                  'infinity' : 1e3,      # infinity
+                  'flow_factor' : 1.,    # factor for relaxing thermal limits
+                  'num_samples' : 2000}  # number of samples
 
     def __init__(self,net):
         """
@@ -69,7 +68,7 @@ class TS_DCOPF(StochObj_Problem):
         # Branch flow limits
         for br in net.branches:
             if br.ratingA == 0.:
-                br.ratingA = self.parameters['flow_limit']
+                br.ratingA = self.parameters['infinity']
             else:
                 br.ratingA *= self.parameters['flow_factor']
         
@@ -145,8 +144,8 @@ class TS_DCOPF(StochObj_Problem):
         self.num_br = num_br
         self.p_max = Pp*u
         self.p_min = Pp*l
-        self.w_max = self.parameters['vang_limit']*np.ones(self.num_w)
-        self.w_min = -self.parameters['vang_limit']*np.ones(self.num_w)
+        self.w_max = self.parameters['infinity']*np.ones(self.num_w)
+        self.w_min = -self.parameters['infinity']*np.ones(self.num_w)
         self.r_max = Pr*u
         self.r_base = Pr*x
         self.z_max = hu
@@ -564,7 +563,7 @@ class TS_DCOPF(StochObj_Problem):
         print 'correlation rad  : %d (edges)' %(self.corr_radius)
         print 'correlation val  : %.2f (unitless)' %(self.corr_value)
 
-    def solve_approx(self,g_corr=None,tol=1e-4,quiet=False,samples=500):
+    def solve_approx(self,g_corr=None,tol=1e-4,quiet=False,samples=500,init_data=None):
         """
         Solves certainty equivalent problem
         with slope correction.
@@ -624,7 +623,14 @@ class TS_DCOPF(StochObj_Problem):
                        self.z_max))
 
         # Problem
-        problem = QuadProblem(H,g,A,b,l,u)
+        if init_data is None:
+            problem = QuadProblem(H,g,A,b,l,u)
+        else:
+            problem = QuadProblem(H,g,A,b,l,u,
+                                  x=init_data['x'],
+                                  lam=init_data['lam'],
+                                  mu=init_data['mu'],
+                                  pi=init_data['pi'])
         
         # Solver
         solver = OptSolverIQP()
@@ -634,7 +640,8 @@ class TS_DCOPF(StochObj_Problem):
         # Solve
         solver.solve(problem)
         
-        x = solver.get_primal_variables()
+        results = solver.get_results()
+        x = results['x']
         p = x[:num_p]
         y = x[num_p:2*num_p]
         w = x[2*num_p:2*num_p+num_w]
@@ -647,7 +654,7 @@ class TS_DCOPF(StochObj_Problem):
         assert(norm(self.J*w-z) < 1e-6)
 
         # Return
-        return x[:num_p]
+        return x[:num_p],results
 
     def get_sol_sensitivity(self,problem,x,lam,mu,pi):
         """
