@@ -13,7 +13,7 @@ from problem import TS_DCOPF
 from optalg.opt_solver import OptProblem
 from multiprocessing import Pool,cpu_count
 from optalg.stoch_solver import StochGen_Problem
-from scipy.sparse import csr_matrix,eye,bmat,tril
+from scipy.sparse import csr_matrix,eye,bmat,coo_matrix
 
 class TS_DCOPF_RiskAverse(StochGen_Problem):
     """"
@@ -60,8 +60,8 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         self.ts_dcopf = TS_DCOPF(net)
 
         # Qmax
-        p_ce = self.ts_dcopf.solve_approx(quiet=True)
-        self.Qmax = Qfac*self.ts_dcopf.eval_EQ(p_ce,samples=samples)[0]
+        p_ce,results = self.ts_dcopf.solve_approx(quiet=True)
+        self.Qmax = Qfac*self.ts_dcopf.eval_EQ_parallel(p_ce,samples=samples)[0]
 
     def eval_FG(self,x,w,problem=None,debug=False):
         """
@@ -240,7 +240,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         self.ts_dcopf.show()
         print 'Qmax : %.5e' %self.Qmax
 
-    def solve_Lrelaxed_approx(self,lam,x=None,g_corr=None,J_corr=None,tol=1e-4,quiet=False):
+    def solve_Lrelaxed_approx(self,lam,g_corr=None,J_corr=None,tol=1e-4,quiet=False,init_data=None):
         """
         Solves
         
@@ -251,6 +251,23 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         -------
         x : vector
         """
+        
+        # Local variables
+
+        # Construct problem
+        problem = self.construct_Lrelaxed_approx_problem(lam,g_corr=g_corr,J_corr=J_corr)
+
+        # Warm start
+        if init_data is not None:
+            problem.x = init_data['x']
+            problem.lam = init_data['lam']
+            problem.mu = init_data['mu']
+            problem.pi = init_data['pi']
+
+        # Problem solution
+        return None
+
+    def construct_Lrelaxed_approx_problem(self,lam,g_corr=None,J_corr=None):
 
         # Local variables
         prob = self.ts_dcopf
@@ -281,7 +298,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         Ont = coo_matrix((num_bus,1))
         Ow = coo_matrix((num_w,num_w))
         Os = coo_matrix((num_r,num_r))
-        Oy = coo_matrix((num_y,num_y))
+        Oy = coo_matrix((num_p,num_p))
         Oz = coo_matrix((num_br,num_br))
 
         # Corrections
@@ -371,7 +388,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
                                   oz))               # z
                                   
             # Hessian (lower triangular)
-            cls.Hphi = bmat([[H0,None,None,None,None,None,None]             # p
+            cls.Hphi = bmat([[H0,None,None,None,None,None,None],            # p
                              [None,lam*C2,None,None,None,None,None],        # t
                              [None,None,(1+lam*C1)*H1,None,None,None,None], # q
                              [None,None,None,Ow,None,None,None],            # theta
@@ -385,11 +402,6 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         problem.b = b
         problem.u = u
         problem.l = l
-        problem.x = x
         problem.eval = MethodType(eval,problem)
         
-        # Problem solution
-        
-            
-
-            
+        return problem
