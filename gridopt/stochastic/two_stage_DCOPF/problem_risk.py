@@ -36,8 +36,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
 
     # Parameters
     parameters = {'lam_max' : 1e3,    # max Lagrange multiplier
-                  'exp_argmax' : 1e1, # max arg for exp
-                  'eps' : 0}       # for adding some convexity
+                  'exp_argmax' : 1e1} # max arg for exp
     
     def __init__(self,net,Qfac,gamma,samples):
         """
@@ -299,7 +298,6 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         prob = self.ts_dcopf
         inf = prob.parameters['infinity']
         exp_argmax = self.parameters['exp_argmax']
-        eps = self.parameters['eps']
         gamma = self.gamma
         lam = float(lam)
         
@@ -323,10 +321,10 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         Iz = eye(num_br,format='coo')
         
         Ont = coo_matrix((num_bus,1))
-        Ieps_w = eps*eye(num_w,format='coo')
-        Ieps_s = eps*eye(num_r,format='coo')
-        Ieps_y = eps*eye(num_p,format='coo')
-        Ieps_z = eps*eye(num_br,format='coo')
+        Ow = coo_matrix((num_w,num_w))
+        Os = coo_matrix((num_r,num_r))
+        Oy = coo_matrix((num_p,num_p))
+        Oz = coo_matrix((num_br,num_br))
 
         # Corrections
         if g_corr is None:
@@ -420,10 +418,10 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
             cls.Hphi = bmat([[H0,None,None,None,None,None,None],             # p
                              [None,lam*C2,-lam*C2*g.T,None,None,None,None],  # t
                              [None,-lam*C2*g,H,None,None,None,None],         # q
-                             [None,None,None,Ieps_w,None,None,None],         # theta
-                             [None,None,None,None,Ieps_s,None,None],         # s
-                             [None,None,None,None,None,Ieps_y,None],         # y
-                             [None,None,None,None,None,None,Ieps_z]],        # z
+                             [None,None,None,Ow,None,None,None],         # theta
+                             [None,None,None,None,Os,None,None],         # s
+                             [None,None,None,None,None,Oy,None],         # y
+                             [None,None,None,None,None,None,Oz]],        # z
                             format='coo')
             
         problem = OptProblem()
