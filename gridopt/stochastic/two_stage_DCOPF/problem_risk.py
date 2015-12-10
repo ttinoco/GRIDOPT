@@ -10,10 +10,11 @@ import numpy as np
 from utils import ApplyFunc
 from types import MethodType
 from problem import TS_DCOPF
-from optalg.opt_solver import OptProblem
+from numpy.linalg import norm
 from multiprocessing import Pool,cpu_count
 from optalg.stoch_solver import StochGen_Problem
-from scipy.sparse import csr_matrix,eye,bmat,coo_matrix
+from optalg.opt_solver import OptProblem,OptSolverLCCP
+from scipy.sparse import csr_matrix,eye,bmat,coo_matrix,tril
 
 class TS_DCOPF_RiskAverse(StochGen_Problem):
     """"
@@ -35,7 +36,8 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
 
     # Parameters
     parameters = {'lam_max' : 1e3,    # max Lagrange multiplier
-                  'exp_argmax' : 1e2} # max arg for exp
+                  'exp_argmax' : 1e1, # max arg for exp
+                  'eps' : 0}       # for adding some convexity
     
     def __init__(self,net,Qfac,gamma,samples):
         """
@@ -264,8 +266,32 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
             problem.mu = init_data['mu']
             problem.pi = init_data['pi']
 
-        # Problem solution
-        return None
+        # Solve problem
+        solver = OptSolverLCCP()
+        solver.set_parameters({'quiet':quiet,'tol':tol})
+        solver.solve(problem)
+        results = solver.get_results()
+        x = results['x']
+        lam = results['lam']
+        mu = results['mu']
+        pi = results['pi']
+        
+        # Check
+        A = problem.A
+        b = problem.b
+        l = problem.l
+        u = problem.u
+        gphi = problem.gphi
+        problem.eval(x)
+        assert(norm(gphi-A.T*lam+mu-pi) < 1e-6)
+        assert(norm(mu*(u-x),np.inf) < 1e-4)
+        assert(norm(pi*(x-l),np.inf) < 1e-4)
+        assert(np.all(x < u))
+        assert(np.all(x > l))
+        assert(norm(A*x-b) < (1e-6)*norm(b))
+
+        # Return
+        return x[:self.ts_dcopf.num_p+1],results
 
     def construct_Lrelaxed_approx_problem(self,lam,g_corr=None,J_corr=None):
 
@@ -273,6 +299,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         prob = self.ts_dcopf
         inf = prob.parameters['infinity']
         exp_argmax = self.parameters['exp_argmax']
+        eps = self.parameters['eps']
         gamma = self.gamma
         lam = float(lam)
         
@@ -296,10 +323,10 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         Iz = eye(num_br,format='coo')
         
         Ont = coo_matrix((num_bus,1))
-        Ow = coo_matrix((num_w,num_w))
-        Os = coo_matrix((num_r,num_r))
-        Oy = coo_matrix((num_p,num_p))
-        Oz = coo_matrix((num_br,num_br))
+        Ieps_w = eps*eye(num_w,format='coo')
+        Ieps_s = eps*eye(num_r,format='coo')
+        Ieps_y = eps*eye(num_p,format='coo')
+        Ieps_z = eps*eye(num_br,format='coo')
 
         # Corrections
         if g_corr is None:
@@ -388,13 +415,15 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
                                   oz))               # z
                                   
             # Hessian (lower triangular)
-            cls.Hphi = bmat([[H0,None,None,None,None,None,None],            # p
-                             [None,lam*C2,None,None,None,None,None],        # t
-                             [None,None,(1+lam*C1)*H1,None,None,None,None], # q
-                             [None,None,None,Ow,None,None,None],            # theta
-                             [None,None,None,None,Os,None,None],            # s
-                             [None,None,None,None,None,Oy,None],            # y
-                             [None,None,None,None,None,None,Oz]],           # z
+            H = (1.+lam*C1)*H1 + tril(lam*C2*np.outer(gphi1,gphi1))
+            g = gphi1.reshape((q.size,1))
+            cls.Hphi = bmat([[H0,None,None,None,None,None,None],             # p
+                             [None,lam*C2,-lam*C2*g.T,None,None,None,None],  # t
+                             [None,-lam*C2*g,H,None,None,None,None],         # q
+                             [None,None,None,Ieps_w,None,None,None],         # theta
+                             [None,None,None,None,Ieps_s,None,None],         # s
+                             [None,None,None,None,None,Ieps_y,None],         # y
+                             [None,None,None,None,None,None,Ieps_z]],        # z
                             format='coo')
             
         problem = OptProblem()

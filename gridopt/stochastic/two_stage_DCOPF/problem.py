@@ -632,26 +632,24 @@ class TS_DCOPF(StochObj_Problem):
                                   mu=init_data['mu'],
                                   pi=init_data['pi'])
         
-        # Solver
-        solver = OptSolverIQP()
-        solver.set_parameters({'quiet':quiet,
-                               'tol':tol})
-
         # Solve
+        solver = OptSolverIQP()
+        solver.set_parameters({'quiet':quiet,'tol':tol})
         solver.solve(problem)
-        
         results = solver.get_results()
         x = results['x']
-        p = x[:num_p]
-        y = x[num_p:2*num_p]
-        w = x[2*num_p:2*num_p+num_w]
-        s = x[2*num_p+num_w:2*num_p+num_w+num_r]
-        z = x[2*num_p+num_w+num_r:]
-        
+        lam = results['lam']
+        mu = results['mu']
+        pi = results['pi']
+
         # Check
-        assert(np.all(self.z_min < self.J*w))
-        assert(np.all(self.z_max > self.J*w))
-        assert(norm(self.J*w-z) < 1e-6)
+        problem.eval(x)
+        assert(norm(problem.gphi-A.T*lam+mu-pi) < 1e-6)
+        assert(norm(mu*(u-x),np.inf) < 1e-4)
+        assert(norm(pi*(x-l),np.inf) < 1e-4)
+        assert(np.all(x < u))
+        assert(np.all(x > l))
+        assert(norm(A*x-b) < (1e-6)*norm(b))
 
         # Return
         return x[:num_p],results
