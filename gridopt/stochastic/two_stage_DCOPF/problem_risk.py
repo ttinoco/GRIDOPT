@@ -36,7 +36,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
 
     # Parameters
     parameters = {'lam_max' : 1e3,    # max Lagrange multiplier
-                  'smax_param': 5e-2} # softmax parameter
+                  'smax_param': 1e-2} # softmax parameter
     
     def __init__(self,net,Qfac,gamma,samples):
         """
