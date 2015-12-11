@@ -318,8 +318,8 @@ class TS_DCOPF(StochObj_Problem):
                 w = x[num_p:num_p+num_w]
                 s = x[num_p+num_w:num_p+num_w+num_r]
                 z = x[num_p+num_w+num_r:]
-                assert(norm(self.G*(p+q)+self.R*s-self.A*w-self.b) < (1e-3)*norm(self.b))
-                assert(norm(self.J*w-z) < (1e-3)*norm(z))
+                assert(norm(self.G*(p+q)+self.R*s-self.A*w-self.b) < (1e-6)*norm(self.b))
+                assert(norm(self.J*w-z) < (1e-6)*norm(z))
                 assert(np.all(self.p_min <= p+q))
                 assert(np.all(p+q <= self.p_max))
                 assert(np.all(0 <= s))
@@ -634,7 +634,8 @@ class TS_DCOPF(StochObj_Problem):
         
         # Solve
         solver = OptSolverIQP()
-        solver.set_parameters({'quiet':quiet,'tol':tol})
+        solver.set_parameters({'quiet':quiet,
+                               'tol':tol})
         solver.solve(problem)
         results = solver.get_results()
         x = results['x']
@@ -644,7 +645,8 @@ class TS_DCOPF(StochObj_Problem):
 
         # Check
         problem.eval(x)
-        assert(norm(problem.gphi-A.T*lam+mu-pi) < 1e-6)
+        gphi = problem.gphi
+        assert(norm(gphi-A.T*lam+mu-pi) < (1e-6)*(norm(gphi)+norm(lam)+norm(mu)+norm(pi)))
         assert(norm(mu*(u-x),np.inf) < 1e-4)
         assert(norm(pi*(x-l),np.inf) < 1e-4)
         assert(np.all(x < u))
