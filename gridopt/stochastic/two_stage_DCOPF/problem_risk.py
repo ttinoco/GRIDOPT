@@ -407,7 +407,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
             
             # Gradient
             cls.gphi = np.hstack((gphi0 + eta_p + lam*nu_p, # p
-                                  -lam*C1 + lam*(1-gamma) + eta_t + lam*nu_t, # t
+                                  -lam*C1 + lam*(1.-gamma) + eta_t + lam*nu_t, # t
                                   (1.+lam*C1)*gphi1, # q
                                   ow,                # theta
                                   os,                # s
@@ -434,3 +434,5 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         problem.eval = MethodType(eval,problem)
         
         return problem
+
+
