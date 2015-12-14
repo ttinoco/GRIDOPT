@@ -286,8 +286,8 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         problem.eval(x)
         gphi = problem.gphi
         assert(norm(gphi-A.T*lam+mu-pi) < (1e-6)*(norm(gphi)+norm(lam)+norm(mu)+norm(pi)))
-        assert(norm(mu*(u-x),np.inf) < 1e-4)
-        assert(norm(pi*(x-l),np.inf) < 1e-4)
+        assert(norm(mu*(u-x)) < (1e-6)*(norm(mu)+norm(u-x)))
+        assert(norm(pi*(x-l)) < (1e-6)*(norm(pi)+norm(x-l)))
         assert(np.all(x < u))
         assert(np.all(x > l))
         assert(norm(A*x-b) < (1e-6)*norm(b))
