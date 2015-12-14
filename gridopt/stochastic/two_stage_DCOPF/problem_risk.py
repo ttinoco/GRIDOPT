@@ -36,7 +36,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
     # Parameters
     parameters = {'lam_max' : 1e3,    # max Lagrange multiplier
                   'smax_param': 1e2,  # softmax parameter
-                  't_eps': 1e-8}
+                  't_eps': 1e-6}
     
     def __init__(self,net,Qfac,gamma,samples):
         """
@@ -290,8 +290,8 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         assert(norm(gphi-A.T*lam+mu-pi) < (1e-6)*(norm(gphi)+norm(lam)+norm(mu)+norm(pi)))
         assert(norm(mu*(u-x)) < (1e-6)*(norm(mu)+norm(u-x)))
         assert(norm(pi*(x-l)) < (1e-6)*(norm(pi)+norm(x-l)))
-        assert(np.all(x < u))
-        assert(np.all(x > l))
+        assert(np.all(x < u + 1e-6))
+        assert(np.all(x > l - 1e-6))
         assert(norm(A*x-b) < (1e-6)*norm(b))
 
         # Return
