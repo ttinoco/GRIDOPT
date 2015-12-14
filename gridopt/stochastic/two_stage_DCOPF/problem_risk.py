@@ -35,7 +35,8 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
 
     # Parameters
     parameters = {'lam_max' : 1e3,    # max Lagrange multiplier
-                  'smax_param': 1e-2} # softmax parameter
+                  'smax_param': 1e2,  # softmax parameter
+                  't_eps': 1e-8}
     
     def __init__(self,net,Qfac,gamma,samples):
         """
@@ -96,11 +97,11 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         F =  phi0+Q
         gF = np.hstack((gphi0+gQ,0.))
 
-        sigma = Q-self.Qmax-t
+        sigma = (Q-self.Qmax)/self.Qmax-t
 
         G = np.array([np.maximum(sigma,0.) + (1.-gamma)*t])
         if sigma >= 0:
-            JG = csr_matrix(np.hstack((gQ,-1. + (1.-gamma))),shape=(1,x.size))
+            JG = csr_matrix(np.hstack((gQ/self.Qmax,-1. + (1.-gamma))),shape=(1,x.size))
         else:
             JG = csr_matrix(np.hstack((np.zeros(p.size),1.-gamma)),shape=(1,x.size))
 
@@ -133,7 +134,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         Er = self.ts_dcopf.Er
         smax_param = self.parameters['smax_param']
         gamma = self.gamma
-
+        
         H0 = self.ts_dcopf.H0
         g0 = self.ts_dcopf.g0
         
@@ -144,13 +145,13 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         F =  phi0+Q
         gF = np.hstack((gphi0+gQ,0.))
 
-        sigma = smax_param*(Q-self.Qmax-t)
+        sigma = smax_param*((Q-self.Qmax)/self.Qmax-t)
         a = np.maximum(sigma,0.)
         C = np.exp(sigma-a)/(np.exp(-a)+np.exp(sigma-a))
         log_term = (a + np.log(np.exp(-a) + np.exp(sigma-a)))/smax_param
 
         G = np.array([log_term + (1.-gamma)*t])
-        JG = csr_matrix(np.hstack((C*gQ,-C + (1.-gamma))),shape=(1,x.size))
+        JG = csr_matrix(np.hstack((C*gQ/self.Qmax,-C + (1.-gamma))),shape=(1,x.size))
 
         return F,gF,G,JG
 
@@ -236,6 +237,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
 
         self.ts_dcopf.show()
         print 'Qmax : %.5e' %self.Qmax
+        print 'smax param : %.2e' %self.parameters['smax_param']
 
     def solve_Lrelaxed_approx(self,lam,g_corr=None,J_corr=None,tol=1e-4,quiet=False,init_data=None):
         """
@@ -298,9 +300,11 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
     def construct_Lrelaxed_approx_problem(self,lam,g_corr=None,J_corr=None):
 
         # Local variables
+        Qmax = self.Qmax
         prob = self.ts_dcopf
         inf = prob.parameters['infinity']
         smax_param = self.parameters['smax_param']
+        t_eps = self.parameters['t_eps']
         gamma = self.gamma
         lam = float(lam)
         
@@ -347,7 +351,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
                   [None,None,None,prob.J,None,None,-Iz]],format='coo')
         b = np.hstack((prob.b,op,oz))
         l = np.hstack((prob.p_min,          # p
-                       -inf,                # t
+                       -0.,                 # t
                        -inf*np.ones(num_p), # q
                        -inf*np.ones(num_w), # theta
                        np.zeros(num_r),     # s
@@ -393,7 +397,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
             phi1 = 0.5*np.dot(q,H1*q)+np.dot(g1,q)
             gphi1 = H1*q + g1
             
-            beta = smax_param*(phi1-self.Qmax-t)
+            beta = smax_param*((phi1-Qmax)/Qmax-t)
             a = np.maximum(beta,0.)
             ebma = np.exp(beta-a)
             ebm2a = np.exp(beta-2*a)
@@ -403,23 +407,23 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
             log_term = (a + np.log(ema+ebma))/smax_param
             
             # Value
-            cls.phi = phi0 + phi1 + lam*log_term + lam*(1-gamma)*t + np.dot(eta_p+lam*nu_p,p) + (eta_t+lam*nu_t)*t
+            cls.phi = phi0 + phi1 + lam*log_term + lam*(1-gamma)*t + np.dot(eta_p+lam*nu_p,p) + (eta_t+lam*nu_t)*t + (t_eps/2.)*(t**2.)
             
             # Gradient
             cls.gphi = np.hstack((gphi0 + eta_p + lam*nu_p, # p
-                                  -lam*C1 + lam*(1.-gamma) + eta_t + lam*nu_t, # t
-                                  (1.+lam*C1)*gphi1, # q
-                                  ow,                # theta
-                                  os,                # s
-                                  op,                # y
-                                  oz))               # z
+                                  -lam*C1 + lam*(1.-gamma) + eta_t + lam*nu_t + t_eps*t, # t
+                                  (1.+lam*C1/Qmax)*gphi1, # q
+                                  ow,                     # theta
+                                  os,                     # s
+                                  op,                     # y
+                                  oz))                    # z
                                   
             # Hessian (lower triangular)
-            H = (1.+lam*C1)*H1 + tril(lam*C2*np.outer(gphi1,gphi1))
+            H = (1.+lam*C1/Qmax)*H1 + tril(lam*C2*np.outer(gphi1,gphi1)/Qmax)
             g = gphi1.reshape((q.size,1))
             cls.Hphi = bmat([[H0,None,None,None,None,None,None],             # p
-                             [None,lam*C2,-lam*C2*g.T,None,None,None,None],  # t
-                             [None,-lam*C2*g,H,None,None,None,None],         # q
+                             [None,lam*C2+t_eps,-lam*C2*g.T/Qmax,None,None,None,None],  # t
+                             [None,-lam*C2*g/Qmax,H,None,None,None,None],         # q
                              [None,None,None,Ow,None,None,None],         # theta
                              [None,None,None,None,Os,None,None],         # s
                              [None,None,None,None,None,Oy,None],         # y
