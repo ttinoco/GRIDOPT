@@ -28,9 +28,8 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
 
     minimize(q,w,s,z)   varphi_1(q)
     subjcet to          G(p+q) + Rs - Aw = b
-                        Jw - z = 0
                         p_min <= p+q <= p_max
-                        z_min <= z <= z_max
+                        z_min <= Jw <= z_max
                         0 <= s <= r.
     """
 
@@ -54,8 +53,8 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         self.parameters = TS_DCOPF_RiskAverse.parameters.copy()
         
         # Save args
-        self.Qfac = Qfac
-        self.gamma = gamma
+        self.Qfac = Qfac    # factor for setting Qmax
+        self.gamma = gamma  # parameter for CVaR (e.g. 0.95)
         
         # Regular problem
         self.ts_dcopf = TS_DCOPF(net)
@@ -90,12 +89,12 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         H0 = self.ts_dcopf.H0
         g0 = self.ts_dcopf.g0
         
-        phi = 0.5*np.dot(p,H0*p)+np.dot(g0,p)
-        gphi = H0*p + g0
+        phi0 = 0.5*np.dot(p,H0*p)+np.dot(g0,p)
+        gphi0 = H0*p + g0
         Q,gQ = self.ts_dcopf.eval_Q(p,w,problem=problem)
 
-        F =  phi+Q
-        gF = np.hstack((gphi+gQ,0.))
+        F =  phi0+Q
+        gF = np.hstack((gphi0+gQ,0.))
 
         sigma = Q-self.Qmax-t
 
@@ -138,12 +137,12 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         H0 = self.ts_dcopf.H0
         g0 = self.ts_dcopf.g0
         
-        phi = 0.5*np.dot(p,H0*p)+np.dot(g0,p)
-        gphi = H0*p + g0
+        phi0 = 0.5*np.dot(p,H0*p)+np.dot(g0,p)
+        gphi0 = H0*p + g0
         Q,gQ = self.ts_dcopf.eval_Q(p,Er)
 
-        F =  phi+Q
-        gF = np.hstack((gphi+gQ,0.))
+        F =  phi0+Q
+        gF = np.hstack((gphi0+gQ,0.))
 
         sigma = smax_param*(Q-self.Qmax-t)
         a = np.maximum(sigma,0.)
@@ -180,7 +179,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         for i in range(samples):
             
             r = self.sample_w()
-
+            
             problem.u[num_p+num_w:num_p+num_w+num_r] = r # Important (update bound)
             
             F1,gF1,G1,JG1 = self.eval_FG(x,r,problem=problem)
@@ -200,7 +199,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         pool = Pool(num_procs)
         num = int(np.ceil(float(samples)/float(num_procs)))
         results = zip(*pool.map(ApplyFunc,num_procs*[(self,'eval_EFG_sequential',x,num)]))
-        return map(lambda vals: sum(map(lambda val: num*val/float(num*num_procs),vals)),results)
+        return map(lambda vals: sum(map(lambda val: val/float(num_procs),vals)),results)
         
     def get_size_x(self):
 
