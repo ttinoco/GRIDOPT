@@ -215,7 +215,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         p = x[:-1]
         t = x[-1]
         
-        return self.ts_dcopf.get_prop_x(p)
+        return t#self.ts_dcopf.get_prop_x(p)
         
     def project_x(self,x):
         
@@ -272,7 +272,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         except Exception:
             raise
         finally:
-            print '***** t',solver.get_results()['x'][self.ts_dcopf.num_p]
+            pass
             
         results = solver.get_results()
         x = results['x']
@@ -358,7 +358,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
                        prob.p_min,          # y
                        prob.z_min))         # z
         u = np.hstack((prob.p_max,          # p
-                       inf,                 # t
+                       1.,                  # t
                        inf*np.ones(num_p),  # q
                        inf*np.ones(num_w),  # theta
                        prob.Er,             # s
