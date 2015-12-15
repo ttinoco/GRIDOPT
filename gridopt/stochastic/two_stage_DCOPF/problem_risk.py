@@ -34,9 +34,9 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
     """
 
     # Parameters
-    parameters = {'lam_max' : 1e3,    # max Lagrange multiplier
-                  'smax_param': 1e2,  # softmax parameter
-                  't_eps': 1e-6}
+    parameters = {'lam_max' : 5e-1,   # max Lagrange multiplier
+                  'smax_param': 1e1,  # softmax parameter
+                  't_eps': 1e-8}
     
     def __init__(self,net,Qfac,gamma,samples):
         """
@@ -351,7 +351,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
                   [None,None,None,prob.J,None,None,-Iz]],format='coo')
         b = np.hstack((prob.b,op,oz))
         l = np.hstack((prob.p_min,          # p
-                       -0.,                 # t
+                       -1.,                 # t
                        -inf*np.ones(num_p), # q
                        -inf*np.ones(num_w), # theta
                        np.zeros(num_r),     # s
