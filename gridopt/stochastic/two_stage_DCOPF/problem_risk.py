@@ -34,7 +34,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
     """
 
     # Parameters
-    parameters = {'lam_max' : 5e-1,   # max Lagrange multiplier
+    parameters = {'lam_max' : 1e0,    # max Lagrange multiplier
                   'smax_param': 1e1,  # softmax parameter
                   't_eps': 1e-8}
     
@@ -155,7 +155,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
 
         return F,gF,G,JG
 
-    def eval_EFG_sequential(self,x,samples=500):
+    def eval_EFG_sequential(self,x,samples=500,seed=None):
 
         # Local vars
         p = x[:-1]
@@ -165,7 +165,10 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         num_r = self.ts_dcopf.num_r
 
         # Seed
-        np.random.seed()
+        if seed is None:
+            np.random.seed()
+        else:
+            np.random.seed(seed)
 
         # Init
         F = 0.
@@ -199,7 +202,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
             num_procs = cpu_count()
         pool = Pool(num_procs)
         num = int(np.ceil(float(samples)/float(num_procs)))
-        results = zip(*pool.map(ApplyFunc,num_procs*[(self,'eval_EFG_sequential',x,num)]))
+        results = zip(*pool.map(ApplyFunc,[(self,'eval_EFG_sequential',x,num,i) for i in range(num_procs)]))
         return map(lambda vals: sum(map(lambda val: val/float(num_procs),vals)),results)
         
     def get_size_x(self):
@@ -236,7 +239,9 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
     def show(self):
 
         self.ts_dcopf.show()
-        print 'Qmax : %.5e' %self.Qmax
+        print 'Qmax       : %.5e' %self.Qmax
+        print 'Qfac       : %.2f' %self.Qfac
+        print 'gamma      : %.2f' %self.gamma
         print 'smax param : %.2e' %self.parameters['smax_param']
 
     def solve_Lrelaxed_approx(self,lam,g_corr=None,J_corr=None,tol=1e-4,quiet=False,init_data=None):

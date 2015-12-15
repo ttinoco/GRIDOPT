@@ -198,7 +198,7 @@ class TS_DCOPF(StochObj_Problem):
         assert(np.all(cost.Hphi.data > 0))
         assert(norm(self.A.T*np.ones(self.num_bus)) < (1e-10)*np.sqrt(self.num_bus*1.))
         
-    def eval_EQ(self,p,tol=1e-4,samples=500,quiet=True):
+    def eval_EQ(self,p,tol=1e-4,samples=500,seed=None,quiet=True):
         """
         Evaluates E[Q(p,r)] and its gradient. 
 
@@ -215,7 +215,10 @@ class TS_DCOPF(StochObj_Problem):
         gQ = np.zeros(self.num_p)
 
         # Seed
-        np.random.seed()
+        if seed is None:
+            np.random.seed()
+        else:
+            np.random.seed(seed)
         
         # Problem
         problem = self.get_problem_for_Q(p,np.ones(self.num_r))
@@ -260,7 +263,7 @@ class TS_DCOPF(StochObj_Problem):
             num_procs = cpu_count()
         pool = Pool(num_procs)
         num = int(np.ceil(float(samples)/float(num_procs)))
-        results = zip(*pool.map(ApplyFunc,num_procs*[(self,'eval_EQ',p,tol,num,quiet)]))
+        results = zip(*pool.map(ApplyFunc,[(self,'eval_EQ',p,tol,num,i,quiet) for i in range(num_procs)]))
         return map(lambda vals: sum(map(lambda val: num*val/float(num*num_procs),vals)),results)
         
     def eval_Q(self,p,r,quiet=True,check=False,tol=1e-4,problem=None,return_data=False):
