@@ -34,9 +34,11 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
     """
 
     # Parameters
-    parameters = {'lam_max' : 1e0,    # max Lagrange multiplier
-                  'smax_param': 1e1,  # softmax parameter
-                  't_eps': 1e-8}
+    parameters = {'lam_max' : 1e2,   # max Lagrange multiplier
+                  'smax_param': 1e1, # softmax parameter
+                  'reg': 1e-3,
+                  't_min': -1.,
+                  't_max': 0.}
     
     def __init__(self,net,Qfac,gamma,samples):
         """
@@ -64,7 +66,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         p_ce,results = self.ts_dcopf.solve_approx(quiet=True)
         self.Qmax = Qfac*self.ts_dcopf.eval_EQ_parallel(p_ce,samples=samples)[0]
 
-    def eval_FG(self,x,w,problem=None,debug=False):
+    def eval_FG(self,x,w,problem=None,debug=False,tol=1e-4):
         """
         Evaluates F, G and their subgradients at x
         for the given w.
@@ -92,7 +94,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         
         phi0 = 0.5*np.dot(p,H0*p)+np.dot(g0,p)
         gphi0 = H0*p + g0
-        Q,gQ = self.ts_dcopf.eval_Q(p,w,problem=problem)
+        Q,gQ = self.ts_dcopf.eval_Q(p,w,problem=problem,tol=tol)
 
         F =  phi0+Q
         gF = np.hstack((gphi0+gQ,0.))
@@ -112,7 +114,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
 
         return F,gF,G,JG
 
-    def eval_FG_approx(self,x):
+    def eval_FG_approx(self,x,tol=1e-4):
         """
         Evaluates certainty-equivalent approximations
         of F and G and their derivaties.
@@ -140,7 +142,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         
         phi0 = 0.5*np.dot(p,H0*p)+np.dot(g0,p)
         gphi0 = H0*p + g0
-        Q,gQ = self.ts_dcopf.eval_Q(p,Er)
+        Q,gQ = self.ts_dcopf.eval_Q(p,Er,tol=tol)
 
         F =  phi0+Q
         gF = np.hstack((gphi0+gQ,0.))
@@ -155,7 +157,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
 
         return F,gF,G,JG
 
-    def eval_EFG_sequential(self,x,samples=500,seed=None):
+    def eval_EFG_sequential(self,x,samples=500,seed=None,tol=1e-4):
 
         # Local vars
         p = x[:-1]
@@ -186,7 +188,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
             
             problem.u[num_p+num_w:num_p+num_w+num_r] = r # Important (update bound)
             
-            F1,gF1,G1,JG1 = self.eval_FG(x,r,problem=problem)
+            F1,gF1,G1,JG1 = self.eval_FG(x,r,problem=problem,tol=tol)
 
             # Update
             F += (F1-F)/(i+1.)
@@ -196,13 +198,13 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
                             
         return F,gF,G,JG
         
-    def eval_EFG(self,x,samples=500,num_procs=None):
+    def eval_EFG(self,x,samples=500,num_procs=None,tol=1e-4):
 
         if not num_procs:
             num_procs = cpu_count()
         pool = Pool(num_procs)
         num = int(np.ceil(float(samples)/float(num_procs)))
-        results = zip(*pool.map(ApplyFunc,[(self,'eval_EFG_sequential',x,num,i) for i in range(num_procs)]))
+        results = zip(*pool.map(ApplyFunc,[(self,'eval_EFG_sequential',x,num,i,tol) for i in range(num_procs)]))
         return map(lambda vals: sum(map(lambda val: val/float(num_procs),vals)),results)
         
     def get_size_x(self):
@@ -224,8 +226,11 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         
         p = x[:-1]
         t = x[-1]
+        t_max = self.parameters['t_max']
+        t_min = self.parameters['t_min']
 
-        return np.hstack((self.ts_dcopf.project_x(p),t))
+        return np.hstack((self.ts_dcopf.project_x(p),
+                          np.maximum(np.minimum(t,t_max),t_min)))
 
     def project_lam(self,lam):
 
@@ -309,7 +314,9 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         prob = self.ts_dcopf
         inf = prob.parameters['infinity']
         smax_param = self.parameters['smax_param']
-        t_eps = self.parameters['t_eps']
+        reg = self.parameters['reg']
+        t_max = self.parameters['t_max']
+        t_min = self.parameters['t_min']
         gamma = self.gamma
         lam = float(lam)
         
@@ -328,14 +335,15 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         ow = np.zeros(num_w)
         os = np.zeros(num_r)
         oz = np.zeros(num_br)
-
+        
         Ip = eye(num_p,format='coo')
         Iz = eye(num_br,format='coo')
         
         Ont = coo_matrix((num_bus,1))
+        Ot = coo_matrix((1,1))
         Ow = coo_matrix((num_w,num_w))
         Os = coo_matrix((num_r,num_r))
-        Oy = coo_matrix((num_p,num_p))
+        Op = coo_matrix((num_p,num_p))
         Oz = coo_matrix((num_br,num_br))
 
         # Corrections
@@ -356,19 +364,28 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
                   [None,None,None,prob.J,None,None,-Iz]],format='coo')
         b = np.hstack((prob.b,op,oz))
         l = np.hstack((prob.p_min,          # p
-                       -1.,                 # t
+                       t_min,               # t
                        -inf*np.ones(num_p), # q
                        -inf*np.ones(num_w), # theta
                        np.zeros(num_r),     # s
                        prob.p_min,          # y
                        prob.z_min))         # z
         u = np.hstack((prob.p_max,          # p
-                       1.,                  # t
+                       t_max,               # t
                        inf*np.ones(num_p),  # q
                        inf*np.ones(num_w),  # theta
                        prob.Er,             # s
                        prob.p_max,          # y
                        prob.z_max))         # z
+
+        Ix = bmat([[Op,None,None,None,None,None,None],
+                   [None,Ot,None,None,None,None,None],
+                   [None,None,Op,None,None,None,None],
+                   [None,None,None,eye(num_w),None,None,None],
+                   [None,None,None,None,eye(num_r),None,None],
+                   [None,None,None,None,None,eye(num_p),None],
+                   [None,None,None,None,None,None,eye(num_br)]],
+                  format='coo')
                 
         def eval(cls,x):
             
@@ -412,28 +429,28 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
             log_term = (a + np.log(ema+ebma))/smax_param
             
             # Value
-            cls.phi = phi0 + phi1 + lam*log_term + lam*(1-gamma)*t + np.dot(eta_p+lam*nu_p,p) + (eta_t+lam*nu_t)*t + (t_eps/2.)*(t**2.)
+            cls.phi = phi0 + phi1 + lam*log_term + lam*(1-gamma)*t + np.dot(eta_p+lam*nu_p,p) + (eta_t+lam*nu_t)*t + lam*(reg/2.)*np.dot(x,x)
             
             # Gradient
-            cls.gphi = np.hstack((gphi0 + eta_p + lam*nu_p, # p
-                                  -lam*C1 + lam*(1.-gamma) + eta_t + lam*nu_t + t_eps*t, # t
-                                  (1.+lam*C1/Qmax)*gphi1, # q
-                                  ow,                     # theta
-                                  os,                     # s
-                                  op,                     # y
-                                  oz))                    # z
+            cls.gphi = lam*reg*x + np.hstack((gphi0 + eta_p + lam*nu_p, # p
+                                              -lam*C1 + lam*(1.-gamma) + eta_t + lam*nu_t, # t
+                                              (1.+lam*C1/Qmax)*gphi1, # q
+                                              ow,                     # theta
+                                              os,                     # s
+                                              op,                     # y
+                                              oz))                    # z
                                   
             # Hessian (lower triangular)
             H = (1.+lam*C1/Qmax)*H1 + tril(lam*C2*np.outer(gphi1,gphi1)/Qmax)
             g = gphi1.reshape((q.size,1))
-            cls.Hphi = bmat([[H0,None,None,None,None,None,None],             # p
-                             [None,lam*C2+t_eps,-lam*C2*g.T/Qmax,None,None,None,None],  # t
-                             [None,-lam*C2*g/Qmax,H,None,None,None,None],         # q
-                             [None,None,None,Ow,None,None,None],         # theta
-                             [None,None,None,None,Os,None,None],         # s
-                             [None,None,None,None,None,Oy,None],         # y
-                             [None,None,None,None,None,None,Oz]],        # z
-                            format='coo')
+            cls.Hphi = (lam*reg*Ix + bmat([[H0,None,None,None,None,None,None],             # p
+                                           [None,lam*C2+lam,-lam*C2*g.T/Qmax,None,None,None,None],  # t
+                                           [None,-lam*C2*g/Qmax,H,None,None,None,None],         # q
+                                           [None,None,None,Ow,None,None,None],         # theta
+                                           [None,None,None,None,Os,None,None],         # s
+                                           [None,None,None,None,None,Op,None],         # y
+                                           [None,None,None,None,None,None,Oz]],        # z
+                                          format='coo')).tocoo()
             
         problem = OptProblem()
         problem.A = A

@@ -461,7 +461,7 @@ class TS_DCOPF(StochObj_Problem):
         # Return
         return QuadProblem(H,g,A,b,l,u)
 
-    def eval_F(self,x,w):
+    def eval_F(self,x,w,tol=1e-4):
         """
         Evaluates objective function for a given
         realization of uncertainty.
@@ -479,11 +479,11 @@ class TS_DCOPF(StochObj_Problem):
         
         phi = 0.5*np.dot(x,self.H0*x)+np.dot(self.g0,x)
         gphi = self.H0*x + self.g0
-        Q,gQ = self.eval_Q(x,w)
+        Q,gQ = self.eval_Q(x,w,tol=tol)
 
         return (phi+Q,gphi+gQ)
 
-    def eval_F_approx(self,x):
+    def eval_F_approx(self,x,tol=1e-4):
         """
         Evaluates certainty equivalent
         version of objective function.
@@ -498,9 +498,9 @@ class TS_DCOPF(StochObj_Problem):
         gF : vector
         """
 
-        return self.eval_F(x,self.Er)
+        return self.eval_F(x,self.Er,tol=tol)
 
-    def eval_EF(self,x,samples=500):
+    def eval_EF(self,x,samples=500,tol=1e-4):
         """
         Evaluates expected objective function.
 
@@ -516,7 +516,7 @@ class TS_DCOPF(StochObj_Problem):
         
         phi = 0.5*np.dot(x,self.H0*x)+np.dot(self.g0,x)
         gphi = self.H0*x + self.g0
-        Q,gQ = self.eval_EQ_parallel(x,samples=samples)
+        Q,gQ = self.eval_EQ_parallel(x,samples=samples,tol=tol)
 
         return (phi+Q,gphi+gQ)
 
