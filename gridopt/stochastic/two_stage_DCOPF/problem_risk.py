@@ -36,7 +36,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
     # Parameters
     parameters = {'lam_max' : 1e2,   # max Lagrange multiplier
                   'smax_param': 1e1, # softmax parameter
-                  'reg': 1e-3,
+                  'reg': 1e-6,
                   't_min': -1.,
                   't_max': 0.}
     
@@ -261,8 +261,6 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         x : vector
         """
         
-        # Local variables
-
         # Construct problem
         problem = self.construct_Lrelaxed_approx_problem(lam,g_corr=g_corr,J_corr=J_corr)
 
@@ -275,8 +273,8 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
 
         # Solve problem
         solver = OptSolverLCCP()
-        solver.set_parameters({'quiet':quiet,
-                               'tol':tol})
+        solver.set_parameters({'quiet': quiet,
+                               'tol': tol})
         try:
             solver.solve(problem)
         except Exception:
@@ -379,7 +377,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
                        prob.z_max))         # z
 
         Ix = bmat([[Op,None,None,None,None,None,None],
-                   [None,Ot,None,None,None,None,None],
+                   [None,eye(1),None,None,None,None,None],
                    [None,None,Op,None,None,None,None],
                    [None,None,None,eye(num_w),None,None,None],
                    [None,None,None,None,eye(num_r),None,None],
@@ -444,7 +442,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
             H = (1.+lam*C1/Qmax)*H1 + tril(lam*C2*np.outer(gphi1,gphi1)/Qmax)
             g = gphi1.reshape((q.size,1))
             cls.Hphi = (lam*reg*Ix + bmat([[H0,None,None,None,None,None,None],             # p
-                                           [None,lam*C2+lam,-lam*C2*g.T/Qmax,None,None,None,None],  # t
+                                           [None,lam*C2,-lam*C2*g.T/Qmax,None,None,None,None],  # t
                                            [None,-lam*C2*g/Qmax,H,None,None,None,None],         # q
                                            [None,None,None,Ow,None,None,None],         # theta
                                            [None,None,None,None,Os,None,None],         # s
