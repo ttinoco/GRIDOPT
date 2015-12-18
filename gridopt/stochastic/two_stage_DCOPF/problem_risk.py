@@ -363,23 +363,23 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
                   [Ip,None,Ip,None,None,-Ip,None],
                   [None,None,None,prob.J,None,None,-Iz]],format='coo')
         b = np.hstack((prob.b,op,oz))
-        l = np.hstack((prob.p_min,          # p
-                       t_min,               # t
-                       -inf*np.ones(num_p), # q
-                       -inf*np.ones(num_w), # theta
-                       np.zeros(num_r),     # s
-                       prob.p_min,          # y
-                       prob.z_min))         # z
-        u = np.hstack((prob.p_max,          # p
-                       t_max,               # t
-                       inf*np.ones(num_p),  # q
-                       inf*np.ones(num_w),  # theta
-                       prob.Er,             # s
-                       prob.p_max,          # y
-                       prob.z_max))         # z
+        l = np.hstack((prob.p_min,           # p
+                       t_min,                # t
+                       -prob.p_max+prob.p_min, # q
+                       -inf*np.ones(num_w),  # theta
+                       np.zeros(num_r),      # s
+                       prob.p_min,           # y
+                       prob.z_min))          # z
+        u = np.hstack((prob.p_max,           # p
+                       t_max,                # t
+                       prob.p_max-prob.p_min,  # q
+                       inf*np.ones(num_w),   # theta
+                       prob.Er,              # s
+                       prob.p_max,           # y
+                       prob.z_max))          # z
 
         Ix = bmat([[Op,None,None,None,None,None,None],
-                   [None,eye(1),None,None,None,None,None],
+                   [None,Ot,None,None,None,None,None],
                    [None,None,Op,None,None,None,None],
                    [None,None,None,eye(num_w),None,None,None],
                    [None,None,None,None,eye(num_r),None,None],
