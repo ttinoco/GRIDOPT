@@ -302,7 +302,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         assert(norm(pi*(x-l)) < (1e-6)*(norm(pi)+norm(x-l)))
         assert(np.all(x < u + 1e-6))
         assert(np.all(x > l - 1e-6))
-        assert(norm(A*x-b) < (1e-6)*norm(b))
+        assert(norm(A*x-b) < (1e-5)*norm(b))
 
         # Return
         return x[:self.ts_dcopf.num_p+1],results
@@ -379,7 +379,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
                        prob.z_max))          # z
 
         Ix = bmat([[Op,None,None,None,None,None,None],
-                   [None,Ot,None,None,None,None,None],
+                   [None,eye(1),None,None,None,None,None],
                    [None,None,Op,None,None,None,None],
                    [None,None,None,eye(num_w),None,None,None],
                    [None,None,None,None,eye(num_r),None,None],
@@ -429,28 +429,28 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
             log_term = (a + np.log(ema+ebma))/smax_param
             
             # Value
-            cls.phi = phi0 + phi1 + lam*log_term + lam*(1-gamma)*t + np.dot(eta_p+lam*nu_p,p) + (eta_t+lam*nu_t)*t + lam*(reg/2.)*np.dot(x,x)
+            cls.phi = phi0 + phi1 + lam*log_term + lam*(1-gamma)*t + np.dot(eta_p+lam*nu_p,p) + (eta_t+lam*nu_t)*t + (reg/2.)*np.dot(x,x)
             
             # Gradient
-            cls.gphi = lam*reg*x + np.hstack((gphi0 + eta_p + lam*nu_p, # p
-                                              -lam*C1 + lam*(1.-gamma) + eta_t + lam*nu_t, # t
-                                              (1.+lam*C1/Qmax)*gphi1, # q
-                                              ow,                     # theta
-                                              os,                     # s
-                                              op,                     # y
-                                              oz))                    # z
+            cls.gphi = reg*x + np.hstack((gphi0 + eta_p + lam*nu_p, # p
+                                          -lam*C1 + lam*(1.-gamma) + eta_t + lam*nu_t, # t
+                                          (1.+lam*C1/Qmax)*gphi1, # q
+                                          ow,                     # theta
+                                          os,                     # s
+                                          op,                     # y
+                                          oz))                    # z
                                   
             # Hessian (lower triangular)
             H = (1.+lam*C1/Qmax)*H1 + tril(lam*C2*np.outer(gphi1,gphi1)/Qmax)
             g = gphi1.reshape((q.size,1))
-            cls.Hphi = (lam*reg*Ix + bmat([[H0,None,None,None,None,None,None],             # p
-                                           [None,lam*C2,-lam*C2*g.T/Qmax,None,None,None,None],  # t
-                                           [None,-lam*C2*g/Qmax,H,None,None,None,None],         # q
-                                           [None,None,None,Ow,None,None,None],         # theta
-                                           [None,None,None,None,Os,None,None],         # s
-                                           [None,None,None,None,None,Op,None],         # y
-                                           [None,None,None,None,None,None,Oz]],        # z
-                                          format='coo')).tocoo()
+            cls.Hphi = (reg*Ix + bmat([[H0,None,None,None,None,None,None],             # p
+                                       [None,lam*C2,-lam*C2*g.T/Qmax,None,None,None,None],  # t
+                                       [None,-lam*C2*g/Qmax,H,None,None,None,None],         # q
+                                       [None,None,None,Ow,None,None,None],         # theta
+                                       [None,None,None,None,Os,None,None],         # s
+                                       [None,None,None,None,None,Op,None],         # y
+                                       [None,None,None,None,None,None,Oz]],        # z
+                                      format='coo')).tocoo()
             
         problem = OptProblem()
         problem.A = A
