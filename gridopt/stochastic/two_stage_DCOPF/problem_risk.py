@@ -36,7 +36,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
     # Parameters
     parameters = {'lam_max' : 1e2,   # max Lagrange multiplier
                   'smax_param': 1e1, # softmax parameter
-                  'reg': 1e-6,
+                  'reg': 1e-8,
                   't_min': -1.,
                   't_max': 0.}
     
@@ -75,7 +75,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         ----------
         x : (p,t)
         w : renewable powers
-
+        
         Returns
         -------
         F : float
@@ -101,11 +101,11 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
 
         sigma = (Q-self.Qmax)/self.Qmax-t
 
-        G = np.array([np.maximum(sigma,0.) + (1.-gamma)*t])
+        G = self.Qmax*np.array([np.maximum(sigma,0.) + (1.-gamma)*t])
         if sigma >= 0:
-            JG = csr_matrix(np.hstack((gQ/self.Qmax,-1. + (1.-gamma))),shape=(1,x.size))
+            JG = self.Qmax*csr_matrix(np.hstack((gQ/self.Qmax,-1. + (1.-gamma))),shape=(1,x.size))
         else:
-            JG = csr_matrix(np.hstack((np.zeros(p.size),1.-gamma)),shape=(1,x.size))
+            JG = self.Qmax*csr_matrix(np.hstack((np.zeros(p.size),1.-gamma)),shape=(1,x.size))
 
         # Debug
         #######
@@ -152,8 +152,8 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         C = np.exp(sigma-a)/(np.exp(-a)+np.exp(sigma-a))
         log_term = (a + np.log(np.exp(-a) + np.exp(sigma-a)))/smax_param
 
-        G = np.array([log_term + (1.-gamma)*t])
-        JG = csr_matrix(np.hstack((C*gQ/self.Qmax,-C + (1.-gamma))),shape=(1,x.size))
+        G = self.Qmax*np.array([log_term + (1.-gamma)*t])
+        JG = self.Qmax*csr_matrix(np.hstack((C*gQ/self.Qmax,-C + (1.-gamma))),shape=(1,x.size))
 
         return F,gF,G,JG
 
@@ -402,7 +402,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
             
             w = x[offset:offset+num_w]
             offset += num_w
-
+            
             s = x[offset:offset+num_r]
             offset += num_r
 
@@ -429,28 +429,37 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
             log_term = (a + np.log(ema+ebma))/smax_param
             
             # Value
-            cls.phi = phi0 + phi1 + lam*log_term + lam*(1-gamma)*t + np.dot(eta_p+lam*nu_p,p) + (eta_t+lam*nu_t)*t + (reg/2.)*np.dot(x,x)
+            cls.phi = (phi0 + 
+                       phi1 + 
+                       lam*Qmax*(log_term + (1-gamma)*t) + 
+                       np.dot(eta_p+lam*nu_p,p) + 
+                       (eta_t+lam*nu_t)*t + 
+                       (reg/2.)*np.dot(x,x))
             
             # Gradient
             cls.gphi = reg*x + np.hstack((gphi0 + eta_p + lam*nu_p, # p
-                                          -lam*C1 + lam*(1.-gamma) + eta_t + lam*nu_t, # t
-                                          (1.+lam*C1/Qmax)*gphi1, # q
+                                          lam*Qmax*(-C1 + (1.-gamma)) + eta_t + lam*nu_t, # t
+                                          (1.+lam*C1)*gphi1, # q
                                           ow,                     # theta
                                           os,                     # s
                                           op,                     # y
                                           oz))                    # z
                                   
             # Hessian (lower triangular)
-            H = (1.+lam*C1/Qmax)*H1 + tril(lam*C2*np.outer(gphi1,gphi1)/Qmax)
+            H = (1.+lam*C1)*H1 + tril(lam*C2*np.outer(gphi1,gphi1)/Qmax)
             g = gphi1.reshape((q.size,1))
             cls.Hphi = (reg*Ix + bmat([[H0,None,None,None,None,None,None],             # p
-                                       [None,lam*C2,-lam*C2*g.T/Qmax,None,None,None,None],  # t
-                                       [None,-lam*C2*g/Qmax,H,None,None,None,None],         # q
+                                       [None,lam*Qmax*C2,-lam*C2*g.T,None,None,None,None],  # t
+                                       [None,-lam*C2*g,H,None,None,None,None],         # q
                                        [None,None,None,Ow,None,None,None],         # theta
                                        [None,None,None,None,Os,None,None],         # s
                                        [None,None,None,None,None,Op,None],         # y
                                        [None,None,None,None,None,None,Oz]],        # z
                                       format='coo')).tocoo()
+
+            # TESTING
+            print '** phi0 phi1 eval ** beta c1 c2 logterm dQ/Qmax t',
+            print '*** %.5e %.5e %.5e %.5e %.5e %.5e %.5e %.5e' %(phi0,phi1,beta,C1,C2,log_term,(phi1-Qmax)/Qmax,t)
             
         problem = OptProblem()
         problem.A = A
