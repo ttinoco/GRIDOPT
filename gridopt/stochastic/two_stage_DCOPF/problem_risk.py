@@ -204,7 +204,9 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
             num_procs = cpu_count()
         pool = Pool(num_procs)
         num = int(np.ceil(float(samples)/float(num_procs)))
-        results = zip(*pool.map(ApplyFunc,[(self,'eval_EFG_sequential',x,num,i,tol) for i in range(num_procs)]))
+        results = zip(*pool.map(ApplyFunc,[(self,'eval_EFG_sequential',x,num,i,tol) for i in range(num_procs)],chunksize=1))
+        pool.terminate()
+        pool.join()
         return map(lambda vals: sum(map(lambda val: val/float(num_procs),vals)),results)
         
     def get_size_x(self):
