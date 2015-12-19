@@ -458,8 +458,8 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
                                       format='coo')).tocoo()
 
             # TESTING
-            print '** phi0 phi1 eval ** beta c1 c2 logterm dQ/Qmax t',
-            print '*** %.5e %.5e %.5e %.5e %.5e %.5e %.5e %.5e' %(phi0,phi1,beta,C1,C2,log_term,(phi1-Qmax)/Qmax,t)
+            #print '** phi0 phi1 eval ** beta c1 c2 logterm dQ/Qmax t',
+            #print '*** %.5e %.5e %.5e %.5e %.5e %.5e %.5e %.5e' %(phi0,phi1,beta,C1,C2,log_term,(phi1-Qmax)/Qmax,t)
             
         problem = OptProblem()
         problem.A = A
