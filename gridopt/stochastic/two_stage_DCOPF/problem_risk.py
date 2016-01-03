@@ -62,9 +62,10 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         # Regular problem
         self.ts_dcopf = TS_DCOPF(net)
 
-        # Qmax
+        # Qnorm and Qmax
         p_ce,results = self.ts_dcopf.solve_approx(quiet=True)
-        self.Qmax = Qfac*self.ts_dcopf.eval_EQ_parallel(p_ce,samples=samples)[0]
+        self.Qnorm = self.ts_dcopf.eval_EQ_parallel(p_ce,samples=samples)[0]
+        self.Qmax = Qfac*self.Qnorm
 
     def eval_FG(self,x,w,problem=None,debug=False,tol=1e-4):
         """
@@ -99,18 +100,18 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         F =  phi0+Q
         gF = np.hstack((gphi0+gQ,0.))
 
-        sigma = (Q-self.Qmax)/self.Qmax-t
+        sigma = (Q-self.Qmax)/self.Qnorm-t
 
-        G = self.Qmax*np.array([np.maximum(sigma,0.) + (1.-gamma)*t])
+        G = self.Qnorm*np.array([np.maximum(sigma,0.) + (1.-gamma)*t])
         if sigma >= 0:
-            JG = self.Qmax*csr_matrix(np.hstack((gQ/self.Qmax,-1. + (1.-gamma))),shape=(1,x.size))
+            JG = self.Qnorm*csr_matrix(np.hstack((gQ/self.Qnorm,-1. + (1.-gamma))),shape=(1,x.size))
         else:
-            JG = self.Qmax*csr_matrix(np.hstack((np.zeros(p.size),1.-gamma)),shape=(1,x.size))
+            JG = self.Qnorm*csr_matrix(np.hstack((np.zeros(p.size),1.-gamma)),shape=(1,x.size))
 
         # Debug
         #######
         if debug:
-            print Q,self.Qmax,t,sigma,self.ts_dcopf.get_prop_x(p)
+            print Q,self.Qnorm,t,sigma,self.ts_dcopf.get_prop_x(p)
 
         return F,gF,G,JG
 
@@ -147,13 +148,13 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         F =  phi0+Q
         gF = np.hstack((gphi0+gQ,0.))
 
-        sigma = smax_param*((Q-self.Qmax)/self.Qmax-t)
+        sigma = smax_param*((Q-self.Qmax)/self.Qnorm-t)
         a = np.maximum(sigma,0.)
         C = np.exp(sigma-a)/(np.exp(-a)+np.exp(sigma-a))
         log_term = (a + np.log(np.exp(-a) + np.exp(sigma-a)))/smax_param
 
-        G = self.Qmax*np.array([log_term + (1.-gamma)*t])
-        JG = self.Qmax*csr_matrix(np.hstack((C*gQ/self.Qmax,-C + (1.-gamma))),shape=(1,x.size))
+        G = self.Qnorm*np.array([log_term + (1.-gamma)*t])
+        JG = self.Qnorm*csr_matrix(np.hstack((C*gQ/self.Qnorm,-C + (1.-gamma))),shape=(1,x.size))
 
         return F,gF,G,JG
 
@@ -246,6 +247,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
     def show(self):
 
         self.ts_dcopf.show()
+        print 'Qnorm      : %.5e' %self.Qnorm
         print 'Qmax       : %.5e' %self.Qmax
         print 'Qfac       : %.2f' %self.Qfac
         print 'gamma      : %.2f' %self.gamma
@@ -311,6 +313,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
 
         # Local variables
         Qmax = self.Qmax
+        Qnorm = self.Qnorm
         prob = self.ts_dcopf
         inf = prob.parameters['infinity']
         smax_param = self.parameters['smax_param']
@@ -419,7 +422,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
             phi1 = 0.5*np.dot(q,H1*q)+np.dot(g1,q)
             gphi1 = H1*q + g1
             
-            beta = smax_param*((phi1-Qmax)/Qmax-t)
+            beta = smax_param*((phi1-Qmax)/Qnorm-t)
             a = np.maximum(beta,0.)
             ebma = np.exp(beta-a)
             ebm2a = np.exp(beta-2*a)
@@ -431,14 +434,14 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
             # Value
             cls.phi = (phi0 + 
                        phi1 + 
-                       lam*Qmax*(log_term + (1-gamma)*t) + 
+                       lam*Qnorm*(log_term + (1-gamma)*t) + 
                        np.dot(eta_p+lam*nu_p,p) + 
                        (eta_t+lam*nu_t)*t + 
                        (reg/2.)*np.dot(x,x))
             
             # Gradient
             cls.gphi = reg*x + np.hstack((gphi0 + eta_p + lam*nu_p, # p
-                                          lam*Qmax*(-C1 + (1.-gamma)) + eta_t + lam*nu_t, # t
+                                          lam*Qnorm*(-C1 + (1.-gamma)) + eta_t + lam*nu_t, # t
                                           (1.+lam*C1)*gphi1, # q
                                           ow,                     # theta
                                           os,                     # s
@@ -446,20 +449,16 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
                                           oz))                    # z
                                   
             # Hessian (lower triangular)
-            H = (1.+lam*C1)*H1 + tril(lam*C2*np.outer(gphi1,gphi1)/Qmax)
+            H = (1.+lam*C1)*H1 + tril(lam*C2*np.outer(gphi1,gphi1)/Qnorm)
             g = gphi1.reshape((q.size,1))
             cls.Hphi = (reg*Ix + bmat([[H0,None,None,None,None,None,None],             # p
-                                       [None,lam*Qmax*C2,-lam*C2*g.T,None,None,None,None],  # t
+                                       [None,lam*Qnorm*C2,-lam*C2*g.T,None,None,None,None],  # t
                                        [None,-lam*C2*g,H,None,None,None,None],         # q
                                        [None,None,None,Ow,None,None,None],         # theta
                                        [None,None,None,None,Os,None,None],         # s
                                        [None,None,None,None,None,Op,None],         # y
                                        [None,None,None,None,None,None,Oz]],        # z
                                       format='coo')).tocoo()
-
-            # TESTING
-            #print '** phi0 phi1 eval ** beta c1 c2 logterm dQ/Qmax t',
-            #print '*** %.5e %.5e %.5e %.5e %.5e %.5e %.5e %.5e' %(phi0,phi1,beta,C1,C2,log_term,(phi1-Qmax)/Qmax,t)
             
         problem = OptProblem()
         problem.A = A
