@@ -14,7 +14,7 @@ BSD 2-clause license.
 
 ## Documentation ##
 
-Coming soon.
+The documentation for this package can be found in http://ttinoco.github.io/GRIDOPT.
 
 ## Download ##
 
