@@ -4,8 +4,9 @@
 
 GRIDOPT is a Python package that provides methods for solving power grid optimization problems. Currently, it has the following tools:
 
-* DC, NR and augmented Lagrangian-based power flow solvers.
-* DC optimal power flow solver.
+* power flow solvers.
+* optimal power flow solver.
+* two-stage DC stochastic optimal power solvers.
 
 ## License ##
 
