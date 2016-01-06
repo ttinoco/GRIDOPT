@@ -19,17 +19,20 @@ class TestPowerFlow(unittest.TestCase):
         # Network
         self.net = pf.Network()
 
-    def test_methods(self):
+    def test_method_solutions(self):
 
+        print ''
         net = self.net
-
+        sol_types = {'sol1': 'no controls',
+                     'sol2': 'gen controls',
+                     'sol3': 'all controls'}
+        
         for method_name in ['NRPF','AugLPF']:
-
             for case in utils.test_cases:
-                for sol in ['sol1','sol2','sol3']:
+                for sol in sol_types.keys():
 
                     method = gopt.power_flow.new_method(method_name)
-
+                    
                     net.load(case)
                     
                     sol_data = utils.read_solution_data(case+'.'+sol)
@@ -56,12 +59,14 @@ class TestPowerFlow(unittest.TestCase):
 
                     net.set_var_values(results['variables'])
 
-                    print method_name,case,sol
+                    print method_name,case,sol_types[sol]
 
                     v_mag_tol = sol_data['v_mag_tol']
                     v_ang_tol = sol_data['v_ang_tol']
                     bus_data = sol_data['bus_data']
 
+                    v_mag_error = [0]
+                    v_ang_error = [0]
                     for bus_num,val in bus_data.items():
                         
                         v_mag = val['v_mag']
@@ -72,8 +77,11 @@ class TestPowerFlow(unittest.TestCase):
                         except pf.NetworkError:
                             continue
 
-                        self.assertLessEqual(np.abs(bus.v_mag-v_mag),v_mag_tol)
-                        self.assertLessEqual(np.abs(bus.v_ang*180./np.pi-v_ang),v_ang_tol)
+                        v_mag_error.append(np.abs(bus.v_mag-v_mag))
+                        v_ang_error.append(np.abs(bus.v_ang*180./np.pi-v_ang))
+                    
+                    self.assertLessEqual(np.max(v_mag_error),v_mag_tol)
+                    self.assertLessEqual(np.max(v_ang_error),v_ang_tol)
 
     def tearDown(self):
         

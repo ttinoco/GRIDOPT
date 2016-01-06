@@ -13,7 +13,7 @@ from os.path import join
 # Test cases
 RES_DIR = './tests/resources'
 files = [join(RES_DIR,f) for f in listdir(RES_DIR)]
-test_cases = [f for f in files if f.split('.')[-1] not in ['sol1','sol2']]
+test_cases = [f for f in files if f.split('.')[-1] not in ['sol1','sol2','sol3']]
 
 def read_solution_data(sol_file):
 
