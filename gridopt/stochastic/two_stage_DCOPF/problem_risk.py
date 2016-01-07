@@ -429,7 +429,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
             ebm2a = np.exp(beta-2*a)
             ema = np.exp(-a)
             C1 = ebma/(ema+ebma)
-            C2 = smax_param*ebm2a/(ema*ema+2*ebm2a+ebma*ebma)
+            C2 = smax_param*ebm2a/(Qnorm*(ema*ema+2*ebm2a+ebma*ebma))
             log_term = a + np.log(ema+ebma)
             
             # Value
@@ -450,11 +450,11 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
                                           oz))                    # z
                                   
             # Hessian (lower triangular)
-            H = (1.+lam*C1)*H1 + tril(lam*C2*np.outer(gphi1,gphi1)/Qnorm)
+            H = (1.+lam*C1)*H1 + tril(lam*C2*np.outer(gphi1,gphi1))
             g = gphi1.reshape((q.size,1))
             cls.Hphi = (reg*Ix + bmat([[H0,None,None,None,None,None,None],             # p
-                                       [None,lam*C2/Qnorm,-lam*C2*g.T/Qnorm,None,None,None,None],  # t
-                                       [None,-lam*C2*g/Qnorm,H,None,None,None,None],         # q
+                                       [None,lam*C2,-lam*C2*g.T,None,None,None,None],  # t
+                                       [None,-lam*C2*g,H,None,None,None,None],         # q
                                        [None,None,None,Ow,None,None,None],         # theta
                                        [None,None,None,None,Os,None,None],         # s
                                        [None,None,None,None,None,Op,None],         # y
