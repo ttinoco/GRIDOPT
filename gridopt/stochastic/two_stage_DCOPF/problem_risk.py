@@ -107,7 +107,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
             t -= g/(k+1.)
         return t
 
-    def eval_FG(self,x,w,problem=None,debug=False,tol=1e-4):
+    def eval_FG(self,x,w,problem=None,tol=1e-4,info=False):
         """
         Evaluates F, G and their subgradients at x
         for the given w.
@@ -140,6 +140,8 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         F =  phi0+Q
         gF = np.hstack((gphi0+gQ,0.))
 
+        ind = 1. if Q <= self.Qmax else 0.
+
         sigma = Q-self.Qmax-t
         
         G = np.array([np.maximum(sigma,0.) + (1.-gamma)*t])
@@ -148,12 +150,10 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         else:
             JG = csr_matrix(np.hstack((np.zeros(p.size),1.-gamma)),shape=(1,x.size))
 
-        # Debug
-        #######
-        if debug:
-            print Q,self.Qnorm,t,sigma,self.ts_dcopf.get_prop_x(p)
-
-        return F,gF,G,JG
+        if not info:
+            return F,gF,G,JG
+        else:
+            return F,gF,G,JG,ind
 
     def eval_FG_approx(self,x,tol=1e-4):
         """
@@ -198,7 +198,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
 
         return F,gF,G,JG
 
-    def eval_EFG_sequential(self,x,samples=500,seed=None,tol=1e-4):
+    def eval_EFG_sequential(self,x,samples=500,seed=None,tol=1e-4,info=False):
 
         # Local vars
         p = x[:-1]
@@ -214,6 +214,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
             np.random.seed(seed)
 
         # Init
+        ind = 0.
         F = 0.
         gF = np.zeros(x.size)
         G = np.zeros(1)
@@ -229,23 +230,27 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
             
             problem.u[num_p+num_w:num_p+num_w+num_r] = r # Important (update bound)
             
-            F1,gF1,G1,JG1 = self.eval_FG(x,r,problem=problem,tol=tol)
+            F1,gF1,G1,JG1,ind1 = self.eval_FG(x,r,problem=problem,tol=tol,info=True)
 
             # Update
+            ind += (ind1-ind)/(i+1.)
             F += (F1-F)/(i+1.)
             gF += (gF1-gF)/(i+1.)
             G += (G1-G)/(i+1.)
             JG = JG + (JG1-JG)/(i+1.)
-                            
-        return F,gF,G,JG
+                 
+        if not info:
+            return F,gF,G,JG
+        else:
+            return F,gF,G,JG,ind
         
-    def eval_EFG(self,x,samples=500,num_procs=None,tol=1e-4):
+    def eval_EFG(self,x,samples=500,num_procs=None,tol=1e-4,info=False):
 
         if not num_procs:
             num_procs = cpu_count()
         pool = Pool(num_procs)
         num = int(np.ceil(float(samples)/float(num_procs)))
-        results = zip(*pool.map(ApplyFunc,[(self,'eval_EFG_sequential',x,num,i,tol) for i in range(num_procs)],chunksize=1))
+        results = zip(*pool.map(ApplyFunc,[(self,'eval_EFG_sequential',x,num,i,tol,info) for i in range(num_procs)],chunksize=1))
         pool.terminate()
         pool.join()
         return map(lambda vals: sum(map(lambda val: val/float(num_procs),vals)),results)
