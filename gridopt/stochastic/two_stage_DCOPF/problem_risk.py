@@ -66,6 +66,46 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         p_ce,results = self.ts_dcopf.solve_approx(quiet=True)
         self.Qnorm = self.ts_dcopf.eval_EQ_parallel(p_ce,samples=samples)[0]
         self.Qmax = Qfac*self.Qnorm
+        
+    def eval_VaR(self,p,t=0,iters=1000,tol=1e-4):
+        """
+        Evaluates (approximately) CVaR(Q(p,r)-Qmax,gamma).
+
+        Parameters
+        ----------
+        p : vector
+        t : float (initial estimate)
+
+        Returns
+        -------
+        var : float
+        """
+
+        num_p = self.ts_dcopf.num_p
+        num_w = self.ts_dcopf.num_w
+        num_r = self.ts_dcopf.num_r
+
+        problem = self.ts_dcopf.get_problem_for_Q(p,np.ones(num_r))
+        
+        print 'var'
+        print 'k     t'
+        for k in range(iters):
+          
+            print '%5d    %.5e' %(k,t)   
+            
+            r = self.sample_w()
+            
+            problem.u[num_p+num_w:num_p+num_w+num_r] = r # Important (update bound)
+            
+            Q,gQ = self.ts_dcopf.eval_Q(p,r,problem=problem,tol=tol)
+           
+            if Q-self.Qmax-t >= 0.:
+                g = 1. - 1./(1.-self.gamma)
+            else:
+                g = 1.
+
+            t -= g/(k+1.)
+        return t
 
     def eval_FG(self,x,w,problem=None,debug=False,tol=1e-4):
         """
