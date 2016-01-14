@@ -36,7 +36,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
     # Parameters
     parameters = {'lam_max' : 1e2,   # max Lagrange multiplier
                   'smax_param': 1e2, # softmax parameter
-                  'reg': 1e-8,
+                  't_reg': 1e-3,
                   't_min': -0.1,
                   't_max': 0.}
     
@@ -129,6 +129,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         t = x[-1]
 
         gamma = self.gamma
+        t_reg = self.parameters['t_reg']
 
         H0 = self.ts_dcopf.H0
         g0 = self.ts_dcopf.g0
@@ -137,9 +138,9 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         gphi0 = H0*p + g0
         Q,gQ = self.ts_dcopf.eval_Q(p,w,problem=problem,tol=tol)
 
-        F =  phi0+Q
-        gF = np.hstack((gphi0+gQ,0.))
-
+        F =  phi0+Q+0.5*t_reg*(t**2.)
+        gF = np.hstack((gphi0+gQ,t_reg*t))
+        
         ind = 1. if Q <= self.Qmax else 0.
 
         sigma = Q-self.Qmax-t
@@ -176,6 +177,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         t = x[-1]
         Er = self.ts_dcopf.Er
         smax_param = self.parameters['smax_param']
+        t_reg = self.parameters['t_reg']
         gamma = self.gamma
         
         H0 = self.ts_dcopf.H0
@@ -185,8 +187,8 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         gphi0 = H0*p + g0
         Q,gQ = self.ts_dcopf.eval_Q(p,Er,tol=tol)
 
-        F =  phi0+Q
-        gF = np.hstack((gphi0+gQ,0.))
+        F =  phi0+Q+0.5*t_reg*(t**2.)
+        gF = np.hstack((gphi0+gQ,t_reg*t))
 
         sigma = smax_param*(Q-self.Qmax-t)/self.Qnorm
         a = np.maximum(sigma,0.)
@@ -297,6 +299,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         print 'Qfac       : %.2f' %self.Qfac
         print 'gamma      : %.2f' %self.gamma
         print 'smax param : %.2e' %self.parameters['smax_param']
+        print 'lmax       : %.2e' %self.parameters['lam_max']
 
     def solve_Lrelaxed_approx(self,lam,g_corr=None,J_corr=None,tol=1e-4,quiet=False,init_data=None):
         """
@@ -363,7 +366,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         prob = self.ts_dcopf
         inf = prob.parameters['infinity']
         smax_param = self.parameters['smax_param']
-        reg = self.parameters['reg']
+        t_reg = self.parameters['t_reg']
         t_max = self.parameters['t_max']*Qnorm
         t_min = self.parameters['t_min']*Qnorm
         gamma = self.gamma
@@ -426,15 +429,6 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
                        prob.Er,              # s
                        prob.p_max,           # y
                        prob.z_max))          # z
-
-        Ix = bmat([[Op,None,None,None,None,None,None],
-                   [None,eye(1),None,None,None,None,None],
-                   [None,None,Op,None,None,None,None],
-                   [None,None,None,eye(num_w),None,None,None],
-                   [None,None,None,None,eye(num_r),None,None],
-                   [None,None,None,None,None,eye(num_p),None],
-                   [None,None,None,None,None,None,eye(num_br)]],
-                  format='coo')
                 
         def eval(cls,x):
             
@@ -479,32 +473,32 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
             
             # Value
             cls.phi = (phi0 + 
-                       phi1 + 
+                       phi1 +
+                       0.5*t_reg*(t**2.)+
                        lam*Qnorm*log_term/smax_param + lam*(1-gamma)*t + 
                        np.dot(eta_p+lam*nu_p,p) + 
-                       (eta_t+lam*nu_t)*t + 
-                       (reg/2.)*np.dot(x,x))
+                       (eta_t+lam*nu_t)*t)
             
             # Gradient
-            cls.gphi = reg*x + np.hstack((gphi0 + eta_p + lam*nu_p, # p
-                                          lam*(-C1 + (1.-gamma)) + eta_t + lam*nu_t, # t
-                                          (1.+lam*C1)*gphi1, # q
-                                          ow,                     # theta
-                                          os,                     # s
-                                          op,                     # y
-                                          oz))                    # z
-                                  
+            cls.gphi = np.hstack((gphi0 + eta_p + lam*nu_p, # p
+                                  t_reg*t + lam*(-C1 + (1.-gamma)) + eta_t + lam*nu_t, # t
+                                  (1.+lam*C1)*gphi1, # q
+                                  ow,                     # theta
+                                  os,                     # s
+                                  op,                     # y
+                                  oz))                    # z
+            
             # Hessian (lower triangular)
             H = (1.+lam*C1)*H1 + tril(lam*C2*np.outer(gphi1,gphi1))
             g = gphi1.reshape((q.size,1))
-            cls.Hphi = (reg*Ix + bmat([[H0,None,None,None,None,None,None],             # p
-                                       [None,lam*C2,-lam*C2*g.T,None,None,None,None],  # t
-                                       [None,-lam*C2*g,H,None,None,None,None],         # q
-                                       [None,None,None,Ow,None,None,None],         # theta
-                                       [None,None,None,None,Os,None,None],         # s
-                                       [None,None,None,None,None,Op,None],         # y
-                                       [None,None,None,None,None,None,Oz]],        # z
-                                      format='coo')).tocoo()
+            cls.Hphi = bmat([[H0,None,None,None,None,None,None],             # p
+                             [None,t_reg+lam*C2,-lam*C2*g.T,None,None,None,None],  # t
+                             [None,-lam*C2*g,H,None,None,None,None],         # q
+                             [None,None,None,Ow,None,None,None],         # theta
+                             [None,None,None,None,Os,None,None],         # s
+                             [None,None,None,None,None,Op,None],         # y
+                             [None,None,None,None,None,None,Oz]],        # z
+                            format='coo')
             
         problem = OptProblem()
         problem.A = A
