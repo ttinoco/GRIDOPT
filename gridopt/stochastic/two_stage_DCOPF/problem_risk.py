@@ -66,6 +66,29 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         p_ce,results = self.ts_dcopf.solve_approx(quiet=True)
         self.Qnorm = self.ts_dcopf.eval_EQ_parallel(p_ce,samples=samples)[0]
         self.Qmax = Qfac*self.Qnorm
+
+        # Constants
+        self.num_p = self.ts_dcopf.num_p
+        self.num_w = self.ts_dcopf.num_w
+        self.num_r = self.ts_dcopf.num_r
+        self.num_bus = self.ts_dcopf.num_bus
+        self.num_br = self.ts_dcopf.num_br
+        self.temp_x = np.zeros(self.num_p+1) 
+        self.JG_const = csr_matrix(np.hstack((np.zeros(self.num_p),1.-gamma)),shape=(1,self.temp_x.size))
+        self.op = np.zeros(self.num_p)
+        self.ow = np.zeros(self.num_w)
+        self.os = np.zeros(self.num_r)
+        self.oz = np.zeros(self.num_br)
+        self.Ip = eye(self.num_p,format='coo')
+        self.Iz = eye(self.num_br,format='coo')
+        self.Ont = coo_matrix((self.num_bus,1))
+        self.Ot = coo_matrix((1,1))
+        self.Ow = coo_matrix((self.num_w,self.num_w))
+        self.Os = coo_matrix((self.num_r,self.num_r))
+        self.Op = coo_matrix((self.num_p,self.num_p))
+        self.Oz = coo_matrix((self.num_br,self.num_br))
+        self.ones_r = np.ones(self.num_r)
+        self.ones_w = np.ones(self.num_w)
         
     def eval_VaR(self,p,t=0,iters=1000,tol=1e-4):
         """
@@ -81,11 +104,11 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         var : float
         """
 
-        num_p = self.ts_dcopf.num_p
-        num_w = self.ts_dcopf.num_w
-        num_r = self.ts_dcopf.num_r
+        num_p = self.num_p
+        num_w = self.num_w
+        num_r = self.num_r
 
-        problem = self.ts_dcopf.get_problem_for_Q(p,np.ones(num_r))
+        problem = self.ts_dcopf.get_problem_for_Q(p,self.ones_r)
         
         print 'var'
         print 'k     t'
@@ -130,6 +153,9 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
 
         gamma = self.gamma
         t_reg = self.parameters['t_reg']
+        num_p = self.num_p
+        num_x = num_p+1
+        temp_x = self.temp_x
 
         H0 = self.ts_dcopf.H0
         g0 = self.ts_dcopf.g0
@@ -147,9 +173,11 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         
         G = np.array([np.maximum(sigma,0.) + (1.-gamma)*t])
         if sigma >= 0:
-            JG = csr_matrix(np.hstack((gQ,-1. + (1.-gamma))),shape=(1,x.size))
+            temp_x[:-1] = gQ
+            temp_x[-1] = -1. + (1.-gamma)
+            JG = csr_matrix(temp_x,shape=(1,num_x))
         else:
-            JG = csr_matrix(np.hstack((np.zeros(p.size),1.-gamma)),shape=(1,x.size))
+            JG = self.JG_const
 
         if not info:
             return F,gF,G,JG
@@ -205,9 +233,9 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         # Local vars
         p = x[:-1]
         t = x[-1]
-        num_p = self.ts_dcopf.num_p
-        num_w = self.ts_dcopf.num_w
-        num_r = self.ts_dcopf.num_r
+        num_p = self.num_p
+        num_w = self.num_w
+        num_r = self.num_r
 
         # Seed
         if seed is None:
@@ -223,7 +251,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         JG = csr_matrix((1,x.size))
         
         # Second stage problem
-        problem = self.ts_dcopf.get_problem_for_Q(p,np.ones(num_r))
+        problem = self.ts_dcopf.get_problem_for_Q(p,self.ones_r)
         
         # Sampling loop
         for i in range(samples):
@@ -259,7 +287,7 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         
     def get_size_x(self):
 
-        return self.ts_dcopf.num_p + 1
+        return self.num_p + 1
 
     def get_size_lam(self):
 
@@ -372,31 +400,31 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         gamma = self.gamma
         lam = float(lam)
         
-        num_p = prob.num_p
-        num_w = prob.num_w
-        num_r = prob.num_r
-        num_bus = prob.num_bus
-        num_br = prob.num_br
+        num_p = self.num_p
+        num_w = self.num_w
+        num_r = self.num_r
+        num_bus = self.num_bus
+        num_br = self.num_br
 
         H0 = prob.H0
         g0 = prob.g0
         H1 = prob.H1
         g1 = prob.g1
         
-        op = np.zeros(num_p)
-        ow = np.zeros(num_w)
-        os = np.zeros(num_r)
-        oz = np.zeros(num_br)
+        op = self.op
+        ow = self.ow
+        os = self.os
+        oz = self.oz
         
-        Ip = eye(num_p,format='coo')
-        Iz = eye(num_br,format='coo')
+        Ip = self.Ip
+        Iz = self.Iz
         
-        Ont = coo_matrix((num_bus,1))
-        Ot = coo_matrix((1,1))
-        Ow = coo_matrix((num_w,num_w))
-        Os = coo_matrix((num_r,num_r))
-        Op = coo_matrix((num_p,num_p))
-        Oz = coo_matrix((num_br,num_br))
+        Ont = self.Ont
+        Ot = self.Ot
+        Ow = self.Ow
+        Os = self.Os
+        Op = self.Op
+        Oz = self.Oz
 
         # Corrections
         if g_corr is None:
@@ -418,14 +446,14 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         l = np.hstack((prob.p_min,           # p
                        t_min,                # t
                        -prob.p_max+prob.p_min, # q
-                       -inf*np.ones(num_w),  # theta
-                       np.zeros(num_r),      # s
+                       -inf*self.ones_w,     # theta
+                       self.os,              # s
                        prob.p_min,           # y
                        prob.z_min))          # z
         u = np.hstack((prob.p_max,           # p
                        t_max,                # t
                        prob.p_max-prob.p_min,  # q
-                       inf*np.ones(num_w),   # theta
+                       inf*self.ones_w,      # theta
                        prob.Er,              # s
                        prob.p_max,           # y
                        prob.z_max))          # z
