@@ -328,6 +328,9 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         print 'gamma      : %.2f' %self.gamma
         print 'smax param : %.2e' %self.parameters['smax_param']
         print 'lmax       : %.2e' %self.parameters['lam_max']
+        print 't_reg      : %.2e' %self.parameters['t_reg']
+        print 't_min      : %.2e' %self.parameters['t_min']
+        print 't_max      : %.2e' %self.parameters['t_max']
 
     def solve_Lrelaxed_approx(self,lam,g_corr=None,J_corr=None,tol=1e-4,quiet=False,init_data=None):
         """
