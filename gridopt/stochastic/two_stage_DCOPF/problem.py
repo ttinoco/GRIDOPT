@@ -6,6 +6,7 @@
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
 
+import csv
 import pfnet as pf
 import numpy as np
 from utils import ApplyFunc
@@ -548,6 +549,31 @@ class TS_DCOPF(StochObj_Problem):
         """
 
         return np.minimum(np.maximum(self.r_base+self.L*np.random.randn(self.num_r),1e-3),self.r_max)
+
+    def save_x_info(self,x,filename):
+
+        # Local variables
+        num_p = self.num_p
+        H0 = self.H0*np.ones(num_p)
+        
+        # Check
+        assert(x.size == num_p)
+
+        # Writer
+        f = open(filename,'w')
+        writer = csv.writer(f)
+        
+        # Write
+        writer.writerow(['p','pmin','pmax','H0','g0'])
+        for i in range(num_p):
+            writer.writerow([x[i],
+                             self.p_min[i],
+                             self.p_max[i],
+                             H0[i],
+                             self.g0[i]])
+
+        # Close
+        f.close()
 
     def show(self):
         """

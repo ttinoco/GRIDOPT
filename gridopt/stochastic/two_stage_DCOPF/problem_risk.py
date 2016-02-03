@@ -318,7 +318,11 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
     def sample_w(self):
 
         return self.ts_dcopf.sample_w()
-        
+
+    def save_x_info(self,x,filename):
+       
+        self.ts_dcopf.save_x_info(x[:-1],filename)
+ 
     def show(self):
 
         self.ts_dcopf.show()
