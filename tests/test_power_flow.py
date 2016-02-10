@@ -59,8 +59,6 @@ class TestPowerFlow(unittest.TestCase):
 
                     net.set_var_values(results['variables'])
 
-                    print method_name,case,sol_types[sol]
-
                     v_mag_tol = sol_data['v_mag_tol']
                     v_ang_tol = sol_data['v_ang_tol']
                     bus_data = sol_data['bus_data']
@@ -80,6 +78,8 @@ class TestPowerFlow(unittest.TestCase):
                         v_mag_error.append(np.abs(bus.v_mag-v_mag))
                         v_ang_error.append(np.abs(bus.v_ang*180./np.pi-v_ang))
                     
+                    print method_name,case,sol_types[sol],len(v_mag_error),len(v_ang_error)
+
                     self.assertLessEqual(np.max(v_mag_error),v_mag_tol)
                     self.assertLessEqual(np.max(v_ang_error),v_ang_tol)
 
