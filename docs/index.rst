@@ -16,6 +16,18 @@ GRIDOPT is a Python package that provides methods for solving power grid optimiz
 
 GRIDOPT is released under the BSD 2-clause license.
 
+**Citing**
+
+If you use GRIDOPT in your work, please cite the software as follows::
+
+  @misc{gridopt,
+     author={Tinoco De Rubira, Tomas},
+     title={{GRIDOPT}: {A} {P}ython package for power grid optimization},
+     howpublished={\url{https://github.com/ttinoco/GRIDOPT}},
+     month={March},
+     year={2016}
+  } 
+
 **Contact**
 
 If you have any questions about GRIDOPT or if you are interested in collaborating, send me an email:
@@ -31,6 +43,10 @@ If you have any questions about GRIDOPT or if you are interested in collaboratin
    :maxdepth: 3
 
    Getting Started<start>
+   Power Flow Methods<pf_methods>
+   Optimal Power Flow Methods<opf_methods>
+   Stochastic Optimal Power Flow Methods<sopf_methods>
+   API Reference<reference>
 
 Indices and tables
 ==================
