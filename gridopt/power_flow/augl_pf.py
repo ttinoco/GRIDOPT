@@ -220,4 +220,4 @@ class AugLPF(PFmethod):
         
         # Network sensitivities
         net.clear_sensitivities()
-        problem.store_sensitivities(nu)
+        problem.store_sensitivities(None,nu,None,None)
