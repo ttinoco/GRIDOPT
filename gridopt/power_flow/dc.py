@@ -1,7 +1,7 @@
 #*****************************************************#
 # This file is part of GRIDOPT.                       #
 #                                                     #
-# Copyright (c) 2015, Tomas Tinoco De Rubira.         #
+# Copyright (c) 2015-2016, Tomas Tinoco De Rubira.    #
 #                                                     #
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
@@ -84,8 +84,33 @@ class DCPF(PFmethod):
         finally:
 
             # Get results
-            self.results = {'status': self.results['status'],
-                            'error_msg': self.results['error_msg'],
-                            'variables': x,
-                            'iterations': 0}
-            self.results.update(net.get_properties())
+            self.set_iterations(1)
+            self.set_primal_variables(x)
+            self.set_dual_variables(4*[None])
+            self.set_net_properties(net.get_properties())
+            self.set_problem(problem)
+
+    def update_network(self,net):
+        
+        # Get data
+        problem = self.results['problem']
+        x = self.results['primal_variables']
+        lam,nu,mu,pi = self.results['dual_variables']
+       
+        # No problem
+        if problem is None:
+            raise PFmethodError_NoProblem(self)
+ 
+        # Checks
+        assert(problem.x.shape == x.shape)
+        assert(net.num_vars == x.size)
+        assert(lam is None)
+        assert(nu is None)
+        assert(mu is None)
+        assert(pi is None)
+
+        # Network quantities
+        net.set_var_values(x)
+        
+        # Network sensitivities
+        net.clear_sensitivities()
