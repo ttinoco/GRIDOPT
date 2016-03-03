@@ -3,7 +3,7 @@
 #*****************************************************#
 # This file is part of GRIDOPT.                       #
 #                                                     #
-# Copyright (c) 2015, Tomas Tinoco De Rubira.         #
+# Copyright (c) 2015-2016, Tomas Tinoco De Rubira.    #
 #                                                     #
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
@@ -62,10 +62,7 @@ def main():
         net.show_components()
             
         # Method
-        if args.method in methods_PF:
-	    method = gridopt.power_flow.new_method(args.method)
-        else:
-            method = gridopt.optimal_power_flow.new_method(args.method)
+        method = gridopt.power_flow.new_method(args.method)
             
         # Parameters
         method.set_parameters(strparams=dict(args.params))

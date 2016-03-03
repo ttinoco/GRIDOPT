@@ -1,7 +1,7 @@
 #*****************************************************#
 # This file is part of GRIDOPT.                       #
 #                                                     #
-# Copyright (c) 2015, Tomas Tinoco De Rubira.         #
+# Copyright (c) 2015-2016, Tomas Tinoco De Rubira.    #
 #                                                     #
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
@@ -10,10 +10,10 @@ import pfnet
 import numpy as np
 from scipy.sparse import triu
 from method_error import *
-from method import OPFmethod
+from method import PFmethod
 from optalg.opt_solver import OptSolverError,OptSolverIQP,QuadProblem
 
-class DCOPF(OPFmethod):
+class DCOPF(PFmethod):
     """
     DC optimal power flow class.
     """
@@ -22,7 +22,7 @@ class DCOPF(OPFmethod):
                                     
     def __init__(self):
 
-        OPFmethod.__init__(self)
+        PFmethod.__init__(self)
         self.parameters = DCOPF.parameters.copy()
         self.parameters.update(OptSolverIQP.parameters)
 
@@ -44,6 +44,13 @@ class DCOPF(OPFmethod):
                       pfnet.GEN_PROP_P_ADJUST,
                       pfnet.GEN_VAR_P)
 
+        try:
+            assert(net.num_vars == (net.num_buses-net.get_num_slack_buses()+
+                                    net.get_num_P_adjust_gens()))
+
+        except AssertionError:
+            raise PFmethodError_BadProblem(self)
+            
         # Set up problem
         x = net.get_var_values()
         l = net.get_var_values(pfnet.LOWER_LIMITS)
@@ -68,15 +75,13 @@ class DCOPF(OPFmethod):
 
         try:
             assert(np.all(l < u))
-            assert(net.num_vars == (net.num_buses-net.get_num_slack_buses()+
-                                    net.get_num_P_adjust_gens()))
             assert(np.abs(obj.phi-(0.5*np.dot(x,H*x)+np.dot(g,x))) < 1e-10)
             assert(H.shape == (n,n))
             assert(A.shape == (net.num_buses,n))
             assert(constr.f.shape == (0,))
             assert(constr.J.shape == (0,n))
         except AssertionError:
-            raise OPFmethodError_BadProblem(self)
+            raise PFmethodError_BadProblem(self)
 
         # Return
         return QuadProblem(H,g,A,b,l,u)
@@ -96,7 +101,7 @@ class DCOPF(OPFmethod):
         try:
             solver.solve(problem)
         except OptSolverError,e:
-            raise OPFmethodError_SolverError(self,e)
+            raise PFmethodError_SolverError(self,e)
         finally:
             
             # Get results

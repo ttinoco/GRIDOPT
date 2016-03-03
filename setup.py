@@ -1,7 +1,7 @@
 #*****************************************************#
 # This file is part of GRIDOPT.                       #
 #                                                     #
-# Copyright (c) 2015, Tomas Tinoco De Rubira.         #
+# Copyright (c) 2015-2016, Tomas Tinoco De Rubira.    #
 #                                                     #
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
@@ -15,7 +15,6 @@ setup(name='GRIDOPT',
       author_email='ttinoco5687@gmail.com',
       packages=['gridopt',
                 'gridopt.power_flow',
-                'gridopt.optimal_power_flow',
                 'gridopt.stochastic',
                 'gridopt.stochastic.two_stage_DCOPF'],
       scripts=['./gridopt/script/gridopt'],

@@ -1,7 +1,7 @@
 #*****************************************************#
 # This file is part of GRIDOPT.                       #
 #                                                     #
-# Copyright (c) 2015, Tomas Tinoco De Rubira.         #
+# Copyright (c) 2015-2016, Tomas Tinoco De Rubira.    #
 #                                                     #
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
@@ -9,10 +9,10 @@
 import pfnet
 import numpy as np
 from method_error import *
-from method import OPFmethod
+from method import PFmethod
 from optalg.opt_solver import OptSolverError,OptCallback,OptTermination,OptSolverAugL
 
-class AugLOPF(OPFmethod):
+class AugLOPF(PFmethod):
     """
     Augmented Lagrangian-based optimal power flow.
     """
@@ -24,7 +24,7 @@ class AugLOPF(OPFmethod):
                    
     def __init__(self):
 
-        OPFmethod.__init__(self)
+        PFmethod.__init__(self)
         self.parameters = AugLOPF.parameters.copy()
         self.parameters.update(OptSolverAugL.parameters)
 
@@ -69,7 +69,7 @@ class AugLOPF(OPFmethod):
                                     net.get_num_reg_gens()))
             assert(net.num_bounded == net.num_gens + net.get_num_reg_gens())
         except AssertionError:
-            raise OPFmethodError_BadProblem(self)
+            raise PFmethodError_BadProblem(self)
                                     
         # Set up problem
         problem = pfnet.Problem()
@@ -134,15 +134,40 @@ class AugLOPF(OPFmethod):
         try:
             solver.solve(problem)
         except OptSolverError,e:
-            raise OPFmethodError_SolverError(self,e)
+            raise PFmethodError_SolverError(self,e)
         finally:
             
             # Get results
-            self.results = {'status': solver.get_status(),
-                            'error_msg': solver.get_error_msg(),
-                            'variables': solver.get_primal_variables(),
-                            'iterations': solver.get_iterations()}
-            self.results.update(net.get_properties())
+            self.set_status(solver.get_status())
+            self.set_error_msg(solver.get_error_msg())
+            self.set_iterations(solver.get_iterations())
+            self.set_primal_variables(solver.get_primal_variables())
+            self.set_dual_variables(solver.get_dual_variables())
+            self.set_net_properties(net.get_properties())
+            self.set_problem(problem)
+
+    def update_network(self,net):
         
-            # Show
-            problem.show()
+        # Get data
+        problem = self.results['problem']
+        x = self.results['primal_variables']
+        lam,nu,mu,pi = self.results['dual_variables']
+       
+        # No problem
+        if problem is None:
+            raise PFmethodError_NoProblem(self)
+ 
+        # Checks
+        assert(problem.x.shape == x.shape)
+        assert(net.num_vars == x.size)
+        assert(problem.A.shape[0] == lam.size)
+        assert(problem.f.shape[0] == nu.size)
+        assert(mu is None)
+        assert(pi is None)
+
+        # Network quantities
+        net.set_var_values(x)
+        
+        # Network sensitivities
+        net.clear_sensitivities()
+        problem.store_sensitivities(nu)
