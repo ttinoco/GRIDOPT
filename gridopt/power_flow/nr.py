@@ -1,7 +1,7 @@
 #*****************************************************#
 # This file is part of GRIDOPT.                       #
 #                                                     #
-# Copyright (c) 2015, Tomas Tinoco De Rubira.         #
+# Copyright (c) 2015-2016, Tomas Tinoco De Rubira.    #
 #                                                     #
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
@@ -17,20 +17,20 @@ class NRPF(PFmethod):
     Newton-Raphson power flow method.
     """
         
-    parameters = {'limit_gens':True,
-                  'lock_taps':True,
-                  'tap_step':0.5,
-                  'lock_shunts':True,
-                  'shunt_step':0.5,
-                  'vmin_thresh':0.1,
-                  'dtap':1e-5,
-                  'dsus':1e-5}
+    parameters = {'limit_gens':True,  # enforce generator reactive power limits
+                  'lock_taps':True,   # lock tap ratios of transformer
+                  'tap_step':0.5,     # tap ratio acceleration factor
+                  'lock_shunts':True, # lock susceptances of shunt devices
+                  'shunt_step':0.5,   # susceptance acceleration factor
+                  'vmin_thresh':0.1,  # low voltage threshold
+                  'dtap':1e-5,        # tap ratio perturbation
+                  'dsus':1e-5}        # susceptance perturbation
     
     def __init__(self):
 
         PFmethod.__init__(self)
-        self.parameters = NRPF.parameters.copy()
-        self.parameters.update(OptSolverNR.parameters)
+        self.parameters = NRPF.parameters.copy()       # method parameters
+        self.parameters.update(OptSolverNR.parameters) # solver parameters
 
     def apply_shunt_v_regulation(self,solver):
 
@@ -342,8 +342,36 @@ class NRPF(PFmethod):
         finally:
 
             # Get results
-            self.results = {'status': solver.get_status(),
-                            'error_msg': solver.get_error_msg(),
-                            'variables': solver.get_primal_variables(),
-                            'iterations': solver.get_iterations()}
-            self.results.update(net.get_properties())
+            self.set_status(solver.get_status())
+            self.set_error_msg(solver.get_error_msg())
+            self.set_iterations(solver.get_iterations())
+            self.set_primal_variables(solver.get_primal_variables())
+            self.set_dual_variables(solver.get_dual_variables())
+            self.set_net_properties(net.get_properties())
+            self.set_problem(problem)
+    
+    def update_network(self,net):
+        
+        # Get data
+        problem = self.results['problem']
+        x = self.results['primal_variables']
+        lam,nu,mu,pi = self.results['dual_variables']
+       
+        # No problem
+        if problem is None:
+            raise PFmethodError_NoProblem(self)
+ 
+        # Checks
+        assert(problem.x.shape == x.shape)
+        assert(net.num_vars == x.size)
+        assert(lam is None)
+        assert(nu is None)
+        assert(mu is None)
+        assert(pi is None)
+
+        # Network quantities
+        net.set_var_values(x)
+        
+        # Network sensitivities
+        net.clear_sensitivities()
+

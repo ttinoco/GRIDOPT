@@ -1,7 +1,7 @@
 #*****************************************************#
 # This file is part of GRIDOPT.                       #
 #                                                     #
-# Copyright (c) 2015, Tomas Tinoco De Rubira.         #
+# Copyright (c) 2015-2016, Tomas Tinoco De Rubira.    #
 #                                                     #
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
@@ -16,13 +16,16 @@ class PFmethod:
         Power flow method class.
         """
         
-        #: Results dictionary
-        self.results = {'status': 'unknown',
-                        'error_msg': '',
-                        'variables': np.zeros(0),
-                        'iterations': 0}
+        #: Results (dictionary)
+        self.results = {'status': 'unknown',              # solver status
+                        'error_msg': '',                  # solver error message
+                        'iterations': 0,                  # solver iterations
+                        'primal_variables': np.zeros(0),  # primal variables
+                        'dual_variables': [],             # dual variables
+                        'net_properties': {},             # network properties
+                        'problem': None}                  # PFNET problem
 
-        #: Parameters dictionary
+        #: Parameters (dictionary)
         self.parameters = {}
 
     def create_problem(self,net):
@@ -63,6 +66,17 @@ class PFmethod:
 
         return self.results
 
+    def set_status(self,status):
+        """
+        Sets method status.
+
+        Parameters
+        ----------
+        status : string
+        """
+        
+        self.results['status'] = status
+
     def set_error_msg(self,msg):
         """
         Sets method error message.
@@ -74,16 +88,60 @@ class PFmethod:
         
         self.results['error_msg'] = msg
 
-    def set_status(self,status):
+    def set_iterations(self,k):
         """
-        Sets method status.
+        Sets method iterations.
 
         Parameters
         ----------
-        status : string
+        k : int
         """
         
-        self.results['status'] = status
+        self.results['iterations'] = k
+
+    def set_primal_variables(self,x):
+        """
+        Sets primal variables.
+
+        Parameters
+        ----------
+        x : vector
+        """
+        
+        self.results['primal_variables'] = x
+
+    def set_dual_variables(self,d):
+        """
+        Sets dual variables.
+
+        Parameters
+        ----------
+        d : list
+        """
+        
+        self.results['dual_variables'] = d
+
+    def set_net_properties(self,np):
+        """
+        Sets network properties.
+
+        Parameters
+        ----------
+        np : dictionary
+        """
+        
+        self.results['net_properties'] = np
+
+    def set_problem(self,p):
+        """
+        Sets problem.
+
+        Parameters
+        ----------
+        p : PFNET problem
+        """
+        
+        self.results['problem'] = p
 
     def set_parameters(self,params=None,strparams=None):
         """
@@ -146,4 +204,15 @@ class PFmethod:
         net : PFNET Network
         """        
         
+        pass
+
+    def update_network(self,net):
+        """
+        Updates network with results.
+
+        Parameters
+        ----------
+        net : PFNET Network
+        """
+
         pass
