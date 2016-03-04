@@ -17,11 +17,11 @@ class AugLPF(PFmethod):
     Augmented Lagrangian-based power flow.
     """
         
-    parameters = {'alpha_vmag':1e0,      # for reg voltage magnitude penalty
-                  'alpha_vang':1e-3,     # for angle difference penalty
-                  'alpha_pq':1e-3,       # for gen powers
-                  'alpha_t':1e1,         # for tap ratios
-                  'alpha_b':1e-4,        # for shunt susceptances
+    parameters = {'weight_vmag':1e0,     # for reg voltage magnitude penalty
+                  'weight_vang':1e-3,    # for angle difference penalty
+                  'weight_pq':1e-3,      # for gen powers
+                  'weight_t':1e1,        # for tap ratios
+                  'weight_b':1e-4,       # for shunt susceptances
                   'lock_taps':True,      # flag for locking transformer tap ratios
                   'lock_shunts':True,    # flag for locking swtiched shunts
                   'vmin_thresh':0.1}     # threshold for vmin
@@ -36,11 +36,11 @@ class AugLPF(PFmethod):
 
         # Parameters
         params = self.parameters
-        alpha_vang = params['alpha_vang']
-        alpha_vmag = params['alpha_vmag']
-        alpha_pq = params['alpha_pq']
-        alpha_t = params['alpha_t']
-        alpha_b = params['alpha_b']
+        weight_vang = params['weight_vang']
+        weight_vmag = params['weight_vmag']
+        weight_pq = params['weight_pq']
+        weight_t = params['weight_t']
+        weight_b = params['weight_b']
         lock_taps = params['lock_taps']
         lock_shunts = params['lock_shunts']
         
@@ -120,13 +120,13 @@ class AugLPF(PFmethod):
             problem.add_constraint(pfnet.CONSTR_TYPE_REG_TRAN)
         if not lock_shunts:
             problem.add_constraint(pfnet.CONSTR_TYPE_REG_SHUNT)
-        problem.add_function(pfnet.FUNC_TYPE_REG_VMAG,alpha_vmag)
-        problem.add_function(pfnet.FUNC_TYPE_REG_VANG,alpha_vang)
-        problem.add_function(pfnet.FUNC_TYPE_REG_PQ,alpha_pq)
+        problem.add_function(pfnet.FUNC_TYPE_REG_VMAG,weight_vmag)
+        problem.add_function(pfnet.FUNC_TYPE_REG_VANG,weight_vang)
+        problem.add_function(pfnet.FUNC_TYPE_REG_PQ,weight_pq)
         if not lock_taps:
-            problem.add_function(pfnet.FUNC_TYPE_REG_RATIO,alpha_t)
+            problem.add_function(pfnet.FUNC_TYPE_REG_RATIO,weight_t)
         if not lock_shunts:
-            problem.add_function(pfnet.FUNC_TYPE_REG_SUSC,alpha_b)
+            problem.add_function(pfnet.FUNC_TYPE_REG_SUSC,weight_b)
         problem.analyze()
         
         # Return

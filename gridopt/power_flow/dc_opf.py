@@ -59,7 +59,7 @@ class DCOPF(PFmethod):
         problem.add_constraint(pfnet.CONSTR_TYPE_LBOUND)
         problem.add_function(pfnet.FUNC_TYPE_GEN_COST,1.)
         problem.analyze()
-
+        
         # Return
         return problem
             
@@ -99,8 +99,8 @@ class DCOPF(PFmethod):
         Oz = coo_matrix((nz,nz))
         oz = np.zeros(nz)
         
-        H = bmat([[Hx,None],[None,Oz]],format='coo')
-        g = np.hstack((gx,oz))
+        H = bmat([[Hx,None],[None,Oz]],format='coo')/100.
+        g = np.hstack((gx,oz))/100.
 
         A = bmat([[Ax,None],[Gz,-Iz]],format='coo')
         b = np.hstack((bx,oz))
@@ -127,10 +127,9 @@ class DCOPF(PFmethod):
             assert(l.shape == (n,))
             assert(u.shape == (n,))
             assert(np.all(l < u))
-            assert(np.abs(problem.phi-(0.5*np.dot(y,H*y)+np.dot(g,y))) < 1e-10)
+            assert(np.abs(problem.phi-100.*(0.5*np.dot(y,H*y)+np.dot(g,y))) < 1e-10)
             assert(H.shape == (n,n))
             assert(A.shape == (net.num_buses+nz,n))
-            print 'bien ahi loco'
         except AssertionError:
             raise PFmethodError_BadProblem(self)
             
@@ -146,11 +145,41 @@ class DCOPF(PFmethod):
             raise PFmethodError_SolverError(self,e)
         finally:
             
-            pass
             # Get results
-            #self.results = {'status': solver.get_status(),
-            #                'error_msg': solver.get_error_msg(),
-            #                'variables': solver.get_primal_variables(),
-            #                'iterations': solver.get_iterations()}
-            #net.update_properties(solver.get_primal_variables())
-            #self.results.update(net.get_properties())
+            self.set_status(solver.get_status())
+            self.set_error_msg(solver.get_error_msg())
+            self.set_iterations(solver.get_iterations())
+            self.set_primal_variables(solver.get_primal_variables())
+            self.set_dual_variables(solver.get_dual_variables())
+            self.set_net_properties(net.get_properties())
+            self.set_problem(problem)
+            
+    def update_network(self,net):
+    
+        pass
+        
+        """
+        # Get data
+        problem = self.results['problem']
+        x = self.results['primal_variables']
+        lam,nu,mu,pi = self.results['dual_variables']
+       
+        # No problem
+        if problem is None:
+            raise PFmethodError_NoProblem(self)
+ 
+        # Checks
+        assert(problem.x.shape == x.shape)
+        assert(net.num_vars == x.size)
+        assert(problem.A.shape[0] == lam.size)
+        assert(problem.f.shape[0] == nu.size)
+        assert(mu is None)
+        assert(pi is None)
+
+        # Network quantities
+        net.set_var_values(x)
+        
+        # Network sensitivities
+        net.clear_sensitivities()
+        problem.store_sensitivities(None,nu,None,None)
+        """

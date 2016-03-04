@@ -17,10 +17,10 @@ class AugLOPF(PFmethod):
     Augmented Lagrangian-based optimal power flow.
     """
  
-    parameters = {'alpha_Pc':1e-2,     # for generation cost
-                  'alpha_Pl':1e-4,     # for soft limits
-                  'alpha_Pr':1e-5,     # for regularization
-                  'vmin_thresh':0.1}   # threshold for vmin
+    parameters = {'weight_cost':1e-2,   # for generation cost
+                  'weight_limit':1e-3,  # for soft limits
+                  'weight_reg':1e-5,    # for regularization
+                  'vmin_thresh':0.1}    # threshold for vmin
                    
     def __init__(self):
 
@@ -32,9 +32,9 @@ class AugLOPF(PFmethod):
 
         # Parameters
         params = self.parameters
-        alpha_Pc = params['alpha_Pc']
-        alpha_Pl = params['alpha_Pl']
-        alpha_Pr = params['alpha_Pr']
+        wc = params['weight_cost']
+        wl = params['weight_limit']
+        wr = params['weight_reg']
         
         # Clear flags
         net.clear_flags()
@@ -76,10 +76,10 @@ class AugLOPF(PFmethod):
         problem.set_network(net)
         problem.add_constraint(pfnet.CONSTR_TYPE_PF)
         problem.add_constraint(pfnet.CONSTR_TYPE_BOUND) 
-        problem.add_function(pfnet.FUNC_TYPE_GEN_COST,alpha_Pc)
-        problem.add_function(pfnet.FUNC_TYPE_SLIM_VMAG,alpha_Pl)
-        problem.add_function(pfnet.FUNC_TYPE_REG_VANG,alpha_Pr)
-        problem.add_function(pfnet.FUNC_TYPE_REG_PQ,alpha_Pr)
+        problem.add_function(pfnet.FUNC_TYPE_GEN_COST,wc)
+        problem.add_function(pfnet.FUNC_TYPE_SLIM_VMAG,wl)
+        problem.add_function(pfnet.FUNC_TYPE_REG_VANG,wr)
+        problem.add_function(pfnet.FUNC_TYPE_REG_PQ,wr)
         problem.analyze()
         
         # Return
