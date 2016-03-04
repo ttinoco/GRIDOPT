@@ -104,8 +104,7 @@ class AugLPF(PFmethod):
             if not lock_shunts and not lock_taps:
                 num_vars -= 2*len([b for b in net.buses 
                                    if (b.is_regulated_by_tran() and
-                                       b.is_regulated_by_shunt())])
-                                   
+                                       b.is_regulated_by_shunt())])                                   
             assert(net.num_vars == num_vars)
         except AssertionError:
             raise PFmethodError_BadProblem(self)  

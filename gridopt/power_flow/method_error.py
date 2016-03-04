@@ -24,6 +24,14 @@ class PFmethodError_BadProblem(PFmethodError):
     def __init__(self,method):
         PFmethodError.__init__(self,method,'error while creating PF problem')
 
+class PFmethodError_BadFlowLimits(PFmethodError):
+    def __init__(self,method):
+        PFmethodError.__init__(self,method,'invalid flow limits')
+
+class PFmethodError_BadVarLimits(PFmethodError):
+    def __init__(self,method):
+        PFmethodError.__init__(self,method,'invalid variable limits')
+
 class PFmethodError_BadParam(PFmethodError):
     def __init__(self,method,param=''):
         PFmethodError.__init__(self,method,'invalid method parameter %s' %param)

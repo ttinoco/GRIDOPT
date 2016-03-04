@@ -8,9 +8,9 @@
 
 import pfnet
 import numpy as np
-from scipy.sparse import triu
 from method_error import *
 from method import PFmethod
+from scipy.sparse import triu,coo_matrix,bmat,eye
 from optalg.opt_solver import OptSolverError,OptSolverIQP,QuadProblem
 
 class DCOPF(PFmethod):
@@ -40,51 +40,28 @@ class DCOPF(PFmethod):
                       pfnet.BUS_PROP_NOT_SLACK,
                       pfnet.BUS_VAR_VANG)
         net.set_flags(pfnet.OBJ_GEN,
-                      pfnet.FLAG_VARS,
+                      pfnet.FLAG_VARS|pfnet.FLAG_BOUNDED,
                       pfnet.GEN_PROP_P_ADJUST,
                       pfnet.GEN_VAR_P)
 
         try:
+            assert(net.num_bounded == net.get_num_P_adjust_gens())
             assert(net.num_vars == (net.num_buses-net.get_num_slack_buses()+
                                     net.get_num_P_adjust_gens()))
-
         except AssertionError:
             raise PFmethodError_BadProblem(self)
             
         # Set up problem
-        x = net.get_var_values()
-        l = net.get_var_values(pfnet.LOWER_LIMITS)
-        u = net.get_var_values(pfnet.UPPER_LIMITS)
-        dx = u-l
-
-        constr = pfnet.Constraint(pfnet.CONSTR_TYPE_DCPF,net)
-        obj = pfnet.Function(pfnet.FUNC_TYPE_GEN_COST,1.,net)
-        
-        constr.analyze()
-        obj.analyze()
-        constr.eval(x)
-        obj.eval(x)
-        
-        H = obj.Hphi + obj.Hphi.T - triu(obj.Hphi)
-        g = obj.gphi - H*x
-
-        A = constr.A.copy()
-        b = constr.b.copy()
-
-        n = net.num_vars
-
-        try:
-            assert(np.all(l < u))
-            assert(np.abs(obj.phi-(0.5*np.dot(x,H*x)+np.dot(g,x))) < 1e-10)
-            assert(H.shape == (n,n))
-            assert(A.shape == (net.num_buses,n))
-            assert(constr.f.shape == (0,))
-            assert(constr.J.shape == (0,n))
-        except AssertionError:
-            raise PFmethodError_BadProblem(self)
+        problem = pfnet.Problem()
+        problem.set_network(net)
+        problem.add_constraint(pfnet.CONSTR_TYPE_DCPF)
+        problem.add_constraint(pfnet.CONSTR_TYPE_DC_FLOW_LIM)
+        problem.add_constraint(pfnet.CONSTR_TYPE_LBOUND)
+        problem.add_function(pfnet.FUNC_TYPE_GEN_COST,1.)
+        problem.analyze()
 
         # Return
-        return QuadProblem(H,g,A,b,l,u)
+        return problem
             
     def solve(self,net):
         
@@ -93,21 +70,87 @@ class DCOPF(PFmethod):
 
         # Problem
         problem = self.create_problem(net)
-                    
+       
+        # Construct QP
+        x = problem.get_init_point()
+        problem.eval(x)
+        c_flows = problem.find_constraint(pfnet.CONSTR_TYPE_DC_FLOW_LIM)
+        c_bounds = problem.find_constraint(pfnet.CONSTR_TYPE_LBOUND)
+        
+        Hx = problem.Hphi + problem.Hphi.T - triu(problem.Hphi)
+        gx = problem.gphi - Hx*x
+        
+        Ax = problem.A
+        bx = problem.b
+        
+        lz = c_flows.l
+        uz = c_flows.u
+        Gz = c_flows.G
+        
+        lx = c_bounds.l
+        ux = c_bounds.u
+        Gx = c_bounds.G
+
+        nx = net.num_vars
+        nz = Gz.shape[0]
+        n = nx+nz
+
+        Iz = eye(nz)
+        Oz = coo_matrix((nz,nz))
+        oz = np.zeros(nz)
+        
+        H = bmat([[Hx,None],[None,Oz]],format='coo')
+        g = np.hstack((gx,oz))
+
+        A = bmat([[Ax,None],[Gz,-Iz]],format='coo')
+        b = np.hstack((bx,oz))
+
+        l = np.hstack((lx,lz))
+        u = np.hstack((ux,uz))
+
+        y = np.hstack((x,oz))
+
+        # Check flow limits
+        if not np.all(lz < uz):
+            raise PFmethodError_BadFlowLimits(self)
+        
+        # Check variable limits
+        if not np.all(lx < ux):
+            raise PFmethodError_BadVarLimits(self)
+
+        # Other checks
+        try:
+            assert(Gx.shape == (nx,nx))
+            assert(np.all(Gx.row == Gx.col))
+            assert(np.all(Gx.data == np.ones(nx)))
+            assert(Gz.shape == (net.num_branches,nx))
+            assert(l.shape == (n,))
+            assert(u.shape == (n,))
+            assert(np.all(l < u))
+            assert(np.abs(problem.phi-(0.5*np.dot(y,H*y)+np.dot(g,y))) < 1e-10)
+            assert(H.shape == (n,n))
+            assert(A.shape == (net.num_buses+nz,n))
+            print 'bien ahi loco'
+        except AssertionError:
+            raise PFmethodError_BadProblem(self)
+            
+        QPproblem = QuadProblem(H,g,A,b,l,u)
+        
         # Set up solver
         solver = OptSolverIQP()
         
         # Solve
         try:
-            solver.solve(problem)
+            solver.solve(QPproblem)
         except OptSolverError,e:
             raise PFmethodError_SolverError(self,e)
         finally:
             
+            pass
             # Get results
-            self.results = {'status': solver.get_status(),
-                            'error_msg': solver.get_error_msg(),
-                            'variables': solver.get_primal_variables(),
-                            'iterations': solver.get_iterations()}
-            net.update_properties(solver.get_primal_variables())
-            self.results.update(net.get_properties())
+            #self.results = {'status': solver.get_status(),
+            #                'error_msg': solver.get_error_msg(),
+            #                'variables': solver.get_primal_variables(),
+            #                'iterations': solver.get_iterations()}
+            #net.update_properties(solver.get_primal_variables())
+            #self.results.update(net.get_properties())
