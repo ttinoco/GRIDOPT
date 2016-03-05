@@ -170,4 +170,4 @@ class AugLOPF(PFmethod):
         
         # Network sensitivities
         net.clear_sensitivities()
-        problem.store_sensitivities(None,nu,None,None)
+        problem.store_sensitivities(lam,nu,mu,pi)

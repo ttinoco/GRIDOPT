@@ -73,7 +73,8 @@ def main():
             pstats.Stats('.prof').strip_dirs().sort_stats('cumulative').print_stats(20)
         else:
             results = method.solve(net)
-    
+            method.update_network(net)
+
     finally:
         pass
     

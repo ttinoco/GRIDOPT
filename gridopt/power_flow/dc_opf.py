@@ -92,7 +92,7 @@ class DCOPF(PFmethod):
         Gx = c_bounds.G
 
         nx = net.num_vars
-        nz = Gz.shape[0]
+        nz = net.num_branches
         n = nx+nz
 
         Iz = eye(nz)
@@ -127,6 +127,8 @@ class DCOPF(PFmethod):
             assert(l.shape == (n,))
             assert(u.shape == (n,))
             assert(np.all(l < u))
+            assert(np.linalg.norm(problem.l-l,np.inf) < 1e-10)
+            assert(np.linalg.norm(problem.u-u,np.inf) < 1e-10)
             assert(np.abs(problem.phi-net.base_power*(0.5*np.dot(y,H*y)+np.dot(g,y))) < 1e-8)
             assert(H.shape == (n,n))
             assert(A.shape == (net.num_buses+nz,n))
@@ -156,30 +158,32 @@ class DCOPF(PFmethod):
             
     def update_network(self,net):
     
-        pass
-        
-        """
         # Get data
         problem = self.results['problem']
-        x = self.results['primal_variables']
+        xz = self.results['primal_variables']
         lam,nu,mu,pi = self.results['dual_variables']
-       
+        nx = net.num_vars
+        nz = net.num_branches
+        n = nx+nz
+        
         # No problem
         if problem is None:
             raise PFmethodError_NoProblem(self)
  
         # Checks
-        assert(problem.x.shape == x.shape)
-        assert(net.num_vars == x.size)
-        assert(problem.A.shape[0] == lam.size)
-        assert(problem.f.shape[0] == nu.size)
-        assert(mu is None)
-        assert(pi is None)
+        assert(xz.shape == (nx+nz,))
+        assert(problem.x.shape == (nx,))
+        assert(net.num_vars == nx)
+        assert(problem.A.shape[0] == net.num_buses)
+        assert(problem.G.shape[0] == net.num_branches+nx)
+        assert(lam.shape == (net.num_buses+net.num_branches,))
+        assert(mu.shape == (n,))
+        assert(pi.shape == (n,))
+        assert(nu is None)
 
         # Network quantities
-        net.set_var_values(x)
+        net.set_var_values(xz[:nx])
         
         # Network sensitivities
         net.clear_sensitivities()
-        problem.store_sensitivities(None,nu,None,None)
-        """
+        problem.store_sensitivities(lam[:net.num_buses],nu,mu,pi)
