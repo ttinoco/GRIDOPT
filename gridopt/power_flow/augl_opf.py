@@ -18,7 +18,7 @@ class AugLOPF(PFmethod):
     """
  
     parameters = {'weight_cost':1e-2,   # for generation cost
-                  'weight_limit':1e-3,  # for soft limits
+                  'weight_limit':1e-2,  # for soft limits
                   'weight_reg':1e-5,    # for regularization
                   'vmin_thresh':0.1}    # threshold for vmin
                    

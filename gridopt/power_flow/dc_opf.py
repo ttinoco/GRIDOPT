@@ -99,8 +99,8 @@ class DCOPF(PFmethod):
         Oz = coo_matrix((nz,nz))
         oz = np.zeros(nz)
         
-        H = bmat([[Hx,None],[None,Oz]],format='coo')/100.
-        g = np.hstack((gx,oz))/100.
+        H = bmat([[Hx,None],[None,Oz]],format='coo')/net.base_power
+        g = np.hstack((gx,oz))/net.base_power
 
         A = bmat([[Ax,None],[Gz,-Iz]],format='coo')
         b = np.hstack((bx,oz))
@@ -127,7 +127,7 @@ class DCOPF(PFmethod):
             assert(l.shape == (n,))
             assert(u.shape == (n,))
             assert(np.all(l < u))
-            assert(np.abs(problem.phi-100.*(0.5*np.dot(y,H*y)+np.dot(g,y))) < 1e-10)
+            assert(np.abs(problem.phi-net.base_power*(0.5*np.dot(y,H*y)+np.dot(g,y))) < 1e-8)
             assert(H.shape == (n,n))
             assert(A.shape == (net.num_buses+nz,n))
         except AssertionError:
