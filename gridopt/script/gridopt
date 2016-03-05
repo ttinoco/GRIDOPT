@@ -67,13 +67,19 @@ def main():
         # Parameters
         method.set_parameters(strparams=dict(args.params))
             
-        # Solve
         if args.profile:
+
+            # Profile
             cProfile.runctx('method.solve(net)',globals(),locals(),'.prof')
             pstats.Stats('.prof').strip_dirs().sort_stats('cumulative').print_stats(20)
         else:
+
+            # Solve
             results = method.solve(net)
             method.update_network(net)
+
+            # Network
+            net.show_properties()
 
     finally:
         pass
