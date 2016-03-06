@@ -35,6 +35,21 @@ The installation can be tested using `nose <https://nose.readthedocs.org/en/late
 
   > nosetests -v
 
+.. _start_docker:
+
+Docker
+======
+
+If GRIDOPT was obtained as a `Docker <https://www.docker.com/>`_ image, say ``gridopt.tar``, then one needs to first install `Docker Engine <https://docs.docker.com/engine/installation/>`_. Then one can load the image using the command::
+
+  > docker load -i gridopt.tar
+
+and enter the application environment with::
+
+  > docker run -i -t --entrypoint=/bin/bash gridopt
+
+In the application environment, GRIDOPT and all its dependencies, *e.g.*, `PFNET <http://ttinoco.github.io/PFNET/python/>`_, are already installed and ready to go. There, one can navidate to the directory ``/gridopt/tests/resources`` and use the test cases available there to do the `PFNET <http://ttinoco.github.io/PFNET/python/>`_ and GRIDOPT tutorials. 
+
 .. _start_example:
 
 Example
