@@ -75,10 +75,16 @@ def main():
         else:
 
             # Solve
-            results = method.solve(net)
+            try:
+                method.solve(net)
+                print method.results['status']
+            except gridopt.power_flow.PFmethodError:
+                print method.results['error_msg']
+            
+            # Update
             method.update_network(net)
-
-            # Network
+                
+            # Show network props
             net.show_properties()
 
     finally:

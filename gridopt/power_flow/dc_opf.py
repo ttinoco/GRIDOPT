@@ -139,6 +139,7 @@ class DCOPF(PFmethod):
         
         # Set up solver
         solver = OptSolverIQP()
+        solver.set_parameters(params)
         
         # Solve
         try:

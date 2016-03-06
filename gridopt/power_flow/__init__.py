@@ -11,6 +11,7 @@ from dc_pf import DCPF
 from dc_opf import DCOPF
 from augl_pf import AugLPF
 from augl_opf import AugLOPF
+from method_error import PFmethodError
 
 def new_method(name):
 

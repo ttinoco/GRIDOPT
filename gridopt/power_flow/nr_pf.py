@@ -31,7 +31,7 @@ class NRPF(PFmethod):
         PFmethod.__init__(self)
         self.parameters = NRPF.parameters.copy()       # method parameters
         self.parameters.update(OptSolverNR.parameters) # solver parameters
-
+        
     def apply_shunt_v_regulation(self,solver):
 
         # Local variables

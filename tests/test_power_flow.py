@@ -12,6 +12,8 @@ import numpy as np
 import pfnet as pf
 import gridopt as gopt
 
+INFCASE = './tests/resources/ieee25.raw'
+
 class TestPowerFlow(unittest.TestCase):
     
     def setUp(self):
@@ -82,6 +84,53 @@ class TestPowerFlow(unittest.TestCase):
 
                     self.assertLessEqual(np.max(v_mag_error),v_mag_tol)
                     self.assertLessEqual(np.max(v_ang_error),v_ang_tol)
+
+    def test_DCOPF(self):
+        
+        net = self.net
+        method = gopt.power_flow.new_method('DCOPF')
+
+        for case in utils.test_cases:
+        
+            net.load(case)
+
+            method.set_parameters({'quiet':True})
+
+            try:
+                method.solve(net)
+                self.assertEqual(method.results['status'],'solved')
+            except gopt.power_flow.PFmethodError:
+                self.assertEqual(case,INFCASE)
+                self.assertEqual(method.results['status'],'error')
+                
+            method.update_network(net)
+            
+            results = method.get_results()
+
+            x = results['primal_variables']
+            lam,nu,mu,pi = results['dual_variables']
+
+            self.assertTupleEqual(x.shape,(net.num_branches+
+                                           net.num_buses-
+                                           net.get_num_slack_buses()+
+                                           net.get_num_P_adjust_gens(),))
+            self.assertTupleEqual(x.shape,(net.num_vars+net.num_branches,))
+            self.assertTupleEqual(lam.shape,(net.num_buses+net.num_branches,))
+            self.assertTrue(nu is None)
+            self.assertTupleEqual(mu.shape,x.shape)
+            self.assertTupleEqual(pi.shape,x.shape)            
+
+            xx = x[:net.num_vars]
+            for bus in net.buses:
+                if not bus.is_slack():
+                    self.assertEqual(bus.v_ang,xx[bus.index_v_ang])
+                    self.assertEqual(bus.sens_v_ang_u_bound,mu[bus.index_v_ang])
+                    self.assertEqual(bus.sens_v_ang_l_bound,pi[bus.index_v_ang])
+            for gen in net.generators:
+                if gen.is_P_adjustable():
+                    self.assertEqual(gen.P,xx[gen.index_P])
+                    self.assertEqual(gen.sens_P_u_bound,mu[gen.index_P])
+                    self.assertEqual(gen.sens_P_l_bound,pi[gen.index_P])
 
     def tearDown(self):
         
