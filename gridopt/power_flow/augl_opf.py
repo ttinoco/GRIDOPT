@@ -14,7 +14,7 @@ from optalg.opt_solver import OptSolverError,OptCallback,OptTermination,OptSolve
 
 class AugLOPF(PFmethod):
     """
-    Augmented Lagrangian-based optimal power flow.
+    Augmented Lagrangian-based optimal power flow method.
     """
  
     parameters = {'weight_cost':1e-2,   # for generation cost

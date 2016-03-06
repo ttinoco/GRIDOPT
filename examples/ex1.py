@@ -25,8 +25,7 @@ results = method.get_results()
 
 print results['status']
 
-net.set_var_values(results['variables'])
-
-net.update_properties()
+method.update_network(net)
 
 print '%.2e %.2e' %(net.bus_P_mis,net.bus_Q_mis)
+

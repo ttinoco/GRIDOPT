@@ -15,7 +15,7 @@ from optalg.opt_solver import OptSolverError,OptSolverIQP,QuadProblem
 
 class DCOPF(PFmethod):
     """
-    DC optimal power flow class.
+    DC optimal power flow method.
     """
         
     parameters = {'quiet' : False}

@@ -43,9 +43,7 @@ If you have any questions about GRIDOPT or if you are interested in collaboratin
    :maxdepth: 3
 
    Getting Started<start>
-   Power Flow Methods<pf_methods>
-   Optimal Power Flow Methods<opf_methods>
-   Stochastic Optimal Power Flow Methods<sopf_methods>
+   Power Flow Methods<power_flow>
    API Reference<reference>
 
 Indices and tables

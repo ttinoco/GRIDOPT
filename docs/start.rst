@@ -63,9 +63,7 @@ The next example shows how to solve the power flow problem associated with a pow
   >>> print results['status']
   solved
 
-  >>> net.set_var_values(results['variables'])
-
-  >>> net.update_properties()
+  >>> method.update_network(net)
 
   >>> # max mismatches (MW,MVAr)
   >>> print '%.2e %.2e' %(net.bus_P_mis,net.bus_Q_mis)

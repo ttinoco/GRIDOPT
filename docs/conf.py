@@ -49,6 +49,7 @@ master_doc = 'index'
 # General information about the project.
 project = u'GRIDOPT'
 copyright = u'2016, Tomas Tinoco De Rubira'
+author = u'Tomas Tinoco De Rubira'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -97,6 +98,9 @@ pygments_style = 'sphinx'
 # If true, keep warnings as "system message" paragraphs in the built documents.
 #keep_warnings = False
 
+# Extra (Tomas Tinoco 03/06/2016)
+numpydoc_show_class_members = False
+autoclass_content = 'init'
 
 # -- Options for HTML output ----------------------------------------------
 

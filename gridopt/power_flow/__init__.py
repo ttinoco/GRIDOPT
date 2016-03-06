@@ -14,6 +14,14 @@ from augl_opf import AugLOPF
 from method_error import PFmethodError
 
 def new_method(name):
+    """
+    Creates a power flow or optimal power flow
+    method.
+    
+    Parameters
+    ----------
+    name : string
+    """
 
     # Power flow
     if name == 'NRPF':

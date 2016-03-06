@@ -14,7 +14,7 @@ from optalg.opt_solver import OptSolverError,OptCallback,OptTermination,OptSolve
 
 class AugLPF(PFmethod):
     """
-    Augmented Lagrangian-based power flow.
+    Augmented Lagrangian-based power flow method.
     """
         
     parameters = {'weight_vmag':1e0,     # for reg voltage magnitude penalty
