@@ -13,18 +13,21 @@ RUN apt-get install -y cython
 RUN apt-get install -y python-nose
 RUN apt-get install -y libmumps-dev
 RUN apt-get install -y libmumps-seq-dev
+RUN apt-get install -y python-matplotlib
+RUN apt-get install -y x11-apps
+RUN apt-get install -y gpicview
 
 ADD ./packages/pfnet.tar.gz /packages/
 ADD ./packages/optalg.tar.gz /packages/
 
-RUN cd /packages/pfnet; make lib NO_RAW_PARSER=1
+RUN cd /packages/pfnet; rm ./data/*.raw; make lib NO_RAW_PARSER=1
 ENV LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:${PFNET}/lib;/usr/local/lib
 RUN cd /packages/pfnet/python; python setup.py install --no_raw_parser; nosetests -v -s
 
 RUN cd /packages/optalg; python setup.py install
 
 ADD ./ /gridopt/
-RUN cd /gridopt; python setup.py install; nosetests -v -s
+RUN cd /gridopt; rm ./tests/resources/*.raw; python setup.py install; nosetests -v -s
 
 ENTRYPOINT ["gridopt"]
 
@@ -47,5 +50,11 @@ CMD ["--help"]
 #
 # Load image
 # docker load -i gridopt_tag.tar
+#
+# Delete containers
+# docker rm $(docker ps -a -q)
+#
+# Delete images
+# docker rmi $(docker images -q)
 #
 # NOTE for windows: start path with // (e.g. //bin/bash)

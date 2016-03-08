@@ -50,6 +50,12 @@ and enter the application environment with::
 
 In the application environment, GRIDOPT and all its dependencies, *e.g.*, `PFNET <http://ttinoco.github.io/PFNET/python/>`_, are already installed and ready to go. There, one can navidate to the directory ``/gridopt/tests/resources`` and use the test cases available there to do the `PFNET <http://ttinoco.github.io/PFNET/python/>`_ and GRIDOPT tutorials. 
 
+To be able to display graphics within the application environment, the following command can be run instead::
+
+  > docker run -i -t --entrypoint=/bin/bash -e DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix:ro gridopt
+
+Then, on the host machine the command ``xhost +`` can be used to enable access to your host machine's display and then ``xhost -`` to disable it after usage. 
+
 .. _start_example:
 
 Example
