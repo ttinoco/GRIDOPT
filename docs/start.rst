@@ -66,7 +66,7 @@ Then, on the host machine the command ``xhost +`` can be used to enable access t
 Graphics in Windows
 -------------------
 
-Displaying graphics on Windows involves a few more steps. First, `Xming <https://sourceforge.net/projects/xming/>`_, an X server for Windows, must be downloaded and installed. Then, the installed application ``XLaunch`` should be executed with the options ``Multiple windows``, ``Display number`` 0, ``Start no client``, and ``Clipboard``. Once this is done, the application environment can be entered using::
+Displaying graphics on Windows involves a few more steps. First, `Xming <https://sourceforge.net/projects/xming/>`_, an X server for Windows, must be downloaded and installed. Then, the installed application ``XLaunch`` should be executed with the options ``Multiple windows``, ``Display number`` 0, ``Start no client``, ``Clipboard`` and ``No Access Control``. Once this is done, the application environment can be entered using::
 
   > docker run -i -t --entrypoint=/bin/bash -e DISPLAY=ip_address_of_your_machine:0 gridopt
 

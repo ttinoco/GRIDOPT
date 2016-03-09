@@ -52,9 +52,9 @@ CMD ["--help"]
 # docker load -i gridopt_tag.tar
 #
 # Delete containers
-# docker rm $(docker ps -a -q)
+# docker rm -f $(docker ps -a -q)
 #
 # Delete images
-# docker rmi $(docker images -q)
+# docker rmi -f $(docker images -q)
 #
 # NOTE for windows: start path with // (e.g. //bin/bash)
