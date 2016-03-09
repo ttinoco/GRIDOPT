@@ -48,13 +48,36 @@ and enter the application environment with::
 
   > docker run -i -t --entrypoint=/bin/bash gridopt
 
-In the application environment, GRIDOPT and all its dependencies, *e.g.*, `PFNET <http://ttinoco.github.io/PFNET/python/>`_, are already installed and ready to go. There, one can navidate to the directory ``/gridopt/tests/resources`` and use the test cases available there to do the `PFNET <http://ttinoco.github.io/PFNET/python/>`_ and GRIDOPT tutorials. 
+In the application environment, GRIDOPT and all its dependencies, *e.g.*, `PFNET <http://ttinoco.github.io/PFNET/python/>`_, are already installed and ready to go. There, one can navidate to the directory ``/gridopt/tests/resources`` and use the test cases available there to do the `PFNET <http://ttinoco.github.io/PFNET/python/>`_ and GRIDOPT tutorials with Python. 
 
-To be able to display graphics within the application environment, the following command can be run instead::
+.. _start_docker_lin:
+
+Graphics in Linux
+-----------------
+
+To display graphics within the application environment, the following command can be run for entering the application environment::
 
   > docker run -i -t --entrypoint=/bin/bash -e DISPLAY -v /tmp/.X11-unix:/tmp/.X11-unix:ro gridopt
 
-Then, on the host machine the command ``xhost +`` can be used to enable access to your host machine's display and then ``xhost -`` to disable it after usage. 
+Then, on the host machine the command ``xhost +`` can be used to enable access to your host machine's display and then ``xhost -`` to disable it after usage. Inside the application environment, the command ``xeyes`` can be used to check whether graphics are working.
+
+.. _start_docker_win:
+
+Graphics in Windows
+-------------------
+
+Displaying graphics on Windows involves a few more steps. First, `Xming <https://sourceforge.net/projects/xming/>`_, an X server for Windows, must be downloaded and installed. Then, the installed application ``XLaunch`` should be executed with the options ``Multiple windows``, ``Display number`` 0, ``Start no client``, and ``Clipboard``. Once this is done, the application environment can be entered using::
+
+  > docker run -i -t --entrypoint=/bin/bash -e DISPLAY=ip_address_of_your_machine:0 gridopt
+
+Again, graphics within the application environment can be tested using the command ``xeyes``.
+
+.. _start_docker_mac:
+
+Graphics in Mac
+---------------
+
+Coming soon.
 
 .. _start_example:
 
