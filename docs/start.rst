@@ -68,9 +68,9 @@ Graphics in Windows
 
 Displaying graphics on Windows involves a few more steps. First, `Xming <https://sourceforge.net/projects/xming/>`_, an X server for Windows, must be downloaded and installed. Then, the installed application ``XLaunch`` should be executed with the options ``Multiple windows``, ``Display number`` 0, ``Start no client``, ``Clipboard`` and ``No Access Control``. Once this is done, the application environment can be entered using::
 
-  > docker run -i -t --entrypoint=/bin/bash -e DISPLAY=ip_address_of_your_machine:0 gridopt
+  > docker run -i -t --entrypoint=/bin/bash -e DISPLAY=ip_address_taken_by_Xming:0 gridopt
 
-Again, graphics within the application environment can be tested using the command ``xeyes``.
+where the IP address taken by Xming can be found in the file ``C:\Users\username\AppData\Local\Temp\Xming.0`` next to ``XdmcpRegisterConnection``. Again, graphics within the application environment can be tested using the command ``xeyes``.
 
 .. _start_docker_mac:
 
