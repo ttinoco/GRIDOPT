@@ -40,7 +40,7 @@ The installation can be tested using `nose <https://nose.readthedocs.org/en/late
 Docker
 ======
 
-If GRIDOPT was obtained as a `Docker <https://www.docker.com/>`_ image, say ``gridopt.tar``, then one needs to first install `Docker Engine <https://docs.docker.com/engine/installation/>`_. Then one can load the image using the command::
+If GRIDOPT was obtained as a `Docker <https://www.docker.com/>`_ image, say `gridopt.tar <https://drive.google.com/file/d/0B8iMq4kjB3lIZFVSbHhRSGs5VUE/view?usp=sharing>`_, then one needs to first install `Docker Engine <https://docs.docker.com/engine/installation/>`_. Then one can load the image using the command::
 
   > docker load -i gridopt.tar
 
