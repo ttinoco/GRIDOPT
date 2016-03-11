@@ -10,7 +10,7 @@ import pfnet
 import numpy as np
 from method_error import *
 from method import PFmethod
-from optalg.lin_solver import LinSolverMUMPS
+from optalg.lin_solver import new_linsolver
 
 class DCPF(PFmethod):
     """
@@ -74,7 +74,7 @@ class DCPF(PFmethod):
         # Solve
         try:
             assert(A.shape[0] == A.shape[1])
-            linsolver = LinSolverMUMPS('unsymmetric')
+            linsolver = new_linsolver('default','unsymmetric')
             linsolver.analyze(A)
             x = linsolver.factorize_and_solve(A,b)
             net.update_properties(x)
