@@ -82,6 +82,9 @@ class DCPF(PFmethod):
         except Exception,e:
             raise PFmethodError_SolverError(self,e)
         finally:
+            
+            # Update net properties
+            net.update_properties(x)
 
             # Get results
             self.set_iterations(1)
@@ -111,6 +114,9 @@ class DCPF(PFmethod):
 
         # Network quantities
         net.set_var_values(x)
+
+        # Network properties
+        net.update_properties()
         
         # Network sensitivities
         net.clear_sensitivities()

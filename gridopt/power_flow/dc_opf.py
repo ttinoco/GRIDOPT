@@ -147,6 +147,9 @@ class DCOPF(PFmethod):
         except OptSolverError,e:
             raise PFmethodError_SolverError(self,e)
         finally:
+
+            # Update net properties
+            net.update_properties(solver.get_primal_variables())
             
             # Get results
             self.set_status(solver.get_status())
@@ -184,6 +187,9 @@ class DCOPF(PFmethod):
 
         # Network quantities
         net.set_var_values(xz[:nx])
+
+        # Network properties
+        net.update_properties()
         
         # Network sensitivities
         net.clear_sensitivities()

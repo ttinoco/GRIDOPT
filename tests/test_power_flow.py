@@ -58,8 +58,12 @@ class TestPowerFlow(unittest.TestCase):
                     results = method.get_results()
 
                     self.assertEqual(results['status'],'solved')
-
+                    
                     method.update_network(net)
+
+                    self.assertLess(np.abs(results['net_properties']['bus_P_mis']-net.bus_P_mis),1e-10)
+                    self.assertLess(np.abs(results['net_properties']['bus_Q_mis']-net.bus_Q_mis),1e-10)
+                    self.assertLess(np.abs(results['net_properties']['gen_P_cost']-net.gen_P_cost),1e-10)
 
                     v_mag_tol = sol_data['v_mag_tol']
                     v_ang_tol = sol_data['v_ang_tol']
@@ -103,10 +107,14 @@ class TestPowerFlow(unittest.TestCase):
                 self.assertEqual(case,INFCASE)
                 self.assertEqual(method.results['status'],'error')
                 
-            method.update_network(net)
-            
             results = method.get_results()
-
+                
+            method.update_network(net)
+           
+            self.assertLess(np.abs(results['net_properties']['bus_P_mis']-net.bus_P_mis),1e-10)
+            self.assertLess(np.abs(results['net_properties']['bus_Q_mis']-net.bus_Q_mis),1e-10)
+            self.assertLess(np.abs(results['net_properties']['gen_P_cost']-net.gen_P_cost),1e-10)
+            
             x = results['primal_variables']
             lam,nu,mu,pi = results['dual_variables']
 

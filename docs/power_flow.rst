@@ -83,7 +83,7 @@ The following example illustrates how to solve a DCOPF problem and extract the o
 
   >>> # generation cost ($/hour)
   >>> print net.gen_P_cost
-  5545.10
+  4810.98
 
 The sensitivity of the optimal generation cost with respect to the power balance equations can be easily extracted from the network buses::
 

@@ -371,6 +371,9 @@ class NRPF(PFmethod):
 
         # Network quantities
         net.set_var_values(x)
+
+        # Network properties
+        net.update_properties()
         
         # Network sensitivities
         net.clear_sensitivities()

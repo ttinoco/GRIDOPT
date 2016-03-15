@@ -21,7 +21,7 @@ class PFmethod:
                         'error_msg': '',                  # solver error message
                         'iterations': 0,                  # solver iterations
                         'primal_variables': np.zeros(0),  # primal variables
-                        'dual_variables': [],             # dual variables
+                        'dual_variables': 4*[None],       # dual variables
                         'net_properties': {},             # network properties
                         'problem': None}                  # PFNET problem
 
