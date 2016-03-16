@@ -1,7 +1,7 @@
 #*****************************************************#
 # This file is part of GRIDOPT.                       #
 #                                                     #
-# Copyright (c) 2015, Tomas Tinoco De Rubira.         #
+# Copyright (c) 2015-2016, Tomas Tinoco De Rubira.    #
 #                                                     #
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
@@ -57,7 +57,7 @@ class TS_DCOPF(StochObj_Problem):
         # Save info
         self.total_load = sum([l.P for l in net.loads])
         self.uncertainty = 100.*sum([g.P_std for g in net.var_generators])/sum([g.P_max for g in net.var_generators]) # % of capacity
-        self.corr_value = net.vargen_corr_value    # correlation value  ([0,1)
+        self.corr_value = net.vargen_corr_value    # correlation value  ([0,1])
         self.corr_radius = net.vargen_corr_radius  # correlation radius (# of branches)
                 
         # Generator limits
@@ -119,16 +119,16 @@ class TS_DCOPF(StochObj_Problem):
         fl_lim.analyze()
         fl_lim.eval(x)
         G = fl_lim.G.copy()
-        hl = fl_lim.hl.copy()
-        hu = fl_lim.hu.copy()
+        hl = fl_lim.l.copy()
+        hu = fl_lim.u.copy()
         assert(np.all(hl < hu))
         
         # Generation cost
         cost = pf.Function(pf.FUNC_TYPE_GEN_COST,1.,net)
         cost.analyze()
         cost.eval(x)
-        H = cost.Hphi + cost.Hphi.T - triu(cost.Hphi) # symmetric
-        g = cost.gphi - H*x
+        H = (cost.Hphi + cost.Hphi.T - triu(cost.Hphi))/net.base_power # symmetric
+        g = cost.gphi/net.base_power - H*x
         
         # Bounds
         l = net.get_var_values(pf.LOWER_LIMITS)
@@ -199,15 +199,16 @@ class TS_DCOPF(StochObj_Problem):
         assert(np.all(cost.Hphi.data > 0))
         assert(norm(self.A.T*np.ones(self.num_bus)) < (1e-10)*np.sqrt(self.num_bus*1.))
         
-    def eval_EQ(self,p,tol=1e-4,samples=500,seed=None,quiet=True):
+    def eval_EQ(self,p,samples=500,seed=None,tol=1e-4,quiet=True):
         """
         Evaluates E[Q(p,r)] and its gradient. 
 
         Parameters
         ----------
         p : generator powers
-        tol : evaluation tolerance
         samples : number of samples
+        seed : integer
+        tol : evaluation tolerance
         quiet : flag
         """
         
@@ -247,27 +248,27 @@ class TS_DCOPF(StochObj_Problem):
                             
         return Q,gQ
 
-    def eval_EQ_parallel(self,p,tol=1e-4,samples=500,quiet=True,num_procs=None):
+    def eval_EQ_parallel(self,p,samples=500,num_procs=None,tol=1e-4,quiet=True):
         """
         Evaluates E[Q(p,r)] and its gradient in parallel. 
 
         Parameters
         ----------
         p : generator powers
-        tol : evaluation tolerance
         samples : number of samples
-        quiet : flag
         num_procs : number of parallel processes
+        tol : evaluation tolerance
+        quiet : flag
         """
     
         if not num_procs:
             num_procs = cpu_count()
         pool = Pool(num_procs)
         num = int(np.ceil(float(samples)/float(num_procs)))
-        results = zip(*pool.map(ApplyFunc,[(self,'eval_EQ',p,tol,num,i,quiet) for i in range(num_procs)],chunksize=1))
+        results = zip(*pool.map(ApplyFunc,[(self,'eval_EQ',p,num,i,tol,quiet) for i in range(num_procs)],chunksize=1))
         pool.terminate()
         pool.join()
-        return map(lambda vals: sum(map(lambda val: num*val/float(num*num_procs),vals)),results)
+        return map(lambda vals: sum(map(lambda val: val/float(num_procs),vals)),results)
         
     def eval_Q(self,p,r,quiet=True,check=False,tol=1e-4,problem=None,return_data=False):
         """
