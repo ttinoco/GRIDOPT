@@ -1,7 +1,7 @@
 #*****************************************************#
 # This file is part of GRIDOPT.                       #
 #                                                     #
-# Copyright (c) 2015, Tomas Tinoco De Rubira.         #
+# Copyright (c) 2015-2016, Tomas Tinoco De Rubira.    #
 #                                                     #
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
@@ -47,7 +47,7 @@ class LShaped(TS_DCOPF_Method):
         problem = self.create_problem(net)
 
         # Initial point
-        p = problem.solve_certainty_equivalent()
+        p,results = problem.solve_approx(quiet=True)
 
         # Scenarios
         scenarios = [problem.sample_w() for i in range(num_sce)]
