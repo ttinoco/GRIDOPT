@@ -54,9 +54,9 @@ class DCOPF(PFmethod):
         # Set up problem
         problem = pfnet.Problem()
         problem.set_network(net)
+        problem.add_constraint(pfnet.CONSTR_TYPE_LBOUND)
         problem.add_constraint(pfnet.CONSTR_TYPE_DCPF)
         problem.add_constraint(pfnet.CONSTR_TYPE_DC_FLOW_LIM)
-        problem.add_constraint(pfnet.CONSTR_TYPE_LBOUND)
         problem.add_function(pfnet.FUNC_TYPE_GEN_COST,1.)
         problem.analyze()
         
