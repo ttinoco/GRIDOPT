@@ -16,6 +16,8 @@ class NRPF(PFmethod):
     """
     Newton-Raphson power flow method.
     """
+
+    name = 'NRPF'
         
     parameters = {'limit_gens':True,  # enforce generator reactive power limits
                   'lock_taps':True,   # lock tap ratios of transformer

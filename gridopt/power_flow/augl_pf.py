@@ -16,6 +16,8 @@ class AugLPF(PFmethod):
     """
     Augmented Lagrangian-based power flow method.
     """
+
+    name = 'AugLPF'
         
     parameters = {'weight_vmag':1e0,     # for reg voltage magnitude penalty
                   'weight_vang':1e-3,    # for angle difference penalty

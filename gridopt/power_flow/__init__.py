@@ -9,9 +9,13 @@
 from nr_pf import NRPF
 from dc_pf import DCPF
 from dc_opf import DCOPF
+from dc_opf_prev import PreventiveDCOPF
 from augl_pf import AugLPF
 from augl_opf import AugLOPF
 from method_error import PFmethodError
+
+methods = [NRPF,DCPF,DCOPF,PreventiveDCOPF,
+           AugLPF,AugLOPF]
 
 def new_method(name):
     """
@@ -22,23 +26,10 @@ def new_method(name):
     ----------
     name : string
     """
-
-    # Power flow
-    if name == 'NRPF':
-        return NRPF()
-    elif name == 'DCPF':
-        return DCPF()
-    elif name == 'AugLPF':
-        return AugLPF()
-
-    # Optimal power flow
-    elif name == 'DCOPF':
-        return DCOPF()
-    elif name == 'AugLOPF':
-        return AugLOPF()
-
-    # invalid
-    else:
+    
+    try:
+        return methods[map(lambda x: x.name,methods).index(name)]()
+    except ValueError:
         raise ValueError('invalid PF method name')
         
     

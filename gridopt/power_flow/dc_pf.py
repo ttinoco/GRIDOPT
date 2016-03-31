@@ -16,6 +16,8 @@ class DCPF(PFmethod):
     """
     DC power flow method.
     """
+
+    name = 'DCPF'
     
     parameters = {'quiet': False}
     

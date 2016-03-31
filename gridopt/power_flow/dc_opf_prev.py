@@ -13,19 +13,19 @@ from method import PFmethod
 from scipy.sparse import triu,coo_matrix,bmat,eye
 from optalg.opt_solver import OptSolverError,OptSolverIQP,QuadProblem
 
-class DCOPF(PFmethod):
+class PreventiveDCOPF(PFmethod):
     """
-    DC optimal power flow method.
+    Preventive DC optimal power flow method.
     """
 
-    name = 'DCOPF'
-        
+    name = 'PreventiveDCOPF'
+
     parameters = {'quiet' : False}
                                     
     def __init__(self):
 
         PFmethod.__init__(self)
-        self.parameters = DCOPF.parameters.copy()
+        self.parameters = PreventiveDCOPF.parameters.copy()
         self.parameters.update(OptSolverIQP.parameters)
 
     def create_problem(self,net):
@@ -65,37 +65,62 @@ class DCOPF(PFmethod):
         # Return
         return problem
             
-    def solve(self,net):
+    def solve(self,net,contingencies):
         
         # Parameters
         params = self.parameters
 
-        # Problem
+        # Problem (base)
         problem = self.create_problem(net)
-       
+        
+        # Projections
+        Pw = net.get_var_projection(pfnet.OBJ_BUS,pfnet.BUS_VAR_VANG)
+        Pp = net.get_var_projection(pfnet.OBJ_GEN,pfnet.GEN_VAR_P)
+      
         # Construct QP
         x = problem.get_init_point()
-        problem.eval(x)
+        p = Pp*x
+
         c_flows = problem.find_constraint(pfnet.CONSTR_TYPE_DC_FLOW_LIM)
         c_bounds = problem.find_constraint(pfnet.CONSTR_TYPE_LBOUND)
+       
+        problem.eval(x)
+ 
+        Hp = Pp*(problem.Hphi + problem.Hphi.T - triu(problem.Hphi))*Pp.T
+        gp = Pp*problem.gphi - Hp*p
         
-        Hx = problem.Hphi + problem.Hphi.T - triu(problem.Hphi)
-        gx = problem.gphi - Hx*x
-        
-        Ax = problem.A
-        bx = problem.b
+        G = problem.A*Pp.T
+        W = -problem.A*Pw.T
+        b = problem.b
         
         lz = c_flows.l
         uz = c_flows.u
-        Gz = c_flows.G
+        J = c_flows.G
         
-        lx = c_bounds.l
-        ux = c_bounds.u
-        Gx = c_bounds.G
+        lw = Pw*c_bounds.l
+        uw = Pw*c_bounds.u
+        Iw = c_bounds.G*Pw.T
 
-        nx = net.num_vars
+        lp = Pp*c_bounds.l
+        up = Pp*c_bounds.u
+        Ip = c_bounds.G*Pp.T
+
+        ng = Pp.shape[0]
+        nw = Pw.shape[0]
         nz = net.num_branches
-        n = nx+nz
+
+        GWJ_list = [(G,W,J)]
+        u = np.hstack((up,uw,uz))
+        l = np.hstack((lp,lw,lz))
+
+        for cont in contingencies:
+
+            cont.apply()
+            cont.clear()
+            
+        
+        # I AM HERE
+        return
 
         Iz = eye(nz)
         Oz = coo_matrix((nz,nz))

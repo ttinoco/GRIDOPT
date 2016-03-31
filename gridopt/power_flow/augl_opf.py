@@ -17,6 +17,8 @@ class AugLOPF(PFmethod):
     Augmented Lagrangian-based optimal power flow method.
     """
  
+    name = 'AugLOPF'
+
     parameters = {'weight_cost':1e-2,   # for generation cost
                   'weight_limit':1e-2,  # for soft limits
                   'weight_reg':1e-5,    # for regularization

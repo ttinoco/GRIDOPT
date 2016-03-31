@@ -140,6 +140,25 @@ class TestPowerFlow(unittest.TestCase):
                     self.assertEqual(gen.sens_P_u_bound,mu[gen.index_P])
                     self.assertEqual(gen.sens_P_l_bound,pi[gen.index_P])
 
+    def test_DCOPF_prev(self):
+        
+        net = self.net
+        method = gopt.power_flow.new_method('PreventiveDCOPF')
+
+        for case in utils.test_cases:
+        
+            net.load(case)
+            
+            cont = pf.Contingency()
+            cont.add_gen_outage(net.get_gen(0))
+
+            method.set_parameters({'quiet':True})
+
+            try:
+                method.solve(net,[cont])
+            except Exception:
+                raise
+
     def tearDown(self):
         
         pass
