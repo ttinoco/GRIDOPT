@@ -54,7 +54,7 @@ class AugLOPF(PFmethod):
         # Generator active power
         net.set_flags(pfnet.OBJ_GEN,
                       pfnet.FLAG_VARS|pfnet.FLAG_BOUNDED,
-                      pfnet.GEN_PROP_ANY,
+                      pfnet.GEN_PROP_NOT_OUT,
                       pfnet.GEN_VAR_P)
 
         # Generator reactive power
