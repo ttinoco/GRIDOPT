@@ -182,8 +182,8 @@ class TestPowerFlow(unittest.TestCase):
         
             net.load(case)
 
-            method.set_parameters({'quiet':True})
-            method_ref.set_parameters({'quiet':True})
+            method.set_parameters({'quiet':True, 'tol':1e-5})
+            method_ref.set_parameters({'quiet':True,'tol':1e-5})
 
             # No contingencies (compare with DCOPF)
             try:
@@ -224,6 +224,30 @@ class TestPowerFlow(unittest.TestCase):
                 self.assertTrue(nu_ref is None)
 
             # Multiple base cases
+            try:
+                method.solve(net,[pf.Contingency(),pf.Contingency()])
+                self.assertEqual(method.results['status'],'solved')
+            except gopt.power_flow.PFmethodError:
+                if net.get_num_P_adjust_gens() > 1:
+                    self.assertEqual(case,INFCASE)
+                    self.assertEqual(method.results['status'],'error')
+                else:
+                    pass
+
+            if case != INFCASE and net.get_num_P_adjust_gens() > 1:
+                
+                results = method.get_results()
+            
+                self.assertEqual(results['status'],results_ref['status'])
+                self.assertEqual(results['error_msg'],results_ref['error_msg'])
+                nprop = results['net_properties']
+                nprop_ref = results_ref['net_properties']
+                self.assertTrue(set(nprop.keys()) == set(nprop_ref.keys()))
+                for k in nprop.keys():
+                    self.assertLess(100*np.abs(nprop[k]-nprop_ref[k])/np.maximum(np.abs(nprop_ref[k]),1e-5),0.1)
+                x = results['primal_variables']
+                x_ref = results_ref['primal_variables']
+                self.assertLess(np.linalg.norm(x-x_ref,np.inf),1e-3)
 
             # Single gen contingency
             """
