@@ -47,9 +47,10 @@ class DCOPF(PFmethod):
                       pfnet.GEN_VAR_P)
 
         try:
-            assert(net.num_bounded == net.get_num_P_adjust_gens())
-            assert(net.num_vars == (net.num_buses-net.get_num_slack_buses()+
-                                    net.get_num_P_adjust_gens()))
+            num_gvar =  len([g for g in net.generators if 
+                             (not g.is_on_outage()) and g.is_P_adjustable()])
+            assert(net.num_bounded == num_gvar)
+            assert(net.num_vars == (net.num_buses-net.get_num_slack_buses()+num_gvar))
         except AssertionError:
             raise PFmethodError_BadProblem(self)
             

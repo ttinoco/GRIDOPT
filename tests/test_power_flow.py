@@ -140,6 +140,18 @@ class TestPowerFlow(unittest.TestCase):
                     self.assertEqual(gen.sens_P_u_bound,mu[gen.index_P])
                     self.assertEqual(gen.sens_P_l_bound,pi[gen.index_P])
 
+            # gen outage 
+            if net.get_num_P_adjust_gens() > 1:
+                cont = pf.Contingency(gens=[net.get_gen(0)])
+                cont.apply()
+                try:
+                    method.solve(net)
+                    self.assertEqual(method.results['status'],'solved')
+                except gopt.power_flow.PFmethodError:
+                    self.assertEqual(case,INFCASE)
+                    self.assertEqual(method.results['status'],'error')
+                cont.clear()
+
     def test_DCOPF_prev(self):
         
         net = self.net
@@ -158,6 +170,26 @@ class TestPowerFlow(unittest.TestCase):
                 method.solve(net,[cont])
             except Exception:
                 raise
+
+    def test_AugLOPF(self):
+        
+        net = self.net
+        method = gopt.power_flow.new_method('AugLOPF')
+
+        for case in utils.test_cases:
+        
+            net.load(case)
+            
+            method.set_parameters({'quiet':True})
+
+            method.solve(net)
+            self.assertEqual(method.results['status'],'solved')
+
+            # gen outage
+            cont = pf.Contingency([net.get_gen(0)])
+            cont.apply()
+            problem = method.create_problem(net)
+            cont.clear()
 
     def tearDown(self):
         

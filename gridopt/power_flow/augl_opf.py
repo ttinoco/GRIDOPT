@@ -20,7 +20,7 @@ class AugLOPF(PFmethod):
     name = 'AugLOPF'
 
     parameters = {'weight_cost':1e-2,   # for generation cost
-                  'weight_limit':1e-2,  # for soft limits
+                  'weight_limit':1e2,   # for soft limits
                   'weight_reg':1e-5,    # for regularization
                   'vmin_thresh':0.1}    # threshold for vmin
                    
@@ -67,9 +67,10 @@ class AugLOPF(PFmethod):
 
         try:
             assert(net.num_vars == (2*net.num_buses-net.get_num_slack_buses() +
-                                    net.num_gens + 
+                                    net.get_num_gens_not_on_outage() + 
                                     net.get_num_reg_gens()))
-            assert(net.num_bounded == net.num_gens + net.get_num_reg_gens())
+            assert(net.num_bounded == (net.get_num_gens_not_on_outage() + 
+                                       net.get_num_reg_gens()))
         except AssertionError:
             raise PFmethodError_BadProblem(self)
                                     
