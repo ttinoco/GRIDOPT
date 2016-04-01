@@ -250,19 +250,29 @@ class TestPowerFlow(unittest.TestCase):
                 self.assertLess(np.linalg.norm(x-x_ref,np.inf),1e-3)
 
             # Single gen contingency
-            """
-            cont = pf.Contingency()
-            cont.add_gen_outage(net.get_gen(0))
-            method.set_parameters({'quiet':True})
-            try:
-                method.solve(net,[cont])
-            except Exception:
-                raise
-            """
+            if net.get_num_P_adjust_gens() > 1:
+                gen = net.get_gen(np.argmin([g.P_max-g.P_min for g in net.generators]))
+                contG = pf.Contingency(gens=[gen])
+                method.set_parameters({'quiet':True, 'tol':1e-4, 'flow_lim_mul': 1.})
+                try:
+                    method.solve(net,[contG])
+                    self.assertEqual(method_ref.results['status'],'solved')
+                except gopt.power_flow.PFmethodError:
+                    self.assertEqual(case,INFCASE)
+                    self.assertEqual(method_ref.results['status'],'error')
 
             # Single branch contingency
-            
-
+            branch = net.get_branch(np.argmax([np.minimum(br.bus_from.degree,br.bus_to.degree) for br in net.branches]))
+            if branch.bus_from.degree > 3 and branch.bus_to.degree > 3:
+                contB = pf.Contingency(branches=[branch])
+                method.set_parameters({'quiet':True, 'tol':1e-4, 'flow_lim_mul': 1.})
+                try:
+                    method.solve(net,[contB])
+                    self.assertEqual(method_ref.results['status'],'solved')
+                except gopt.power_flow.PFmethodError:
+                    self.assertEqual(case,INFCASE)
+                    self.assertEqual(method_ref.results['status'],'error')
+                    
     def tearDown(self):
         
         pass

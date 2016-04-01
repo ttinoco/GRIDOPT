@@ -20,7 +20,8 @@ class PreventiveDCOPF(PFmethod):
 
     name = 'PreventiveDCOPF'
 
-    parameters = {'quiet' : False}
+    parameters = {'quiet' : False,
+                  'flow_lim_mul': 1.0}
                                     
     def __init__(self):
 
@@ -70,6 +71,7 @@ class PreventiveDCOPF(PFmethod):
         
         # Parameters
         params = self.parameters
+        flow_lim_mul = params['flow_lim_mul']
 
         # Problem (base)
         problem = self.create_problem(net)
@@ -129,6 +131,11 @@ class PreventiveDCOPF(PFmethod):
             lz = c_flows.l.copy()
             uz = c_flows.u.copy()
             J = c_flows.G*Pw.T
+
+            # relax
+            dz = (flow_lim_mul-1.)*(uz-lz)/2.
+            lz -= dz
+            uz += dz
             
             GWJ_list.append((G,W,J))
             u_list += [uw,uz]
