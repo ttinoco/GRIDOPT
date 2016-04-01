@@ -50,7 +50,7 @@ class DCOPF(PFmethod):
             num_gvar =  len([g for g in net.generators if 
                              (not g.is_on_outage()) and g.is_P_adjustable()])
             assert(net.num_bounded == num_gvar)
-            assert(net.num_vars == (net.num_buses-net.get_num_slack_buses()+num_gvar))
+            assert(net.num_vars == net.num_buses-net.get_num_slack_buses()+num_gvar)
         except AssertionError:
             raise PFmethodError_BadProblem(self)
             
@@ -95,7 +95,7 @@ class DCOPF(PFmethod):
         Gx = c_bounds.G
 
         nx = net.num_vars
-        nz = net.num_branches
+        nz = net.get_num_branches_not_on_outage()
         n = nx+nz
 
         Iz = eye(nz)
@@ -126,7 +126,7 @@ class DCOPF(PFmethod):
             assert(Gx.shape == (nx,nx))
             assert(np.all(Gx.row == Gx.col))
             assert(np.all(Gx.data == np.ones(nx)))
-            assert(Gz.shape == (net.num_branches,nx))
+            assert(Gz.shape == (net.get_num_branches_not_on_outage(),nx))
             assert(l.shape == (n,))
             assert(u.shape == (n,))
             assert(np.all(l < u))
@@ -170,7 +170,7 @@ class DCOPF(PFmethod):
         xz = self.results['primal_variables']
         lam,nu,mu,pi = self.results['dual_variables']
         nx = net.num_vars
-        nz = net.num_branches
+        nz = net.get_num_branches_not_on_outage()
         n = nx+nz
         
         # No problem
@@ -178,12 +178,11 @@ class DCOPF(PFmethod):
             raise PFmethodError_NoProblem(self)
  
         # Checks
-        assert(xz.shape == (nx+nz,))
         assert(problem.x.shape == (nx,))
-        assert(net.num_vars == nx)
-        assert(problem.A.shape[0] == net.num_buses)
-        assert(problem.G.shape[0] == net.num_branches+nx)
-        assert(lam.shape == (net.num_buses+net.num_branches,))
+        assert(problem.A.shape == (net.num_buses,nx))
+        assert(problem.G.shape == (nx+nz,nx))
+        assert(xz.shape == (nx+nz,))
+        assert(lam.shape == (net.num_buses+nz,))
         assert(mu.shape == (n,))
         assert(pi.shape == (n,))
         assert(nu is None)

@@ -89,6 +89,26 @@ class TestPowerFlow(unittest.TestCase):
                     self.assertLessEqual(np.max(v_mag_error),v_mag_tol)
                     self.assertLessEqual(np.max(v_ang_error),v_ang_tol)
 
+    def test_AugLOPF(self):
+        
+        net = self.net
+        method = gopt.power_flow.new_method('AugLOPF')
+
+        for case in utils.test_cases:
+        
+            net.load(case)
+            
+            method.set_parameters({'quiet':True})
+
+            method.solve(net)
+            self.assertEqual(method.results['status'],'solved')
+            
+            # gen outage
+            cont = pf.Contingency([net.get_gen(0)])
+            cont.apply()
+            problem = method.create_problem(net)
+            cont.clear()
+
     def test_DCOPF(self):
         
         net = self.net
@@ -97,7 +117,7 @@ class TestPowerFlow(unittest.TestCase):
         for case in utils.test_cases:
         
             net.load(case)
-
+            
             method.set_parameters({'quiet':True})
 
             try:
@@ -156,40 +176,68 @@ class TestPowerFlow(unittest.TestCase):
         
         net = self.net
         method = gopt.power_flow.new_method('PreventiveDCOPF')
+        method_ref = gopt.power_flow.new_method('DCOPF')
 
         for case in utils.test_cases:
         
             net.load(case)
-            
-            cont = pf.Contingency()
-            cont.add_gen_outage(net.get_gen(0))
 
             method.set_parameters({'quiet':True})
+            method_ref.set_parameters({'quiet':True})
 
+            # No contingencies (compare with DCOPF)
+            try:
+                method.solve(net,[])
+                self.assertEqual(method.results['status'],'solved')
+            except gopt.power_flow.PFmethodError:
+                self.assertEqual(case,INFCASE)
+                self.assertEqual(method.results['status'],'error')
+            try:
+                method_ref.solve(net)
+                self.assertEqual(method_ref.results['status'],'solved')
+            except gopt.power_flow.PFmethodError:
+                self.assertEqual(case,INFCASE)
+                self.assertEqual(method_ref.results['status'],'error')
+
+            if case != INFCASE:
+                
+                results = method.get_results()
+                results_ref = method_ref.get_results()
+            
+                self.assertEqual(results['status'],results_ref['status'])
+                self.assertEqual(results['error_msg'],results_ref['error_msg'])
+                self.assertEqual(results['iterations'],results_ref['iterations'])
+                nprop = results['net_properties']
+                nprop_ref = results_ref['net_properties']
+                self.assertTrue(set(nprop.keys()) == set(nprop_ref.keys()))
+                for k in nprop.keys():
+                    self.assertLess(np.abs(nprop[k]-nprop_ref[k]),1e-5)
+                x = results['primal_variables']
+                x_ref = results_ref['primal_variables']
+                self.assertLess(np.linalg.norm(x-x_ref,np.inf),1e-5)
+                lam,nu,mu,pi = results['dual_variables']
+                lam_ref,nu_ref,mu_ref,pi_ref = results_ref['dual_variables']
+                self.assertLess(np.linalg.norm(lam-lam_ref,np.inf),1e-5)
+                self.assertLess(np.linalg.norm(mu-mu_ref,np.inf),1e-5)
+                self.assertLess(np.linalg.norm(pi-pi_ref,np.inf),1e-5)
+                self.assertTrue(nu is None)
+                self.assertTrue(nu_ref is None)
+
+            # Multiple base cases
+
+            # Single gen contingency
+            """
+            cont = pf.Contingency()
+            cont.add_gen_outage(net.get_gen(0))
+            method.set_parameters({'quiet':True})
             try:
                 method.solve(net,[cont])
             except Exception:
                 raise
+            """
 
-    def test_AugLOPF(self):
-        
-        net = self.net
-        method = gopt.power_flow.new_method('AugLOPF')
-
-        for case in utils.test_cases:
-        
-            net.load(case)
+            # Single branch contingency
             
-            method.set_parameters({'quiet':True})
-
-            method.solve(net)
-            self.assertEqual(method.results['status'],'solved')
-
-            # gen outage
-            cont = pf.Contingency([net.get_gen(0)])
-            cont.apply()
-            problem = method.create_problem(net)
-            cont.clear()
 
     def tearDown(self):
         
