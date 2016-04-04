@@ -135,35 +135,36 @@ class TestPowerFlow(unittest.TestCase):
             self.assertLess(np.abs(results['net_properties']['bus_Q_mis']-net.bus_Q_mis),1e-10)
             self.assertLess(np.abs(results['net_properties']['gen_P_cost']-net.gen_P_cost),1e-10)
 
-            gen_P_cost = net.gen_P_cost
+            gen_P_cost0 = net.gen_P_cost
+            load_P_util0 = net.load_P_util
             
             x = results['primal_variables']
-            lam,nu,mu,pi = results['dual_variables']
+            lam0,nu0,mu0,pi0 = results['dual_variables']
 
             self.assertTupleEqual(x.shape,(net.num_branches+
                                            net.num_buses-
                                            net.get_num_slack_buses()+
                                            net.get_num_P_adjust_gens(),))
             self.assertTupleEqual(x.shape,(net.num_vars+net.num_branches,))
-            self.assertTupleEqual(lam.shape,(net.num_buses+net.num_branches,))
-            self.assertTrue(nu is None)
-            self.assertTupleEqual(mu.shape,x.shape)
-            self.assertTupleEqual(pi.shape,x.shape)
+            self.assertTupleEqual(lam0.shape,(net.num_buses+net.num_branches,))
+            self.assertTrue(nu0 is None)
+            self.assertTupleEqual(mu0.shape,x.shape)
+            self.assertTupleEqual(pi0.shape,x.shape)
 
             xx = x[:net.num_vars]
             for bus in net.buses:
                 if not bus.is_slack():
                     self.assertEqual(bus.v_ang,xx[bus.index_v_ang])
-                    self.assertEqual(bus.sens_v_ang_u_bound,mu[bus.index_v_ang])
-                    self.assertEqual(bus.sens_v_ang_l_bound,pi[bus.index_v_ang])
+                    self.assertEqual(bus.sens_v_ang_u_bound,mu0[bus.index_v_ang])
+                    self.assertEqual(bus.sens_v_ang_l_bound,pi0[bus.index_v_ang])
             for gen in net.generators:
                 if gen.is_P_adjustable():
                     self.assertEqual(gen.P,xx[gen.index_P])
-                    self.assertEqual(gen.sens_P_u_bound,mu[gen.index_P])
-                    self.assertEqual(gen.sens_P_l_bound,pi[gen.index_P])
+                    self.assertEqual(gen.sens_P_u_bound,mu0[gen.index_P])
+                    self.assertEqual(gen.sens_P_l_bound,pi0[gen.index_P])
             for branch in net.branches:
-                self.assertEqual(branch.sens_P_u_bound,mu[net.num_vars+branch.index])
-                self.assertEqual(branch.sens_P_l_bound,pi[net.num_vars+branch.index])
+                self.assertEqual(branch.sens_P_u_bound,mu0[net.num_vars+branch.index])
+                self.assertEqual(branch.sens_P_l_bound,pi0[net.num_vars+branch.index])
 
             # gen outage 
             if net.get_num_P_adjust_gens() > 1:
@@ -183,11 +184,66 @@ class TestPowerFlow(unittest.TestCase):
             self.assertEqual(method.results['status'],'solved')
             results = method.get_results()
             method.update_network(net)
-            self.assertLessEqual(net.gen_P_cost,gen_P_cost+1e-8)
-            lam,nu,mu,pi = results['dual_variables']
-            self.assertLess(np.linalg.norm(mu[net.num_vars:],np.inf),1e-8)
-            self.assertLess(np.linalg.norm(pi[net.num_vars:],np.inf),1e-8)
-            
+            gen_P_cost1 = net.gen_P_cost
+            load_P_util1 = net.load_P_util
+            lam1,nu1,mu1,pi1 = results['dual_variables']
+            if ((np.linalg.norm(mu0[net.num_vars:],np.inf) > 1e-3 or 
+                np.linalg.norm(pi0[net.num_vars:],np.inf) > 1e-3) and case != INFCASE):
+                self.assertLessEqual(gen_P_cost1,gen_P_cost0)
+            self.assertLess(np.linalg.norm(mu1[net.num_vars:],np.inf),1e-8)
+            self.assertLess(np.linalg.norm(pi1[net.num_vars:],np.inf),1e-8)
+           
+            # elastic loads
+            for load in net.loads:
+                load.P_max = load.P+1.
+                load.P_min = load.P-1.
+            for load in net.loads:
+                self.assertFalse(load.has_flags(pf.FLAG_VARS,pf.LOAD_VAR_P))
+                self.assertFalse(load.has_flags(pf.FLAG_BOUNDED,pf.LOAD_VAR_P))
+            method.solve(net)
+            for load in net.loads:
+                self.assertTrue(load.has_flags(pf.FLAG_VARS,pf.LOAD_VAR_P))
+                self.assertTrue(load.has_flags(pf.FLAG_BOUNDED,pf.LOAD_VAR_P))
+                self.assertEqual(method.results['status'],'solved')
+            results = method.get_results()
+            method.update_network(net)
+            self.assertLess(net.gen_P_cost-net.load_P_util,
+                            gen_P_cost1-load_P_util1)
+
+            x = results['primal_variables']
+            lam2,nu2,mu2,pi2 = results['dual_variables']
+
+            self.assertTupleEqual(x.shape,(net.num_branches+
+                                           net.get_num_P_adjust_loads()+
+                                           net.num_buses-
+                                           net.get_num_slack_buses()+
+                                           net.get_num_P_adjust_gens(),))
+            self.assertTupleEqual(x.shape,(net.num_vars+net.num_branches,))
+            self.assertTupleEqual(lam2.shape,(net.num_buses+net.num_branches,))
+            self.assertTrue(nu2 is None)
+            self.assertTupleEqual(mu2.shape,x.shape)
+            self.assertTupleEqual(pi2.shape,x.shape)
+
+            xx = x[:net.num_vars]
+            for bus in net.buses:
+                if not bus.is_slack():
+                    self.assertEqual(bus.v_ang,xx[bus.index_v_ang])
+                    self.assertEqual(bus.sens_v_ang_u_bound,mu2[bus.index_v_ang])
+                    self.assertEqual(bus.sens_v_ang_l_bound,pi2[bus.index_v_ang])
+            for gen in net.generators:
+                if gen.is_P_adjustable():
+                    self.assertEqual(gen.P,xx[gen.index_P])
+                    self.assertEqual(gen.sens_P_u_bound,mu2[gen.index_P])
+                    self.assertEqual(gen.sens_P_l_bound,pi2[gen.index_P])
+            for load in net.loads:
+                if load.is_P_adjustable():
+                    self.assertEqual(load.P,xx[load.index_P])
+                    self.assertEqual(load.sens_P_u_bound,mu2[load.index_P])
+                    self.assertEqual(load.sens_P_l_bound,pi2[load.index_P])
+            for branch in net.branches:
+                self.assertEqual(branch.sens_P_u_bound,mu2[net.num_vars+branch.index])
+                self.assertEqual(branch.sens_P_l_bound,pi2[net.num_vars+branch.index])
+ 
     @unittest.skip("")
     def test_DCOPF_prev(self):
         

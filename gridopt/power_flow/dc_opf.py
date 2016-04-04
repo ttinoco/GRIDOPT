@@ -48,12 +48,17 @@ class DCOPF(PFmethod):
                       pfnet.FLAG_VARS|pfnet.FLAG_BOUNDED,
                       pfnet.GEN_PROP_P_ADJUST|pfnet.GEN_PROP_NOT_OUT,
                       pfnet.GEN_VAR_P)
+        net.set_flags(pfnet.OBJ_LOAD,
+                      pfnet.FLAG_VARS|pfnet.FLAG_BOUNDED,
+                      pfnet.LOAD_PROP_P_ADJUST,
+                      pfnet.LOAD_VAR_P)
 
         try:
             num_gvar =  len([g for g in net.generators if 
                              (not g.is_on_outage()) and g.is_P_adjustable()])
-            assert(net.num_bounded == num_gvar)
-            assert(net.num_vars == net.num_buses-net.get_num_slack_buses()+num_gvar)
+            assert(net.num_bounded == num_gvar + net.get_num_P_adjust_loads())
+            assert(net.num_vars == (net.num_buses-net.get_num_slack_buses()+
+                                    num_gvar+net.get_num_P_adjust_loads()))
         except AssertionError:
             raise PFmethodError_BadProblem(self)
             
@@ -64,6 +69,7 @@ class DCOPF(PFmethod):
         problem.add_constraint(pfnet.CONSTR_TYPE_DCPF)
         problem.add_constraint(pfnet.CONSTR_TYPE_DC_FLOW_LIM)
         problem.add_function(pfnet.FUNC_TYPE_GEN_COST,1.)
+        problem.add_function(pfnet.FUNC_TYPE_LOAD_UTIL,-1.)
         problem.analyze()
         
         # Return
@@ -147,7 +153,7 @@ class DCOPF(PFmethod):
             assert(l.shape == (n,))
             assert(u.shape == (n,))
             assert(np.all(l < u))
-            assert(np.abs(problem.phi-net.base_power*(0.5*np.dot(y,H*y)+np.dot(g,y))) < 1e-8)
+            assert(np.abs(problem.phi-net.base_power*(0.5*np.dot(y,H*y)+np.dot(g,y))) < 1e-7)
             assert(H.shape == (n,n))
             assert(A.shape == (net.num_buses+nz,n))
         except AssertionError:
