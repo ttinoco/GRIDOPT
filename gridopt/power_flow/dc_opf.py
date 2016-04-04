@@ -20,7 +20,10 @@ class DCOPF(PFmethod):
 
     name = 'DCOPF'
         
-    parameters = {'quiet' : False}
+    parameters = {'quiet' : False,
+                  'thermal_limits': True,
+                  'thermal_factor': 1.,
+                  'inf_flow': 1e4}
                                     
     def __init__(self):
 
@@ -70,6 +73,13 @@ class DCOPF(PFmethod):
         
         # Parameters
         params = self.parameters
+        thermal_limits = params['thermal_limits']
+        thermal_factor = params['thermal_factor']
+        inf_flow = params['inf_flow']
+
+        # Check parameters
+        if thermal_factor < 0.:
+            raise PFmethodError_BadParam(self,'thermal_factor')
 
         # Problem
         problem = self.create_problem(net)
@@ -89,7 +99,14 @@ class DCOPF(PFmethod):
         lz = c_flows.l
         uz = c_flows.u
         Gz = c_flows.G
-        
+
+        # Flow limit expansion
+        dz = (thermal_factor-1.)*(uz-lz)/2.
+        if not thermal_limits:
+            dz += inf_flow
+        lz -= dz
+        uz += dz
+  
         lx = c_bounds.l
         ux = c_bounds.u
         Gx = c_bounds.G
@@ -130,8 +147,6 @@ class DCOPF(PFmethod):
             assert(l.shape == (n,))
             assert(u.shape == (n,))
             assert(np.all(l < u))
-            assert(np.linalg.norm(problem.l-l,np.inf) < 1e-10)
-            assert(np.linalg.norm(problem.u-u,np.inf) < 1e-10)
             assert(np.abs(problem.phi-net.base_power*(0.5*np.dot(y,H*y)+np.dot(g,y))) < 1e-8)
             assert(H.shape == (n,n))
             assert(A.shape == (net.num_buses+nz,n))

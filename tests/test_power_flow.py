@@ -118,7 +118,7 @@ class TestPowerFlow(unittest.TestCase):
         
             net.load(case)
             
-            method.set_parameters({'quiet':True})
+            method.set_parameters({'quiet':True, 'thermal_factor': 0.93})
 
             try:
                 method.solve(net)
@@ -134,6 +134,8 @@ class TestPowerFlow(unittest.TestCase):
             self.assertLess(np.abs(results['net_properties']['bus_P_mis']-net.bus_P_mis),1e-10)
             self.assertLess(np.abs(results['net_properties']['bus_Q_mis']-net.bus_Q_mis),1e-10)
             self.assertLess(np.abs(results['net_properties']['gen_P_cost']-net.gen_P_cost),1e-10)
+
+            gen_P_cost = net.gen_P_cost
             
             x = results['primal_variables']
             lam,nu,mu,pi = results['dual_variables']
@@ -146,7 +148,7 @@ class TestPowerFlow(unittest.TestCase):
             self.assertTupleEqual(lam.shape,(net.num_buses+net.num_branches,))
             self.assertTrue(nu is None)
             self.assertTupleEqual(mu.shape,x.shape)
-            self.assertTupleEqual(pi.shape,x.shape)            
+            self.assertTupleEqual(pi.shape,x.shape)
 
             xx = x[:net.num_vars]
             for bus in net.buses:
@@ -159,6 +161,9 @@ class TestPowerFlow(unittest.TestCase):
                     self.assertEqual(gen.P,xx[gen.index_P])
                     self.assertEqual(gen.sens_P_u_bound,mu[gen.index_P])
                     self.assertEqual(gen.sens_P_l_bound,pi[gen.index_P])
+            for branch in net.branches:
+                self.assertEqual(branch.sens_P_u_bound,mu[net.num_vars+branch.index])
+                self.assertEqual(branch.sens_P_l_bound,pi[net.num_vars+branch.index])
 
             # gen outage 
             if net.get_num_P_adjust_gens() > 1:
@@ -172,6 +177,18 @@ class TestPowerFlow(unittest.TestCase):
                     self.assertEqual(method.results['status'],'error')
                 cont.clear()
 
+            # no thermal limits
+            method.set_parameters({'thermal_limits':False})
+            method.solve(net)
+            self.assertEqual(method.results['status'],'solved')
+            results = method.get_results()
+            method.update_network(net)
+            self.assertLessEqual(net.gen_P_cost,gen_P_cost+1e-8)
+            lam,nu,mu,pi = results['dual_variables']
+            self.assertLess(np.linalg.norm(mu[net.num_vars:],np.inf),1e-8)
+            self.assertLess(np.linalg.norm(pi[net.num_vars:],np.inf),1e-8)
+            
+    @unittest.skip("")
     def test_DCOPF_prev(self):
         
         net = self.net
