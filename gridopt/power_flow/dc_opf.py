@@ -173,7 +173,7 @@ class DCOPF(PFmethod):
         finally:
 
             # Update net properties
-            net.update_properties(solver.get_primal_variables())
+            net.update_properties(solver.get_primal_variables()[:net.num_vars])
             
             # Get results
             self.set_status(solver.get_status())

@@ -10,7 +10,7 @@ import pfnet
 import numpy as np
 from method_error import *
 from method import PFmethod
-from scipy.sparse import triu,coo_matrix,bmat,eye
+from scipy.sparse import triu,coo_matrix,bmat,eye,block_diag
 from optalg.opt_solver import OptSolverError,OptSolverIQP,QuadProblem
 
 class DCOPF_MP(PFmethod):
@@ -102,9 +102,11 @@ class DCOPF_MP(PFmethod):
             
             # Modify network
             net_modifier(net,t)
-
+            
+            # Create problem
             problem = self.create_problem(net)
 
+            # Express in standard form
             x = problem.get_init_point()
             problem.eval(x)
             c_flows = problem.find_constraint(pfnet.CONSTR_TYPE_DC_FLOW_LIM)
@@ -120,7 +122,6 @@ class DCOPF_MP(PFmethod):
             uz = c_flows.u
             Gz = c_flows.G
             
-            # Flow limit expansion
             dz = (thermal_factor-1.)*(uz-lz)/2.
             if not thermal_limits:
                 dz += inf_flow
@@ -150,15 +151,12 @@ class DCOPF_MP(PFmethod):
             
             y = np.hstack((x,oz))
             
-            # Check flow limits
             if not np.all(lz < uz):
                 raise PFmethodError_BadFlowLimits(self)
                 
-            # Check variable limits
             if not np.all(lx < ux):
                 raise PFmethodError_BadVarLimits(self)
 
-            # Other checks
             try:
                 assert(Gx.shape == (nx,nx))
                 assert(np.all(Gx.row == Gx.col))
@@ -176,39 +174,82 @@ class DCOPF_MP(PFmethod):
             data.append((H,g,A,b,l,u))
             
         # Construct QP
-        # need to use sparse block diagonal
-    
+        H,g,A,b,l,u = zip(*data)
+        H = block_diag(H,format='coo')
+        g = np.hstack(g)
+        A = block_diag(A,format='coo')
+        b = np.hstack(b)
+        l = np.hstack(l)
+        u = np.hstack(u)
         QPproblem = QuadProblem(H,g,A,b,l,u)
         
         # Set up solver
         solver = OptSolverIQP()
         solver.set_parameters(params)
         
-        # Solve
+        # Solve QP
         try:
             solver.solve(QPproblem)
         except OptSolverError,e:
             raise PFmethodError_SolverError(self,e)
         finally:
-
-            # Update net properties
-            net.update_properties(solver.get_primal_variables())
             
+            # Separate results
+            offset_n = 0
+            offset_A = 0
+            duals = []
+            primals = []
+            problems = []
+            properties = []
+            x = solver.get_primal_variables()
+            lam,nu,mu,pi = solver.get_dual_variables()
+            for t in range(T):
+                
+                # Data
+                H,g,A,b,l,u = data[t]
+
+                # Modify net
+                net_modifier(net,t)
+                
+                # Create problem
+                problems.append(self.create_problem(net))
+                
+                # Primals
+                primals.append(x[offset_n:offset_n+g.size])
+
+                # Duals
+                duals.append((lam[offset_A:offset_A+A.shape[0]],
+                              None,
+                              mu[offset_n:offset_n+g.size],
+                              pi[offset_n:offset_n+g.size]))
+        
+
+                # Properties
+                net.update_properties(x[offset_n:offset_n+net.num_vars])
+                properties.append(net.get_properties())
+            
+                # Offsets
+                offset_n += g.size
+                offset_A += A.shape[0]
+ 
             # Get results
             self.set_status(solver.get_status())
             self.set_error_msg(solver.get_error_msg())
             self.set_iterations(solver.get_iterations())
-            self.set_primal_variables(solver.get_primal_variables())
-            self.set_dual_variables(solver.get_dual_variables())
-            self.set_net_properties(net.get_properties())
-            self.set_problem(problem)
+            self.set_primal_variables(primals)
+            self.set_dual_variables(duals)
+            self.set_net_properties(properties)
+            self.set_problem(problems)
             
-    def update_network(self,net):
-    
+    def update_network(self,net,t,net_modifier):
+   
+        # Modify network
+        net_modifier(net,t)
+ 
         # Get data
-        problem = self.results['problem']
-        xz = self.results['primal_variables']
-        lam,nu,mu,pi = self.results['dual_variables']
+        problem = self.create_problem(net)
+        xz = self.results['primal_variables'][t]
+        lam,nu,mu,pi = self.results['dual_variables'][t]
         nx = net.num_vars
         nz = net.get_num_branches_not_on_outage()
         n = nx+nz
