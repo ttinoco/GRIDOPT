@@ -18,6 +18,8 @@ Power Flow Method
 
 .. autoclass:: gridopt.power_flow.DCOPF
 
+.. autoclass:: gridopt.power_flow.DCOPF_MP
+
 .. autoclass:: gridopt.power_flow.NRPF
 
 .. autoclass:: gridopt.power_flow.AugLPF

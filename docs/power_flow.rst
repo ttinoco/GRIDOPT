@@ -6,17 +6,26 @@ Power Flow
 
 The Power Flow (PF) problem consists of determining steady-state voltage magnitudes and angles at every bus of the network as well as any unknown generator powers. On the other hand, the Optimal Power Flow (OPF) problem consists of determining generator and other network control settings that result in the optimal operation of the network according to some measure, *e.g.*, generation cost. In GRIDOPT, methods for solving PF and OPF problems are represented by objects derived from a :class:`method <gridopt.power_flow.method.PFmethod>` base class.
 
-To solve a PF or OPF problem, one first needs to create an instance of a specific method subclass. This is done using the function :func:`new_method() <gridopt.power_flow.new_method>`, which takes as argument the name of an available power flow method (:ref:`dc_pf`, :ref:`dc_opf`, :ref:`nr_pf`, :ref:`augl_pf`, and :ref:`augl_opf`). The following code sample creates an instance of the :ref:`nr_pf` method::
+To solve a PF or OPF problem, one first needs to create an instance of a specific method subclass. This is done using the function :func:`new_method() <gridopt.power_flow.new_method>`, which takes as argument the name of an available power flow method. Available power flow methods are the following: 
+
+* :ref:`dc_pf`
+* :ref:`dc_opf`
+* :ref:`dc_opf_mp`
+* :ref:`nr_pf`
+* :ref:`augl_pf`
+* :ref:`augl_opf`.
+
+The following code sample creates an instance of the :ref:`nr_pf` method::
 
   >>> import gridopt
 
   >>> method = gridopt.power_flow.new_method('NRPF')
 
-Once a method has been instantiated, its parameters can be set using the function :func:`set_parameters() <gridopt.power_flow.method.PFmethod.set_parameters>`. This function takes as argument a dictionary with parameter name and value pairs. Valid parameters include parameters of the method, which are described in the sections below, and parameters from the numerical solver used by the method. The numerical solvers used by the methods of GRIDOPT belong to the Python package `OPTALG <https://github.com/ttinoco/OPTALG>`_. The following code sample sets a few parameters of the method created above::
+Once a method has been instantiated, its parameters can be set using the function :func:`set_parameters() <gridopt.power_flow.method.PFmethod.set_parameters>`. This function takes as argument a dictionary with parameter name and value pairs. Valid parameters include parameters of the method, which are described in the sections below, and parameters from the numerical solver used by the method. The numerical solvers used by the methods of GRIDOPT belong to the Python package `OPTALG`_. The following code sample sets a few parameters of the method created above::
 
   >>> method.set_parameters({'quiet': True, 'feastol': 1e-4})
 
-After configuring parameters, a method can be used to solve a problem using the function :func:`solve() <gridopt.power_flow.method.PFmethod.solve>`. This function takes as argument a `PFNET <http://ttinoco.github.io/PFNET/python/>`_ Network object, as follows::
+After configuring parameters, a method can be used to solve a problem using the function :func:`solve() <gridopt.power_flow.method.PFmethod.solve>`. Typically, this function takes as argument a `PFNET Network`_ object, as follows::
 
   >>> import pfnet
 
@@ -25,7 +34,7 @@ After configuring parameters, a method can be used to solve a problem using the 
 
   >>> method.solve(net)
 
-Information about the execution of the method can be obtained from the :data:`results <gridopt.power_flow.method.PFmethod.results>` attribute of the :class:`method <gridopt.power_flow.method.PFmethod>` object. This dictionary of results includes information such as ``'status'``, *e.g.*, ``'solved'`` or ``'error'``, any error message (``'error_msg'``), solver ``'iterations'``, the `PFNET <http://ttinoco.github.io/PFNET/python/>`_ optimization ``'problem'`` constructed, and the properties of the `PFNET <http://ttinoco.github.io/PFNET/python/>`_ Network at the point found by the method (``'net_properties'``). The following code sample show how to extract some results::
+Information about the execution of the method can be obtained from the :data:`results <gridopt.power_flow.method.PFmethod.results>` attribute of the :class:`method <gridopt.power_flow.method.PFmethod>` object. This dictionary of results includes information such as ``'status'``, *e.g.*, ``'solved'`` or ``'error'``, any error message (``'error_msg'``), solver ``'iterations'``, the `PFNET Optimization Problem`_ (``'problem'``) constructed, and the properties of the `PFNET Network`_ at the point found by the method (``'net_properties'``). The following code sample show how to extract some results::
 
   >>> results = method.get_results()
 
@@ -49,7 +58,7 @@ Information about the execution of the method can be obtained from the :data:`re
   >>> print results['net_properties']['bus_v_max']
   1.09
 
-If desired, one can update the `PFNET <http://ttinoco.github.io/PFNET/python/>`_ Network object with the solution found by the method. This can be done with the function :func:`update_network() <gridopt.power_flow.method.PFmethod.update_network>`. This routine not only updates the network quantities treated as variables by the method, but also information about the sensitivity of the optimal objective function value with respect to perturbations of the constraints. The following code sample updates the power network with the results obtained by the method and shows the resulting maximum active and reactive bus power mismatches in units of MW and MVAr::
+If desired, one can update the `PFNET Network`_ object with the solution found by the method. This can be done with the function :func:`update_network() <gridopt.power_flow.method.PFmethod.update_network>`. This routine not only updates the network quantities treated as variables by the method, but also information about the sensitivity of the optimal objective function value with respect to perturbations of the constraints. The following code sample updates the power network with the results obtained by the method and shows the resulting maximum active and reactive bus power mismatches in units of MW and MVAr::
 
   >>> method.update_network(net)
 
@@ -61,14 +70,14 @@ If desired, one can update the `PFNET <http://ttinoco.github.io/PFNET/python/>`_
 DCPF
 ====
 
-This method solves a DC power flow problem, which is just a linear system of equations. For doing this, it uses one of the ``linear solvers`` from `OPTALG <https://github.com/ttinoco/OPTALG>`_.
+This method solves a DC power flow problem, which is just a linear system of equations. For doing this, it uses a `PFNET DC power balance constraint`_ and one of the ``linear solvers`` from `OPTALG`_.
 
 .. _dc_opf: 
 
 DCOPF
 =====
 
-This method solves a DC optimal power flow problem, which is just a quadratic program including active power generation cost, power balance, generator limits, and branch thermal limits. For doing this, it uses the ``OptSolverIQP`` interior point solver from `OPTALG <https://github.com/ttinoco/OPTALG>`_. For now, its only parameter is a ``'quiet'`` flag.
+This method solves a DC optimal power flow problem, which is just a quadratic program including active power generation cost, active power consumption utility, power balance, generator limits, load limits, and branch thermal limits. For doing this, it uses the ``OptSolverIQP`` interior point solver from `OPTALG`_. 
 
 The following example illustrates how to solve a DCOPF problem and extract the optimal generation cost::
 
@@ -109,19 +118,26 @@ Lastly, the sensitivity with respect to generator active power limits can be eas
 
 As the examples show, GRIDOPT and PFNET take care of all the details and allow one to extract solution information easily and intuitively from the network components.
 
+.. _dc_opf_mp: 
+
+DCOPF_MP
+========
+
+This method solves a multi-period DC optimal power flow problem.
+
 .. _nr_pf: 
 
 NRPF
 ====
 
-This method solves an AC power flow problem, which is a nonlinear system of equations. For doing this, it uses the ``OptSolverNR`` Newton-Raphson solver from `OPTALG <https://github.com/ttinoco/OPTALG>`_. For now, its parameters are a ``'quiet'`` flag and a low-voltage threshold ``'vmin_thresh'``.
+This method solves an AC power flow problem, which is a nonlinear system of equations. For doing this, it uses the ``OptSolverNR`` Newton-Raphson solver from `OPTALG`_. For now, its parameters are a ``'quiet'`` flag and a low-voltage threshold ``'vmin_thresh'``.
 
 .. _augl_pf: 
 
 AugLPF
 ======
 
-This method solves an AC power flow problem but formulated as an optimization problem with a strongly-convex objective function. For doing this, it uses the ``OptSolverAugL`` Augmented Lagrangian solver from `OPTALG <https://github.com/ttinoco/OPTALG>`_. The ``OptSolverAugL`` solver is similar to the one described in Chapter 3 of [TTR2015]_, but without the restriction of moving in the null-space of the linear equality constraints. For now, the parameters of this power flow method are the following:
+This method solves an AC power flow problem but formulated as an optimization problem with a strongly-convex objective function. For doing this, it uses the ``OptSolverAugL`` Augmented Lagrangian solver from `OPTALG`_. The ``OptSolverAugL`` solver is similar to the one described in Chapter 3 of [TTR2015]_, but without the restriction of moving in the null-space of the linear equality constraints. For now, the parameters of this power flow method are the following:
 
 ================= ================================================ ===========
 Name              Description                                      Default  
@@ -139,7 +155,7 @@ Name              Description                                      Default
 AugLOPF
 =======
 
-This method solves an AC optimal power flow problem. For doing this, it uses the ``OptSolverAugL`` Augmented Lagrangian solver from `OPTALG <https://github.com/ttinoco/OPTALG>`_. For now, the parameters of this optimal power flow method are the following:
+This method solves an AC optimal power flow problem. For doing this, it uses the ``OptSolverAugL`` Augmented Lagrangian solver from `OPTALG`_. For now, the parameters of this optimal power flow method are the following:
 
 ================== ================================================ ===========
 Name               Description                                      Default  
@@ -149,3 +165,8 @@ Name               Description                                      Default
 ``'weight_reg'``   Weight for regularization                        ``1e-5``
 ``'vmin_thresh'``  Low-voltage threshold                            ``1e-1``
 ================== ================================================ ===========
+
+.. _OPTALG: http://ttinoco.github.io/OPTALG/
+.. _PFNET Network: http://ttinoco.github.io/PFNET/python/reference.html#network
+.. _PFNET Optimization Problem: http://ttinoco.github.io/PFNET/python/reference.html#optimization-problem
+.. _PFNET DC power balance constraint: http://ttinoco.github.io/PFNET/python/problems.html#dc-power-balance
