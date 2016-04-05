@@ -23,6 +23,7 @@ class DCOPF_MP(PFmethod):
     parameters = {'quiet' : False,
                   'thermal_limits': True,
                   'thermal_factor': 1.,
+                  'fixed_total_load': False,
                   'inf_flow': 1e4}
                                     
     def __init__(self):
@@ -90,6 +91,7 @@ class DCOPF_MP(PFmethod):
         params = self.parameters
         thermal_limits = params['thermal_limits']
         thermal_factor = params['thermal_factor']
+        fixed_total_load = params['fixed_total_load']
         inf_flow = params['inf_flow']
 
         # Check parameters
@@ -98,6 +100,8 @@ class DCOPF_MP(PFmethod):
        
         # Construct MP problem
         data = []
+        Lproj = []
+        Ltot = 0
         for t in range(T):
             
             # Modify network
@@ -111,7 +115,7 @@ class DCOPF_MP(PFmethod):
             problem.eval(x)
             c_flows = problem.find_constraint(pfnet.CONSTR_TYPE_DC_FLOW_LIM)
             c_bounds = problem.find_constraint(pfnet.CONSTR_TYPE_LBOUND)
-        
+                       
             Hx = problem.Hphi + problem.Hphi.T - triu(problem.Hphi)
             gx = problem.gphi - Hx*x
         
@@ -135,11 +139,16 @@ class DCOPF_MP(PFmethod):
             nx = net.num_vars
             nz = net.get_num_branches_not_on_outage()
             n = nx+nz
-            
+      
             Iz = eye(nz)
             Oz = coo_matrix((nz,nz))
             oz = np.zeros(nz)
-        
+       
+            if fixed_total_load:
+                Pl = net.get_var_projection(pfnet.OBJ_LOAD,pfnet.LOAD_VAR_P)
+                Lproj.append(bmat([[Pl,coo_matrix((Pl.shape[0],nz))]]))
+                Ltot = Ltot + Pl*x 
+ 
             H = bmat([[Hx,None],[None,Oz]],format='coo')/net.base_power
             g = np.hstack((gx,oz))/net.base_power
             
@@ -181,6 +190,10 @@ class DCOPF_MP(PFmethod):
         b = np.hstack(b)
         l = np.hstack(l)
         u = np.hstack(u)
+        if fixed_total_load:
+            L = bmat([Lproj])
+            A = bmat([[A],[L]])
+            b = np.hstack((b,Ltot))
         QPproblem = QuadProblem(H,g,A,b,l,u)
         
         # Set up solver
