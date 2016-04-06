@@ -109,7 +109,7 @@ The sensitivity of the optimal objective function value with respect to the powe
 
   >>> bus = net.get_bus(4)
   >>> print "bus %2d %.2e" %(bus.index,bus.sens_P_balance)
-  bus 4 2.13e+01
+  bus 4 2.13e+03
   
 Similarly, the sensitivity with respect to branch flow limits can be easily extracted from the network branches::
 
@@ -117,7 +117,7 @@ Similarly, the sensitivity with respect to branch flow limits can be easily extr
   >>> print "branch %2d %.2e %.2e" %(branch.index,
   ...                                branch.sens_P_u_bound,
   ...                                branch.sens_P_l_bound)
-  branch 6 2.01e-09 1.25e-09
+  branch 6 2.01e-07 1.25e-07
 
 Lastly, the sensitivity with respect to generator active power limits can be easily extracted from the network generators::
 
@@ -125,7 +125,7 @@ Lastly, the sensitivity with respect to generator active power limits can be eas
   >>> print "gen %2d %.2e %.2e" %(gen.index,
   ...                             gen.sens_P_u_bound,
   ...                             gen.sens_P_l_bound)
-  gen  2 2.01e-06 2.85e+01
+  gen  2 2.01e-04 2.85e+03
 
 As the examples show, GRIDOPT and `PFNET`_ take care of all the details and allow one to extract solution information easily and intuitively from the network components.
 
