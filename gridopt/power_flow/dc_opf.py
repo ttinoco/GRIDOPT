@@ -125,8 +125,8 @@ class DCOPF(PFmethod):
         Oz = coo_matrix((nz,nz))
         oz = np.zeros(nz)
         
-        H = bmat([[Hx,None],[None,Oz]],format='coo')/net.base_power
-        g = np.hstack((gx,oz))/net.base_power
+        H = bmat([[Hx,None],[None,Oz]],format='coo')/net.base_power # scaled
+        g = np.hstack((gx,oz))/net.base_power                       # scaled
 
         A = bmat([[Ax,None],[Gz,-Iz]],format='coo')
         b = np.hstack((bx,oz))
@@ -216,4 +216,7 @@ class DCOPF(PFmethod):
         
         # Network sensitivities
         net.clear_sensitivities()
-        problem.store_sensitivities(lam[:net.num_buses],nu,mu,pi)
+        problem.store_sensitivities(lam[:net.num_buses]*net.base_power,
+                                    nu,
+                                    mu*net.base_power,
+                                    pi*net.base_power)

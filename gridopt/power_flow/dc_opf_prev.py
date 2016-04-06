@@ -177,8 +177,8 @@ class PreventiveDCOPF(PFmethod):
         Zr = coo_matrix((nr,nr))
         zr = np.zeros(nr)
         
-        H = bmat([[Hp,None],[None,Zr]],format='coo')/net.base_power
-        g = np.hstack((gp,zr))/net.base_power
+        H = bmat([[Hp,None],[None,Zr]],format='coo')/net.base_power # scaled
+        g = np.hstack((gp,zr))/net.base_power                       # scaled
 
         y = np.hstack((p,zr))
 
@@ -273,4 +273,7 @@ class PreventiveDCOPF(PFmethod):
         
         # Network sensitivities
         net.clear_sensitivities()
-        problem.store_sensitivities(lam[:net.num_buses],nu,mu,pi)
+        problem.store_sensitivities(lam[:net.num_buses]*net.base_power,
+                                    nu,
+                                    mu*net.base_power,
+                                    pi*net.base_power)

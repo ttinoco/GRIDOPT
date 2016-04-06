@@ -149,8 +149,8 @@ class DCOPF_MP(PFmethod):
                 Lproj.append(bmat([[Pl,coo_matrix((Pl.shape[0],nz))]]))
                 Ltot = Ltot + Pl*x 
  
-            H = bmat([[Hx,None],[None,Oz]],format='coo')/net.base_power
-            g = np.hstack((gx,oz))/net.base_power
+            H = bmat([[Hx,None],[None,Oz]],format='coo')/net.base_power # scaled
+            g = np.hstack((gx,oz))/net.base_power                       # scaled
             
             A = bmat([[Ax,None],[Gz,-Iz]],format='coo')
             b = np.hstack((bx,oz))
@@ -299,4 +299,7 @@ class DCOPF_MP(PFmethod):
         
         # Network sensitivities
         net.clear_sensitivities()
-        problem.store_sensitivities(lam[:net.num_buses],nu,mu,pi)
+        problem.store_sensitivities(lam[:net.num_buses]*net.base_power,
+                                    nu,
+                                    mu*net.base_power,
+                                    pi*net.base_power)
