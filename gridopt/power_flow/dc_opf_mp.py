@@ -77,13 +77,13 @@ class DCOPF_MP(PFmethod):
         return problem
             
     def solve(self,net,T,net_modifier):
-        """"
+        """
         Solves multi-period DC OPF problem.
 
         Parameters
         ----------
         net : Network
-        T : int
+        T : int (time horizon)
         net_modifier : function(net,t)
         """
         
@@ -255,6 +255,16 @@ class DCOPF_MP(PFmethod):
             self.set_problem(problems)
             
     def update_network(self,net,t,net_modifier):
+        """
+        Updates the network with part of the solution that 
+        corresponds to the given time. 
+
+        Parameters
+        ----------
+        net : Network
+        T : int (time)
+        net_modifier : function(net,t)
+        """
    
         # Modify network
         net_modifier(net,t)

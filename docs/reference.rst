@@ -14,17 +14,18 @@ Power Flow Method
 .. autoclass:: gridopt.power_flow.method.PFmethod
    :members:
 
-.. autoclass:: gridopt.power_flow.DCPF
+.. autoclass:: gridopt.power_flow.dc_pf.DCPF
 
-.. autoclass:: gridopt.power_flow.DCOPF
+.. autoclass:: gridopt.power_flow.dc_opf.DCOPF
 
-.. autoclass:: gridopt.power_flow.DCOPF_MP
+.. autoclass:: gridopt.power_flow.dc_opf_mp.DCOPF_MP
+   :members: solve, update_network
 
-.. autoclass:: gridopt.power_flow.NRPF
+.. autoclass:: gridopt.power_flow.nr_pf.NRPF
 
-.. autoclass:: gridopt.power_flow.AugLPF
+.. autoclass:: gridopt.power_flow.augl_pf.AugLPF
 
-.. autoclass:: gridopt.power_flow.AugLOPF
+.. autoclass:: gridopt.power_flow.augl_opf.AugLOPF
 
 .. autoclass:: gridopt.power_flow.method_error.PFmethodError
    :members:

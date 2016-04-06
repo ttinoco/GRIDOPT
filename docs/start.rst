@@ -11,7 +11,7 @@ This section describes how to get started with GRIDOPT. In particular, it covers
 * `Numpy <http://www.numpy.org>`_ (>=1.8.2)
 * `Scipy <http://www.scipy.org>`_ (>=0.13.3)
 * `OPTALG <http://ttinoco.github.io/OPTALG>`_ (== 1.0)
-* `PFNET <http://ttinoco.github.io/PFNET/python/>`_ (>= 1.3)
+* `PFNET`_ (>= 1.3)
 
 .. _start_download:
 
@@ -48,7 +48,7 @@ and enter the application environment with::
 
   > docker run -i -t --entrypoint=/bin/bash gridopt
 
-In the application environment, GRIDOPT and all its dependencies, *e.g.*, `PFNET <http://ttinoco.github.io/PFNET/python/>`_, are already installed and ready to go. There, one can navidate to the directory ``/gridopt/tests/resources`` and use the test cases available there to do the `PFNET <http://ttinoco.github.io/PFNET/python/>`_ and GRIDOPT tutorials with Python. 
+In the application environment, GRIDOPT and all its dependencies, *e.g.*, `PFNET`_, are already installed and ready to go. There, one can navidate to the directory ``/gridopt/tests/resources`` and use the test cases available there to do the `PFNET`_ and GRIDOPT tutorials with Python. 
 
 .. _start_docker_lin:
 
@@ -112,3 +112,5 @@ The next example shows how to solve the power flow problem associated with a pow
   >>> # max mismatches (MW,MVAr)
   >>> print '%.2e %.2e' %(net.bus_P_mis,net.bus_Q_mis)
   5.16e-04 5.67e-03
+
+.. _PFNET: http://ttinoco.github.io/PFNET/python/

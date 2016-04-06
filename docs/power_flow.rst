@@ -25,7 +25,7 @@ Once a method has been instantiated, its parameters can be set using the functio
 
   >>> method.set_parameters({'quiet': True, 'feastol': 1e-4})
 
-After configuring parameters, a method can be used to solve a problem using the function :func:`solve() <gridopt.power_flow.method.PFmethod.solve>`. Typically, this function takes as argument a `PFNET Network`_ object, as follows::
+After configuring parameters, a method can be used to solve a problem using the function :func:`solve() <gridopt.power_flow.method.PFmethod.solve>`. Typically, this function takes as argument a `network`_ object, as follows::
 
   >>> import pfnet
 
@@ -34,7 +34,7 @@ After configuring parameters, a method can be used to solve a problem using the 
 
   >>> method.solve(net)
 
-Information about the execution of the method can be obtained from the :data:`results <gridopt.power_flow.method.PFmethod.results>` attribute of the :class:`method <gridopt.power_flow.method.PFmethod>` object. This dictionary of results includes information such as ``'status'``, *e.g.*, ``'solved'`` or ``'error'``, any error message (``'error_msg'``), solver ``'iterations'``, the `PFNET Optimization Problem`_ (``'problem'``) constructed, and the properties of the `PFNET Network`_ at the point found by the method (``'net_properties'``). The following code sample show how to extract some results::
+Information about the execution of the method can be obtained from the :data:`results <gridopt.power_flow.method.PFmethod.results>` attribute of the :class:`method <gridopt.power_flow.method.PFmethod>` object. This dictionary of results includes information such as ``'status'``, *e.g.*, ``'solved'`` or ``'error'``, any error message (``'error_msg'``), solver ``'iterations'``, the `optimization problem`_ (``'problem'``) constructed, and `network properties`_ at the point found by the method (``'net_properties'``). The following code sample shows how to extract some results::
 
   >>> results = method.get_results()
 
@@ -58,7 +58,7 @@ Information about the execution of the method can be obtained from the :data:`re
   >>> print results['net_properties']['bus_v_max']
   1.09
 
-If desired, one can update the `PFNET Network`_ object with the solution found by the method. This can be done with the function :func:`update_network() <gridopt.power_flow.method.PFmethod.update_network>`. This routine not only updates the network quantities treated as variables by the method, but also information about the sensitivity of the optimal objective function value with respect to perturbations of the constraints. The following code sample updates the power network with the results obtained by the method and shows the resulting maximum active and reactive bus power mismatches in units of MW and MVAr::
+If desired, one can update the `network`_ object with the solution found by the method. This can be done with the function :func:`update_network() <gridopt.power_flow.method.PFmethod.update_network>`. This routine not only updates the network quantities treated as variables by the method, but also information about the sensitivity of the optimal objective function value with respect to perturbations of the constraints. The following code sample updates the power network with the results obtained by the method and shows the resulting maximum active and reactive bus power mismatches in units of MW and MVAr::
 
   >>> method.update_network(net)
 
@@ -70,14 +70,25 @@ If desired, one can update the `PFNET Network`_ object with the solution found b
 DCPF
 ====
 
-This method solves a DC power flow problem, which is just a linear system of equations. For doing this, it uses a `PFNET DC power balance constraint`_ and one of the ``linear solvers`` from `OPTALG`_.
+This method is represented by an object of type :class:`DCPF <gridopt.power_flow.dc_pf.DCPF>` and solves a DC power flow problem, which is just a linear system of equations representing `DC power balance constraints`_.  The system is solved using one of the ``linear solvers`` available in `OPTALG`_.
 
 .. _dc_opf: 
 
 DCOPF
 =====
 
-This method solves a DC optimal power flow problem, which is just a quadratic program including active power generation cost, active power consumption utility, power balance, generator limits, load limits, and branch thermal limits. For doing this, it uses the ``OptSolverIQP`` interior point solver from `OPTALG`_. 
+This method is represented by an object of type :class:`DCOPF <gridopt.power_flow.dc_opf.DCOPF>` and solves a DC optimal power flow problem, which is just a quadratic program that considers `active power generation cost`_, `active power consumption utility`_, `DC power balance constraints`_, `variable limits`_, *e.g.*, generator and load limits, and `DC power flow limits`_. For solving the problem, this method uses the `IQP solver`_ interior point solver from `OPTALG`_.
+
+The parameters of this method are the following:
+
+==================== ====================================================== =========
+Name                 Description                                            Default  
+==================== ====================================================== =========
+``'quiet'``          flag for suppressing output                            ``False`` 
+``'thermal_limits'`` flag for considering branch flow limits                ``True``
+``'thermal_factor'`` scaling factor for branch flow limits                  ``1.0``
+``'inf_flow'``       large constant for representing infinite flows in p.u. ``1e4``
+==================== ====================================================== =========
 
 The following example illustrates how to solve a DCOPF problem and extract the optimal generation cost::
 
@@ -94,7 +105,7 @@ The following example illustrates how to solve a DCOPF problem and extract the o
   >>> print net.gen_P_cost
   4810.98
 
-The sensitivity of the optimal generation cost with respect to the power balance equations can be easily extracted from the network buses::
+The sensitivity of the optimal objective function value with respect to the power balance constraints can be easily extracted from the network buses::
 
   >>> bus = net.get_bus(4)
   >>> print "bus %2d %.2e" %(bus.index,bus.sens_P_balance)
@@ -116,14 +127,56 @@ Lastly, the sensitivity with respect to generator active power limits can be eas
   ...                             gen.sens_P_l_bound)
   gen  2 2.01e-06 2.85e+01
 
-As the examples show, GRIDOPT and PFNET take care of all the details and allow one to extract solution information easily and intuitively from the network components.
+As the examples show, GRIDOPT and `PFNET`_ take care of all the details and allow one to extract solution information easily and intuitively from the network components.
 
 .. _dc_opf_mp: 
 
 DCOPF_MP
 ========
 
-This method solves a multi-period DC optimal power flow problem.
+This method is represented by an object of type :class:`DCOPF_MP <gridopt.power_flow.dc_opf_mp.DCOPF_MP>` and solves a multi-period version of the problem solved by the :ref:`dc_opf` method above. Its parameters are the following:
+
+====================== ====================================================== =========
+Name                   Description                                            Default  
+====================== ====================================================== =========
+``'quiet'``            flag for suppressing output                            ``False`` 
+``'thermal_limits'``   flag for considering branch flow limits                ``True``
+``'thermal_factor'``   scaling factor for branch flow limits                  ``1.0``
+``'fixed_total_load'`` flag for fixing the total load over the time horizon   ``False``
+``'inf_flow'``         large constant for representing infinite flows in p.u. ``1e4``
+====================== ====================================================== =========
+
+Setting the parameter ``fixed_total_load`` to ``True`` ensures that the total load over the time horizon equals the sum of the nominal loads, which are given by the ``P`` attributes of the `load`_ objects.  
+
+An important difference between this method and the single-period :ref:`dc_opf` method is that the :func:`solve() <gridopt.power_flow.dc_opf_mp.DCOPF_MP.solve>` and :func:`update_network() <gridopt.power_flow.dc_opf_mp.DCOPF_MP.update_network>` functions take on more arguments. More specifically, the :func:`solve() <gridopt.power_flow.dc_opf_mp.DCOPF_MP.solve>` function takes as arguments a `network`_, an integer ``T`` that represents the number of time periods, and a ``network modifier`` function. This ``network modifier`` function, which takes as arguments a `network`_ and a time ``t`` (integer) between ``0`` and ``T-1``, allows the user to specify how the network should be modified at time ``t``. The following example shows how to define a ``network modifier`` function that modifies load nominal active powers and limits according to some time series data::
+
+  >>> import pfnet
+  >>> import numpy as np
+
+  >>> net = pfnet.Network()
+  >>> net.load('ieee14.mat')
+
+  >>> T = 3
+
+  >>> # random load time series 
+  >>> load_data = {}
+  >>> for load in net.loads:
+  ...     load_data[load.index] = np.random.rand(T)
+
+  >>> def net_modifier(net,t):
+  ...     print 'modifying net for time %d' %t
+  ...     for load in net.loads:
+  ...         load.P = load_data[load.index][t]
+  ...         load.P_max = 1.05*load.P
+  ...         load.P_min = 0.95*load.P
+
+  >>> # call network modifier for each time
+  >>> map(lambda t: net_modifier(net,t),range(T))
+  modifying net for time 0
+  modifying net for time 1
+  modifying net for time 2
+
+Similarly, the :func:`update_network() <gridopt.power_flow.dc_opf_mp.DCOPF_MP.update_network>` function takes as arguments a `network`_, a time ``t`` (integer) between ``0`` and ``T-1``, and the ``network modifier`` function. This function updates the `network`_ with the part of the solution found that corresponds to time ``t``. This allows extracting network information such as bus voltage angles or sensitivity information about the optimal objective function value with respect to the power balance constraints at a specific time. 
 
 .. _nr_pf: 
 
@@ -166,7 +219,16 @@ Name               Description                                      Default
 ``'vmin_thresh'``  Low-voltage threshold                            ``1e-1``
 ================== ================================================ ===========
 
+.. _PFNET: http://ttinoco.github.io/PFNET/python
 .. _OPTALG: http://ttinoco.github.io/OPTALG/
-.. _PFNET Network: http://ttinoco.github.io/PFNET/python/reference.html#network
-.. _PFNET Optimization Problem: http://ttinoco.github.io/PFNET/python/reference.html#optimization-problem
-.. _PFNET DC power balance constraint: http://ttinoco.github.io/PFNET/python/problems.html#dc-power-balance
+.. _IQP solver: http://ttinoco.github.io/OPTALG/opt_solver.html#iqp
+.. _network: http://ttinoco.github.io/PFNET/python/reference.html#network
+.. _load: http://ttinoco.github.io/PFNET/python/reference.html#load
+.. _optimization problem: http://ttinoco.github.io/PFNET/python/reference.html#optimization-problem
+.. _DC power balance constraints: http://ttinoco.github.io/PFNET/python/problems.html#dc-power-balance
+.. _DC power flow limits: http://ttinoco.github.io/PFNET/python/problems.html#branch-dc-power-flow-limits
+.. _variable limits: http://ttinoco.github.io/PFNET/python/problems.html#variable-bounding
+.. _active power generation cost: http://ttinoco.github.io/PFNET/python/problems.html#active-power-generation-cost
+.. _active power consumption utility: http://ttinoco.github.io/PFNET/python/problems.html#active-power-consumption-utility
+.. _network properties: http://ttinoco.github.io/PFNET/python/networks.html#properties
+
