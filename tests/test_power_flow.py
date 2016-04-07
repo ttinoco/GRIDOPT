@@ -244,11 +244,11 @@ class TestPowerFlow(unittest.TestCase):
                 self.assertEqual(branch.sens_P_u_bound,mu2[net.num_vars+branch.index]*net.base_power)
                 self.assertEqual(branch.sens_P_l_bound,pi2[net.num_vars+branch.index]*net.base_power)
  
-    @unittest.skip("")
+    #@unittest.skip("")
     def test_DCOPF_prev(self):
         
         net = self.net
-        method = gopt.power_flow.new_method('PreventiveDCOPF')
+        method = gopt.power_flow.new_method('DCOPF_Prev')
         method_ref = gopt.power_flow.new_method('DCOPF')
 
         for case in utils.test_cases:
@@ -326,7 +326,7 @@ class TestPowerFlow(unittest.TestCase):
             if net.get_num_P_adjust_gens() > 1:
                 gen = net.get_gen(np.argmin([g.P_max-g.P_min for g in net.generators]))
                 contG = pf.Contingency(gens=[gen])
-                method.set_parameters({'quiet':True, 'tol':1e-4, 'flow_lim_mul': 1.})
+                method.set_parameters({'quiet':True, 'tol':1e-4})
                 try:
                     method.solve(net,[contG])
                     self.assertEqual(method_ref.results['status'],'solved')
@@ -338,7 +338,7 @@ class TestPowerFlow(unittest.TestCase):
             branch = net.get_branch(np.argmax([np.minimum(br.bus_from.degree,br.bus_to.degree) for br in net.branches]))
             if branch.bus_from.degree > 3 and branch.bus_to.degree > 3:
                 contB = pf.Contingency(branches=[branch])
-                method.set_parameters({'quiet':True, 'tol':1e-4, 'flow_lim_mul': 1.})
+                method.set_parameters({'quiet':True, 'tol':1e-4})
                 try:
                     method.solve(net,[contB])
                     self.assertEqual(method_ref.results['status'],'solved')

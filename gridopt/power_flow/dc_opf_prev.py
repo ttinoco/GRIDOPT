@@ -13,20 +13,22 @@ from method import PFmethod
 from scipy.sparse import triu,coo_matrix,bmat,eye
 from optalg.opt_solver import OptSolverError,OptSolverIQP,QuadProblem
 
-class PreventiveDCOPF(PFmethod):
+class DCOPF_Prev(PFmethod):
     """
     Preventive DC optimal power flow method.
     """
 
-    name = 'PreventiveDCOPF'
+    name = 'DCOPF_Prev'
 
     parameters = {'quiet' : False,
-                  'flow_lim_mul': 1.0}
-                                    
+                  'thermal_limits': True,
+                  'thermal_factor': 1.,
+                  'inf_flow': 1e4}
+    
     def __init__(self):
-
+        
         PFmethod.__init__(self)
-        self.parameters = PreventiveDCOPF.parameters.copy()
+        self.parameters = DCOPF_Prev.parameters.copy()
         self.parameters.update(OptSolverIQP.parameters)
 
     def create_problem(self,net):
@@ -71,7 +73,9 @@ class PreventiveDCOPF(PFmethod):
         
         # Parameters
         params = self.parameters
-        flow_lim_mul = params['flow_lim_mul']
+        thermal_limits = params['thermal_limits']
+        thermal_factor = params['thermal_factor']
+        inf_flow = params['inf_flow']
 
         # Problem (base)
         problem = self.create_problem(net)
@@ -102,7 +106,14 @@ class PreventiveDCOPF(PFmethod):
         lz = c_flows.l.copy()
         uz = c_flows.u.copy()
         J = c_flows.G*Pw.T
-        
+
+        # Flow limit expansion
+        dz = (thermal_factor-1.)*(uz-lz)/2.
+        if not thermal_limits:
+            dz += inf_flow
+        lz -= dz
+        uz += dz
+
         lw = Pw*c_bounds.l
         uw = Pw*c_bounds.u
         Iw = Pw*c_bounds.G*Pw.T
@@ -132,8 +143,10 @@ class PreventiveDCOPF(PFmethod):
             uz = c_flows.u.copy()
             J = c_flows.G*Pw.T
 
-            # relax
-            dz = (flow_lim_mul-1.)*(uz-lz)/2.
+            # Flow limit expansion
+            dz = (thermal_factor-1.)*(uz-lz)/2.
+            if not thermal_limits:
+                dz += inf_flow
             lz -= dz
             uz += dz
             
@@ -145,7 +158,9 @@ class PreventiveDCOPF(PFmethod):
 
             # clear contingency
             cont.clear()
-            
+          
+        problem.analyze()
+  
         A = []
         num_blocks = len(GWJ_list)
         for i in range(num_blocks):
@@ -218,7 +233,7 @@ class PreventiveDCOPF(PFmethod):
             pwz = solver.get_primal_variables()
             x = Pp.T*pwz[:ng]+Pw.T*pwz[ng:ng+nw]
             z = pwz[ng+nw:ng+nw+nz]
-            net.update_properties(np.hstack((x,z)))
+            net.update_properties(x)
 
             # Prepare duals
             lam,nu,mu,pi = solver.get_dual_variables()

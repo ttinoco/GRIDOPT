@@ -10,11 +10,12 @@ from nr_pf import NRPF
 from dc_pf import DCPF
 from dc_opf import DCOPF
 from dc_opf_mp import DCOPF_MP
+from dc_opf_prev import DCOPF_Prev
 from augl_pf import AugLPF
 from augl_opf import AugLOPF
 from method_error import PFmethodError
 
-methods = [NRPF,DCPF,DCOPF,DCOPF_MP,AugLPF,AugLOPF]
+methods = [NRPF,DCPF,DCOPF,DCOPF_MP,DCOPF_Prev,AugLPF,AugLOPF]
 
 def new_method(name):
     """
