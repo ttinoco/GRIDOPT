@@ -12,6 +12,7 @@ To solve a PF or OPF problem, one first needs to create an instance of a specifi
 * :ref:`dc_opf`
 * :ref:`dc_opf_mp`
 * :ref:`dc_opf_corr`
+* :ref:`dc_opf_prev`
 * :ref:`nr_pf`
 * :ref:`augl_pf`
 * :ref:`augl_opf`.
@@ -218,6 +219,26 @@ The :func:`solve() <gridopt.power_flow.dc_opf_corr.DCOPF_Corr.solve>` function o
 
   >>> print net.gen_P_cost
   4849.11
+
+.. _dc_opf_prev: 
+
+DCOPF_Prev
+==========
+
+This method is represented by an object of type :class:`DCOPF_Prev <gridopt.power_flow.dc_opf_prev.DCOPF_Prev>` and solves a preventive DC optimal power flow problem. It considers `active power generation cost`_ for the base case, and `DC power balance constraints`_, `variable limits`_, and `DC power flow limits`_ for both the base- and post-contingency cases. For solving the problem, this method uses the `IQP solver`_ interior point solver from `OPTALG`_.
+
+The parameters of this method are the following:
+
+==================== =============================================================== =========
+Name                 Description                                                     Default  
+==================== =============================================================== =========
+``'quiet'``          flag for suppressing output                                     ``False`` 
+``'thermal_limits'`` flag for considering branch flow limits                         ``True``
+``'thermal_factor'`` scaling factor for branch flow limits                           ``1.0``
+``'inf_flow'``       large constant for representing infinite flows in p.u.          ``1e4``
+==================== =============================================================== =========
+
+As for the corrective DCOPF method, the :func:`solve() <gridopt.power_flow.dc_opf_prev.DCOPF_Prev.solve>` function of this method also requires a list of `contingencies`_.
 
 .. _nr_pf: 
 
