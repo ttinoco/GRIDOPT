@@ -70,6 +70,14 @@ class DCOPF_Prev(PFmethod):
         return problem
             
     def solve(self,net,contingencies):
+        """
+        Solves preventive DCOPF problem.
+        
+        Parameters
+        ----------
+        net : Network
+        contingencies : list of Contingencies
+        """
         
         # Parameters
         params = self.parameters

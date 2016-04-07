@@ -21,6 +21,12 @@ Power Flow Method
 .. autoclass:: gridopt.power_flow.dc_opf_mp.DCOPF_MP
    :members: solve, update_network
 
+.. autoclass:: gridopt.power_flow.dc_opf_corr.DCOPF_Corr
+   :members: solve
+
+.. autoclass:: gridopt.power_flow.dc_opf_prev.DCOPF_Prev
+   :members: solve
+
 .. autoclass:: gridopt.power_flow.nr_pf.NRPF
 
 .. autoclass:: gridopt.power_flow.augl_pf.AugLPF

@@ -11,6 +11,7 @@ To solve a PF or OPF problem, one first needs to create an instance of a specifi
 * :ref:`dc_pf`
 * :ref:`dc_opf`
 * :ref:`dc_opf_mp`
+* :ref:`dc_opf_corr`
 * :ref:`nr_pf`
 * :ref:`augl_pf`
 * :ref:`augl_opf`.
@@ -129,7 +130,7 @@ Lastly, the sensitivity with respect to generator active power limits can be eas
 
 As the examples show, GRIDOPT and `PFNET`_ take care of all the details and allow one to extract solution information easily and intuitively from the network components.
 
-.. _dc_opf_mp: 
+.. _dc_opf_mp:
 
 DCOPF_MP
 ========
@@ -178,6 +179,46 @@ An important difference between this method and the single-period :ref:`dc_opf` 
 
 Similarly, the :func:`update_network() <gridopt.power_flow.dc_opf_mp.DCOPF_MP.update_network>` function takes as arguments a `network`_, a time ``t`` (integer) between ``0`` and ``T-1``, and the ``network modifier`` function. This function updates the `network`_ with the part of the solution found that corresponds to time ``t``. This allows extracting network information such as bus voltage angles or sensitivity information about the optimal objective function value with respect to the power balance constraints at a specific time. 
 
+.. _dc_opf_corr: 
+
+DCOPF_Corr
+==========
+
+This method is represented by an object of type :class:`DCOPF_Corr <gridopt.power_flow.dc_opf_corr.DCOPF_Corr>` and solves a corrective DC optimal power flow problem. It considers `active power generation cost`_ for the base case, and `DC power balance constraints`_, `variable limits`_, and `DC power flow limits`_ for both the base- and post-contingency cases. For solving the problem, this method uses the `IQP solver`_ interior point solver from `OPTALG`_.
+
+The parameters of this method are the following:
+
+==================== =============================================================== =========
+Name                 Description                                                     Default  
+==================== =============================================================== =========
+``'quiet'``          flag for suppressing output                                     ``False`` 
+``'thermal_limits'`` flag for considering branch flow limits                         ``True``
+``'thermal_factor'`` scaling factor for branch flow limits                           ``1.0``
+``'max_ramping'``    maximum generator output change as a fraction of maximum output ``0.1``
+``'inf_flow'``       large constant for representing infinite flows in p.u.          ``1e4``
+==================== =============================================================== =========
+
+The :func:`solve() <gridopt.power_flow.dc_opf_corr.DCOPF_Corr.solve>` function of this method requires in addition to a `network`_ argument a list of `contingencies`_. The following example shows how to solve a corrective DCOPF problem considering a generator-outage contingency and a branch-outage contingency::
+
+  >>> import pfnet
+  >>> import gridopt
+
+  >>> net = pfnet.Network()
+  >>> net.load('ieee14.mat')
+
+  >>> gen = net.get_gen(0)
+  >>> branch = net.get_branch(0)
+
+  >>> c1 = pfnet.Contingency(gens=[gen])
+  >>> c2 = pfnet.Contingency(branches=[branch])
+
+  >>> method = gridopt.power_flow.new_method('DCOPF_Corr')
+  >>> method.solve(net,[c1,c2])
+  >>> method.update_network(net)
+
+  >>> print net.gen_P_cost
+  4849.11
+
 .. _nr_pf: 
 
 NRPF
@@ -223,6 +264,7 @@ Name               Description                                      Default
 .. _OPTALG: http://ttinoco.github.io/OPTALG/
 .. _IQP solver: http://ttinoco.github.io/OPTALG/opt_solver.html#iqp
 .. _network: http://ttinoco.github.io/PFNET/python/reference.html#network
+.. _contingencies: http://ttinoco.github.io/PFNET/python/reference.html#contingency
 .. _load: http://ttinoco.github.io/PFNET/python/reference.html#load
 .. _optimization problem: http://ttinoco.github.io/PFNET/python/reference.html#optimization-problem
 .. _DC power balance constraints: http://ttinoco.github.io/PFNET/python/problems.html#dc-power-balance

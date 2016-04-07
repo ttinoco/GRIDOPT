@@ -71,6 +71,14 @@ class DCOPF_Corr(PFmethod):
         return problem
             
     def solve(self,net,contingencies):
+        """
+        Solves corrective DCOPF problem.
+        
+        Parameters
+        ----------
+        net : Network
+        contingencies : list of Contingencies
+        """
         
         # Parameters
         params = self.parameters
