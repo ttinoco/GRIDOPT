@@ -345,6 +345,58 @@ class TestPowerFlow(unittest.TestCase):
                 except gopt.power_flow.PFmethodError:
                     self.assertEqual(case,INFCASE)
                     self.assertEqual(method_ref.results['status'],'error')
+
+    #@unittest.skip("")
+    def test_DCOPF_corr(self):
+        
+        net = self.net
+        method = gopt.power_flow.new_method('DCOPF_Corr')
+        method_ref = gopt.power_flow.new_method('DCOPF')
+
+        for case in utils.test_cases:
+        
+            net.load(case)
+            
+            method.set_parameters({'quiet':True, 'tol':1e-5})
+            method_ref.set_parameters({'quiet':True,'tol':1e-5})
+
+            # No contingencies (compare with DCOPF)
+            try:
+                method.solve(net,[])
+                self.assertEqual(method.results['status'],'solved')
+            except gopt.power_flow.PFmethodError:
+                self.assertEqual(case,INFCASE)
+                self.assertEqual(method.results['status'],'error')
+            try:
+                method_ref.solve(net)
+                self.assertEqual(method_ref.results['status'],'solved')
+            except gopt.power_flow.PFmethodError:
+                self.assertEqual(case,INFCASE)
+                self.assertEqual(method_ref.results['status'],'error')
+
+            if case != INFCASE:
+                
+                results = method.get_results()
+                results_ref = method_ref.get_results()
+            
+                self.assertEqual(results['status'],results_ref['status'])
+                self.assertEqual(results['error_msg'],results_ref['error_msg'])
+                self.assertEqual(results['iterations'],results_ref['iterations'])
+                nprop = results['net_properties']
+                nprop_ref = results_ref['net_properties']
+                self.assertTrue(set(nprop.keys()) == set(nprop_ref.keys()))
+                for k in nprop.keys():
+                    self.assertLess(np.abs(nprop[k]-nprop_ref[k]),1e-5)
+                x = results['primal_variables']
+                x_ref = results_ref['primal_variables']
+                self.assertLess(np.linalg.norm(x-x_ref,np.inf),1e-5)
+                lam,nu,mu,pi = results['dual_variables']
+                lam_ref,nu_ref,mu_ref,pi_ref = results_ref['dual_variables']
+                self.assertLess(np.linalg.norm(lam-lam_ref,np.inf),1e-5)
+                self.assertLess(np.linalg.norm(mu-mu_ref,np.inf),1e-5)
+                self.assertLess(np.linalg.norm(pi-pi_ref,np.inf),1e-5)
+                self.assertTrue(nu is None)
+                self.assertTrue(nu_ref is None)
                     
     def tearDown(self):
         
