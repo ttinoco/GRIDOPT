@@ -255,8 +255,8 @@ class TestPowerFlow(unittest.TestCase):
         
             net.load(case)
 
-            method.set_parameters({'quiet':True, 'tol':1e-5})
-            method_ref.set_parameters({'quiet':True,'tol':1e-5})
+            method.set_parameters({'quiet':True, 'tol':1e-4})
+            method_ref.set_parameters({'quiet':True,'tol':1e-4})
 
             # No contingencies (compare with DCOPF)
             try:
@@ -320,7 +320,7 @@ class TestPowerFlow(unittest.TestCase):
                     self.assertLess(100*np.abs(nprop[k]-nprop_ref[k])/np.maximum(np.abs(nprop_ref[k]),1e-5),0.1)
                 x = results['primal_variables']
                 x_ref = results_ref['primal_variables']
-                self.assertLess(np.linalg.norm(x-x_ref,np.inf),1e-3)
+                self.assertLess(np.linalg.norm(x-x_ref,np.inf),3e-3)
 
             # Single gen contingency
             if net.get_num_P_adjust_gens() > 1:
@@ -357,8 +357,8 @@ class TestPowerFlow(unittest.TestCase):
         
             net.load(case)
             
-            method.set_parameters({'quiet':True, 'tol':1e-5})
-            method_ref.set_parameters({'quiet':True,'tol':1e-5})
+            method.set_parameters({'quiet':True, 'tol':1e-4})
+            method_ref.set_parameters({'quiet':True,'tol':1e-4})
 
             # No contingencies (compare with DCOPF)
             try:
