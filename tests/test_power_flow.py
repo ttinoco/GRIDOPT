@@ -244,7 +244,7 @@ class TestPowerFlow(unittest.TestCase):
                 self.assertEqual(branch.sens_P_u_bound,mu2[net.num_vars+branch.index]*net.base_power)
                 self.assertEqual(branch.sens_P_l_bound,pi2[net.num_vars+branch.index]*net.base_power)
  
-    #@unittest.skip("")
+    @unittest.skip("")
     def test_DCOPF_prev(self):
         
         net = self.net
