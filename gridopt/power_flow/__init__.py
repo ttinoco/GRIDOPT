@@ -6,15 +6,15 @@
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
 
-from nr_pf import NRPF
-from dc_pf import DCPF
-from dc_opf import DCOPF
-from dc_opf_mp import DCOPF_MP
-from dc_opf_prev import DCOPF_Prev
-from dc_opf_corr import DCOPF_Corr
-from augl_pf import AugLPF
-from augl_opf import AugLOPF
-from method_error import PFmethodError
+from .nr_pf import NRPF
+from .dc_pf import DCPF
+from .dc_opf import DCOPF
+from .dc_opf_mp import DCOPF_MP
+from .dc_opf_prev import DCOPF_Prev
+from .dc_opf_corr import DCOPF_Corr
+from .augl_pf import AugLPF
+from .augl_opf import AugLOPF
+from .method_error import PFmethodError
 
 methods = [NRPF,DCPF,DCOPF,DCOPF_MP,DCOPF_Prev,DCOPF_Corr,
            AugLPF,AugLOPF]
@@ -30,7 +30,7 @@ def new_method(name):
     """
     
     try:
-        return methods[map(lambda x: x.name,methods).index(name)]()
+        return methods[list(map(lambda x: x.name,methods)).index(name)]()
     except ValueError:
         raise ValueError('invalid PF method name')
         

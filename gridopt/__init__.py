@@ -6,5 +6,5 @@
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
 
-import power_flow
-import stochastic
+from . import power_flow
+from . import stochastic

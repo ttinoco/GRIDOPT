@@ -8,8 +8,8 @@
 
 import time
 import numpy as np
-from method import TS_DCOPF_Method
-from problem import TS_DCOPF
+from .method import TS_DCOPF_Method
+from .problem import TS_DCOPF
 from scipy.sparse import eye,coo_matrix,bmat
 from optalg.opt_solver import OptSolverIQP, QuadProblem
 
@@ -61,7 +61,7 @@ class LShaped(TS_DCOPF_Method):
         b = np.zeros(0)
 
         # Init eval
-        Q,gQ = map(lambda l: sum(l)/float(num_sce),zip(*map(lambda r: problem.eval_Q(p,r),scenarios)))
+        Q,gQ = [sum(l)/float(num_sce) for l in zip(*[problem.eval_Q(p,r) for r in scenarios])]
 
         # Iteartions
         t = 0
@@ -74,12 +74,12 @@ class LShaped(TS_DCOPF_Method):
             t1 = time.time()
             F = 0.5*np.dot(p,H0*p)+np.dot(g0,p) + Q
             EF,EgF = problem.eval_EF(p,samples=samples)
-            print '%d,%.2f,%.2e,%.2e,%.5e,%.5e' %(k,t1-t0,Q,t,F,EF)
+            print('%d,%.2f,%.2e,%.2e,%.5e,%.5e' %(k,t1-t0,Q,t,F,EF))
             t0 += time.time()-t1
             
             # Solved
             if solved:
-                print 'solved'
+                print('solved')
                 break
             
             # Add cut
@@ -115,7 +115,7 @@ class LShaped(TS_DCOPF_Method):
             assert(np.all(z > 0))
             
             # Eval
-            Q,gQ = map(lambda l: sum(l)/float(num_sce),zip(*map(lambda r: problem.eval_Q(p,r),scenarios)))
+            Q,gQ = [sum(l)/float(num_sce) for l in zip(*[problem.eval_Q(p,r) for r in scenarios])]
             
             # Check solved
             if Q <= t:

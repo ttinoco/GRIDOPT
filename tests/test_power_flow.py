@@ -6,7 +6,7 @@
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
 
-import utils
+from . import utils
 import unittest
 import numpy as np
 import pfnet as pf
@@ -23,7 +23,7 @@ class TestPowerFlow(unittest.TestCase):
 
     def test_method_solutions(self):
 
-        print ''
+        print('')
         net = self.net
         sol_types = {'sol1': 'no controls',
                      'sol2': 'gen controls',
@@ -31,7 +31,7 @@ class TestPowerFlow(unittest.TestCase):
         
         for method_name in ['NRPF','AugLPF']:
             for case in utils.test_cases:
-                for sol in sol_types.keys():
+                for sol in list(sol_types.keys()):
 
                     method = gopt.power_flow.new_method(method_name)
                     
@@ -71,7 +71,7 @@ class TestPowerFlow(unittest.TestCase):
 
                     v_mag_error = [0]
                     v_ang_error = [0]
-                    for bus_num,val in bus_data.items():
+                    for bus_num,val in list(bus_data.items()):
                         
                         v_mag = val['v_mag']
                         v_ang = val['v_ang']
@@ -84,7 +84,7 @@ class TestPowerFlow(unittest.TestCase):
                         v_mag_error.append(np.abs(bus.v_mag-v_mag))
                         v_ang_error.append(np.abs(bus.v_ang*180./np.pi-v_ang))
                     
-                    print method_name,case,sol_types[sol],len(v_mag_error),len(v_ang_error)
+                    print(method_name,case,sol_types[sol],len(v_mag_error),len(v_ang_error))
 
                     self.assertLessEqual(np.max(v_mag_error),v_mag_tol)
                     self.assertLessEqual(np.max(v_ang_error),v_ang_tol)
@@ -283,7 +283,7 @@ class TestPowerFlow(unittest.TestCase):
                 nprop = results['net_properties']
                 nprop_ref = results_ref['net_properties']
                 self.assertTrue(set(nprop.keys()) == set(nprop_ref.keys()))
-                for k in nprop.keys():
+                for k in list(nprop.keys()):
                     self.assertLess(np.abs(nprop[k]-nprop_ref[k]),1e-5)
                 x = results['primal_variables']
                 x_ref = results_ref['primal_variables']
@@ -316,7 +316,7 @@ class TestPowerFlow(unittest.TestCase):
                 nprop = results['net_properties']
                 nprop_ref = results_ref['net_properties']
                 self.assertTrue(set(nprop.keys()) == set(nprop_ref.keys()))
-                for k in nprop.keys():
+                for k in list(nprop.keys()):
                     self.assertLess(100*np.abs(nprop[k]-nprop_ref[k])/np.maximum(np.abs(nprop_ref[k]),1e-5),0.1)
                 x = results['primal_variables']
                 x_ref = results_ref['primal_variables']
@@ -385,7 +385,7 @@ class TestPowerFlow(unittest.TestCase):
                 nprop = results['net_properties']
                 nprop_ref = results_ref['net_properties']
                 self.assertTrue(set(nprop.keys()) == set(nprop_ref.keys()))
-                for k in nprop.keys():
+                for k in list(nprop.keys()):
                     self.assertLess(np.abs(nprop[k]-nprop_ref[k]),1e-5)
                 x = results['primal_variables']
                 x_ref = results_ref['primal_variables']

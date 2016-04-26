@@ -7,7 +7,7 @@
 #*****************************************************#
 
 import numpy as np
-from method_error import *
+from .method_error import *
 
 class PFmethod:
 
@@ -156,14 +156,14 @@ class PFmethod:
         """
 
         if params:
-            for key,value in params.items():
-                if self.parameters.has_key(key):
+            for key,value in list(params.items()):
+                if key in self.parameters:
                     self.parameters[key] = value
                 else:
                     raise PFmethodError_BadParam(self,param=key)
         if strparams:
-            for key,valuestr in strparams.items():
-                if self.parameters.has_key(key):
+            for key,valuestr in list(strparams.items()):
+                if key in self.parameters:
                     value = self.parameters[key]
                     if type(value) is float:
                         new_value = float(valuestr)

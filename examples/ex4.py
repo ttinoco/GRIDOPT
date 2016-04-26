@@ -20,12 +20,12 @@ for load in net.loads:
     load_data[load.index] = np.random.rand(T)
 
 def net_modifier(net,t):
-    print 'modifying net for time %d' %t
+    print('modifying net for time %d' %t)
     for load in net.loads:
         load.P = load_data[load.index][t]
         load.P_max = 1.05*load.P
         load.P_min = 0.95*load.P
 
-map(lambda t: net_modifier(net,t),range(T))
+list(map(lambda t: net_modifier(net,t),list(range(T))))
 
 

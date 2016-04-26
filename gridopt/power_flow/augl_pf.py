@@ -6,10 +6,12 @@
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
 
+from __future__ import print_function
+
 import pfnet
 import numpy as np
-from method_error import *
-from method import PFmethod
+from .method_error import *
+from .method import PFmethod
 from optalg.opt_solver import OptSolverError,OptCallback,OptTermination,OptSolverAugL
 
 class AugLPF(PFmethod):
@@ -139,19 +141,19 @@ class AugLPF(PFmethod):
         def info_printer(solver,header):
             net = solver.problem.network
             if header:
-                print '{0:^5}'.format('vmax'),
-                print '{0:^5}'.format('vmin'),
-                print '{0:^8}'.format('gvdev'),
-                print '{0:^8}'.format('gQvio'),
-                print '{0:^8}'.format('tvvio'),
-                print '{0:^8}'.format('svvio')
+                print('{0:^5}'.format('vmax'), end=' ')
+                print('{0:^5}'.format('vmin'), end=' ')
+                print('{0:^8}'.format('gvdev'), end=' ')
+                print('{0:^8}'.format('gQvio'), end=' ')
+                print('{0:^8}'.format('tvvio'), end=' ')
+                print('{0:^8}'.format('svvio'))
             else:
-                print '{0:^5.2f}'.format(net.bus_v_max),
-                print '{0:^5.2f}'.format(net.bus_v_min),
-                print '{0:^8.1e}'.format(net.gen_v_dev),
-                print '{0:^8.1e}'.format(net.gen_Q_vio),
-                print '{0:^8.1e}'.format(net.tran_v_vio),
-                print '{0:^8.1e}'.format(net.shunt_v_vio)
+                print('{0:^5.2f}'.format(net.bus_v_max), end=' ')
+                print('{0:^5.2f}'.format(net.bus_v_min), end=' ')
+                print('{0:^8.1e}'.format(net.gen_v_dev), end=' ')
+                print('{0:^8.1e}'.format(net.gen_Q_vio), end=' ')
+                print('{0:^8.1e}'.format(net.tran_v_vio), end=' ')
+                print('{0:^8.1e}'.format(net.shunt_v_vio))
         return info_printer
             
     def solve(self,net):
@@ -184,7 +186,7 @@ class AugLPF(PFmethod):
         # Solve
         try:
             solver.solve(problem)
-        except OptSolverError,e:
+        except OptSolverError as e:
             raise PFmethodError_SolverError(self,e)
         finally:
             
