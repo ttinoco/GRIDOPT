@@ -27,6 +27,6 @@ The latest version of the package can be downloaded from https://github.com/ttin
 * [OPTALG] (https://github.com/ttinoco/OPTALG)
 * [PFNET] (https://github.com/ttinoco/PFNET) 
 
-## Contact ##
+## Contributors ##
 
-* Tomas Tinoco De Rubira (<ttinoco5687@gmail.com>)
+* [Tomas Tinoco De Rubira](http://n.ethz.ch/~tomast/) (principal developer)
