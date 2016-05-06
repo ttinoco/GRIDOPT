@@ -21,15 +21,17 @@ class MS_DCOPF(StochObjMS_Problem):
                   'infinity' : 1e3,      # infinity
                   'flow_factor' : 1.,    # factor for relaxing thermal limits
                   'max_ramping' : 0.1,   # factor for constructing ramping limits
-                  'num_samples' : 2000}  # number of samples
+                  'r_eps' : 1e-4,          # smallest renewable injection
+                  'num_samples' : 1000}  # number of samples
 
-    def __init__(self,net,horizon):
+    def __init__(self,net,stages):
         """
         Class constructor.
         
         Parameters
         ----------
         net : PFNET Network
+        stages : int
         """
 
         # Parameters
@@ -37,7 +39,7 @@ class MS_DCOPF(StochObjMS_Problem):
 
         # Save info
         self.net = net
-        self.T = horizon
+        self.T = stages
 
         # Generator limits
         for gen in net.generators:
@@ -150,6 +152,7 @@ class MS_DCOPF(StochObjMS_Problem):
 
         self.p_max = Pp*u
         self.p_min = Pp*l
+        self.p_prev = Pp*x
         
         self.q_max = Pp*u
         self.q_min = Pp*l
@@ -231,10 +234,10 @@ class MS_DCOPF(StochObjMS_Problem):
             z = np.random.randn(self.num_r)
             assert(norm(self.r_cov*z-self.L_cov*self.L_cov.T*z) < 1e-10)
 
-    def eval_stage_approx(self,t,p_prev,r_list,g_corr=[]):
+    def eval_stage_approx(self,t,r_list,p_prev=None,g_corr=[]):
         """
         Evaluates approximate optimal stage cost.
-
+        
         Parameters
         ----------
         t : int (stage)
@@ -250,18 +253,21 @@ class MS_DCOPF(StochObjMS_Problem):
         """
         
         assert(t >= 0)
-        assert(t <= self.T)
+        assert(t < self.T)
+        assert(len(r_list) == self.T-t)
+        assert(len(g_corr) == self.T-t or len(g_corr) == 0)
+        if p_prev is None:
+            assert(t == 0)
+            p_prev = self.p_prev
         assert(p_prev.shape == (self.num_p,))
-        assert(len(r_list) == self.T-t+1)
-        assert(len(g_corr) == self.T-t+1 or len(g_corr) == 0)
 
         if len(g_corr) == 0:
-            g_corr = (self.T-t+1)*[0]
+            g_corr = (self.T-t)*[0]
         
         H_list = []
         g_list = []
 
-        for i in range(self.T-t+1):
+        for i in range(self.T-t):
 
             H = bmat([[self.Hp,None,None,None,None,None],  # p
                       [None,self.Hq,None,None,None,None],  # q
@@ -271,16 +277,71 @@ class MS_DCOPF(StochObjMS_Problem):
                       [None,None,None,None,None,self.Oz]], # z
                      format='coo')
 
-            g = hstack((self.gp + g_corr[i],
-                        self.gq,
-                        self.ow,
-                        self.os,
-                        self.oy,
-                        self.oz))
+            g = np.hstack((self.gp + g_corr[i],
+                           self.gq,
+                           self.ow,
+                           self.os,
+                           self.oy,
+                           self.oz))
 
             H_list.append(H)
             g_list.append(g)
-            
+
+            'good'
+
+    def sample_w(self,t,observations):
+        """
+        Samples realization of renewable powers for the given stage
+        given the observations.
+
+        Parameters
+        ----------
+        t : int (stage)
+        observations : list
+
+        Parameters
+        ----------
+        w : vector
+        """
+
+        assert(t >= 0)
+        assert(t < self.T)
+        assert(len(observations) == t)
+
+        if t == 0:
+            return self.r_base
+        else:
+            r_new = observations[-1]+self.L_cov*np.random.randn(self.num_r)
+            return np.minimum(np.maximum(r_new,self.parameters['r_eps']),self.r_max)
+
+    def predict_w(self,t,observations):
+        """
+        Prodicts renewable powers for the given stage
+        given the observations.
+
+        Parameters
+        ----------
+        t : int (stage)
+        observations : list
+
+        Returns
+        -------
+        w : vector
+        """
+
+        assert(t >= 0)
+        assert(t < self.T)
+        assert(len(observations) == t)
+
+        if t == 0:
+            return self.r_base
+        else:
+            r_pred = np.zeros(self.num_r)
+            for i in range(self.parameters['num_samples']):
+                r_pred *= float(i)/float(i+1)
+                r_pred += self.sample_w(t,observations)/(i+1.)
+            return r_pred
+ 
     def show(self):
         """
         Shows problem information.
@@ -291,12 +352,12 @@ class MS_DCOPF(StochObjMS_Problem):
         tot_unc = sum([g.P_std for g in self.net.var_generators])
         tot_load = sum([l.P for l in self.net.loads])
         
-        print 'Stochastic Multi-Stage DCOPF'
-        print '----------------------------'
+        print '\nStochastic Multi-Stage DCOPF'
+        print '-----------------------------'
         print 'buses            : %d' %self.num_bus
         print 'gens             : %d' %self.num_p
         print 'vargens          : %d' %self.num_r
-        print 'time horizon     : %d' %self.T
+        print 'stages           : %d' %self.T
         print 'penetration cap  : %.2f (%% of load)' %(100.*tot_cap/tot_load)
         print 'penetration base : %.2f (%% of load)' %(100.*tot_base/tot_load)
         print 'penetration std  : %.2f (%% of local cap)' %(100.*tot_unc/tot_load)
