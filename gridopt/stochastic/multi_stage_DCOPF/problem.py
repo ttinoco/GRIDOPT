@@ -185,6 +185,16 @@ class MS_DCOPF(StochObjMS_Problem):
         self.r_cov = r_cov
         self.L_cov = L
 
+        self.Ow = coo_matrix((self.num_w,self.num_w))
+        self.Os = coo_matrix((self.num_s,self.num_s))
+        self.Oy = coo_matrix((self.num_y,self.num_y))
+        self.Oz = coo_matrix((self.num_z,self.num_z))
+
+        self.ow = np.zeros(self.num_w)
+        self.os = np.zeros(self.num_s)
+        self.oy = np.zeros(self.num_y)
+        self.oz = np.zeros(self.num_z)
+
         # Check problem data
         assert(net.num_vars == num_w+num_p+num_r+num_l)
         assert(self.num_p == self.num_q == self.num_y)
@@ -202,6 +212,7 @@ class MS_DCOPF(StochObjMS_Problem):
         assert(np.all(self.Hp.data > 0))
         assert(np.all(self.Hq.row == self.Hq.col))
         assert(np.all(self.Hq.data > 0))
+        assert(np.all(self.Hq.data == 100*self.Hp.data))
         assert(np.all(self.gp >= 0))
         assert(np.all(self.gq == 0))
         assert(self.gp.shape == self.gq.shape)
@@ -219,7 +230,57 @@ class MS_DCOPF(StochObjMS_Problem):
         for i in range(10):
             z = np.random.randn(self.num_r)
             assert(norm(self.r_cov*z-self.L_cov*self.L_cov.T*z) < 1e-10)
+
+    def eval_stage_approx(self,t,p_prev,r_list,g_corr=[]):
+        """
+        Evaluates approximate optimal stage cost.
+
+        Parameters
+        ----------
+        t : int (stage)
+        p_prev : vector (prev slow gen powers)
+        r_list : list of renewable injections for stage t,...,T
+        g_corr : list of slope corrections for stage t,...,T
+
+        Returns
+        -------
+        x : stage solution
+        Q : stage cost
+        gQ : stage cost subgradient wrt p_prev
+        """
         
+        assert(t >= 0)
+        assert(t <= self.T)
+        assert(p_prev.shape == (self.num_p,))
+        assert(len(r_list) == self.T-t+1)
+        assert(len(g_corr) == self.T-t+1 or len(g_corr) == 0)
+
+        if len(g_corr) == 0:
+            g_corr = (self.T-t+1)*[0]
+        
+        H_list = []
+        g_list = []
+
+        for i in range(self.T-t+1):
+
+            H = bmat([[self.Hp,None,None,None,None,None],  # p
+                      [None,self.Hq,None,None,None,None],  # q
+                      [None,None,self.Ow,None,None,None],  # w
+                      [None,None,None,self.Os,None,None],  # s
+                      [None,None,None,None,self.Oy,None],  # y
+                      [None,None,None,None,None,self.Oz]], # z
+                     format='coo')
+
+            g = hstack((self.gp + g_corr[i],
+                        self.gq,
+                        self.ow,
+                        self.os,
+                        self.oy,
+                        self.oz))
+
+            H_list.append(H)
+            g_list.append(g)
+            
     def show(self):
         """
         Shows problem information.
