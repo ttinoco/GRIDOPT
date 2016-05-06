@@ -78,7 +78,6 @@ class MS_DCOPF(StochObjMS_Problem):
                       pf.FLAG_VARS,
                       pf.VARGEN_PROP_ANY,
                       pf.VARGEN_VAR_P)
-        assert(net.num_vars == num_w+num_p+num_r+num_l)
 
         # Current values
         x = net.get_var_values()
@@ -124,6 +123,19 @@ class MS_DCOPF(StochObjMS_Problem):
         assert(np.all(Pl*l <= Pl*u))
         assert(np.all(Pr*l < Pr*u))
 
+        # Renewable covariance
+        from scikits.sparse.cholmod import cholesky
+        r_cov = Pr*net.create_vargen_P_sigma(net.vargen_corr_radius,net.vargen_corr_value)*Pr.T
+        r_cov = (r_cov+r_cov.T-triu(r_cov)).tocsc()
+        factor = cholesky(r_cov)
+        L,D = factor.L_D()
+        P = factor.P()
+        PT = coo_matrix((np.ones(P.size),(P,np.arange(P.size))),shape=D.shape)
+        P = P.T
+        D = D.tocoo()
+        Dh = coo_matrix((np.sqrt(D.data),(D.row,D.col)),shape=D.shape)
+        L = PT*L*Dh
+
         # Problem data
         self.num_p = num_p
         self.num_q = num_p
@@ -153,6 +165,60 @@ class MS_DCOPF(StochObjMS_Problem):
 
         self.y_max = self.parameters['max_ramping']*(self.p_max-self.p_min)
         self.y_min = -self.parameters['max_ramping']*(self.p_max-self.p_min)
+      
+        self.Hp = (Pp*H*Pp.T).tocoo()
+        self.gp = Pp*g
+        self.Hq = self.Hp*self.parameters['cost_factor']
+        self.gq = np.zeros(self.num_q)
+
+        self.G = A*Pp.T
+        self.C = A*Pp.T
+        self.R = A*Pr.T
+        self.A = -A*Pw.T
+        self.J = G*Pw.T
+        self.b = b
+        
+        self.Pp = Pp
+        self.Pw = Pw
+        self.Pr = Pr
+
+        self.r_cov = r_cov
+        self.L_cov = L
+
+        # Check problem data
+        assert(net.num_vars == num_w+num_p+num_r+num_l)
+        assert(self.num_p == self.num_q == self.num_y)
+        assert(self.num_z == self.num_br)
+        assert(np.all(self.p_min < self.p_max))
+        assert(np.all(self.q_min < self.q_max))
+        assert(np.all(self.p_min == self.q_min))
+        assert(np.all(self.p_max == self.q_max))
+        assert(np.all(self.w_min < self.w_max))
+        assert(np.all(self.z_min < self.z_max))
+        assert(np.all(self.y_min < self.y_max))
+        assert(np.all(self.r_base < self.r_max))
+        assert(np.all(self.r_base >= 0))
+        assert(np.all(self.Hp.row == self.Hp.col))
+        assert(np.all(self.Hp.data > 0))
+        assert(np.all(self.Hq.row == self.Hq.col))
+        assert(np.all(self.Hq.data > 0))
+        assert(np.all(self.gp >= 0))
+        assert(np.all(self.gq == 0))
+        assert(self.gp.shape == self.gq.shape)
+        assert(self.G.shape == (self.num_bus,self.num_p))
+        assert(self.C.shape == (self.num_bus,self.num_q))
+        assert(self.R.shape == (self.num_bus,self.num_s))
+        assert(self.A.shape == (self.num_bus,self.num_w))
+        assert(self.J.shape == (self.num_br,self.num_w))
+        assert(self.b.shape == (self.num_bus,))
+        assert(np.all(D.row == D.col))
+        assert(np.all(Dh.row == Dh.col))
+        assert(np.all(D.data > 0))
+        assert(np.all(Dh.data > 0))
+        assert(self.r_cov.shape == (self.num_r,self.num_r))
+        for i in range(10):
+            z = np.random.randn(self.num_r)
+            assert(norm(self.r_cov*z-self.L_cov*self.L_cov.T*z) < 1e-10)
         
     def show(self):
         """
