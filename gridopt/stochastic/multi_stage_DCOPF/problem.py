@@ -41,12 +41,6 @@ class MS_DCOPF(StochObjMS_Problem):
         self.net = net
         self.T = stages
 
-        # Generator limits
-        for gen in net.generators:
-            gen.P_min = 0.
-            gen.P_max = np.maximum(gen.P_max,0.)
-            assert(gen.P_min <= gen.P_max)
-
         # Branch flow limits
         for br in net.branches:
             if br.ratingA == 0.:
@@ -149,6 +143,7 @@ class MS_DCOPF(StochObjMS_Problem):
         self.num_l = num_l
         self.num_bus = num_bus
         self.num_br = num_br
+        self.num_x = self.num_p+self.num_q+self.num_w+self.num_s+self.num_y+self.num_z # stage vars
 
         self.p_max = Pp*u
         self.p_min = Pp*l
@@ -201,10 +196,13 @@ class MS_DCOPF(StochObjMS_Problem):
         self.Oy = coo_matrix((self.num_y,self.num_y))
         self.Oz = coo_matrix((self.num_z,self.num_z))
 
+        self.oq = np.zeros(self.num_q)
         self.ow = np.zeros(self.num_w)
         self.os = np.zeros(self.num_s)
         self.oy = np.zeros(self.num_y)
         self.oz = np.zeros(self.num_z)
+
+        self.x_prev = np.hstack((self.p_prev,self.oq,self.ow,self.os,self.oy,self.oz)) # stage vars
 
         # Check problem data
         assert(net.num_vars == num_w+num_p+num_r+num_l)
@@ -245,42 +243,44 @@ class MS_DCOPF(StochObjMS_Problem):
             z = np.random.randn(self.num_r)
             assert(norm(self.r_cov*z-self.L_cov*self.L_cov.T*z) < 1e-10)
 
-    def eval_stage_approx(self,t,r_list,p_prev=None,g_corr=[]):
+    def eval_stage_approx(self,t,w_list,x_prev,g_corr=[],quiet=False,tol=1e-4):
         """
         Evaluates approximate optimal stage cost.
         
         Parameters
         ----------
         t : int (stage)
-        p_prev : vector (prev slow gen powers)
-        r_list : list of renewable injections for stage t,...,T
+        x_prev : vector
+        w_list : list of random vectors for stage t,...,T
         g_corr : list of slope corrections for stage t,...,T
+        quiet : {True,False}
 
         Returns
         -------
         x : stage solution
         Q : stage cost
-        gQ : stage cost subgradient wrt p_prev
+        gQ : stage cost subgradient wrt x_prev
         """
         
         assert(t >= 0)
         assert(t < self.T)
-        assert(len(r_list) == self.T-t)
+        assert(len(w_list) == self.T-t)
         assert(len(g_corr) == self.T-t or len(g_corr) == 0)
-        if p_prev is None:
-            assert(t == 0)
-            p_prev = self.p_prev
-        assert(p_prev.shape == (self.num_p,))
+        assert(x_prev.shape == (self.num_x,))
 
         if len(g_corr) == 0:
             g_corr = (self.T-t)*[0]
         
+        p_prev = x_prev[:self.num_p]
+
         H_list = []
         g_list = []
         A_list = []
         b_list = []
         l_list = []
         u_list = []
+
+        offset = self.num_p+self.num_q+self.num_w+self.num_s
 
         for i in range(self.T-t):
 
@@ -314,9 +314,9 @@ class MS_DCOPF(StochObjMS_Problem):
             g_list.append(g)
 
             A_list += [Arow1,Arow2,Arow3]
-            b_list += [self.b,self.p_prev,self.oz] if i == 0 else [self.b,self.oy,self.oz]
+            b_list += [self.b,p_prev,self.oz] if i == 0 else [self.b,self.oy,self.oz]
             
-            u_list += [self.p_max,self.q_max,self.w_max,r_list[i],self.y_max,self.z_max]
+            u_list += [self.p_max,self.q_max,self.w_max,w_list[i],self.y_max,self.z_max]
             l_list += [self.p_min,self.q_min,self.w_min,self.os,self.y_min,self.z_min]
             
         H = block_diag(H_list,format='coo')
@@ -329,7 +329,7 @@ class MS_DCOPF(StochObjMS_Problem):
         l = np.hstack((l_list))
 
         # Checks
-        num_vars = (self.num_p+self.num_q+self.num_w+self.num_s+self.num_y+self.num_z)*(self.T-t)
+        num_vars = self.num_x*(self.T-t)
         assert(H.shape == (num_vars,num_vars))
         assert(g.shape == (num_vars,))
         assert(A.shape == ((self.num_bus+self.num_p+self.num_z)*(self.T-t),num_vars))
@@ -343,29 +343,27 @@ class MS_DCOPF(StochObjMS_Problem):
 
         # Set up solver
         solver = OptSolverIQP()
-        solver.set_parameters({'quiet':False})
+        solver.set_parameters({'quiet': quiet, 
+                               'tol': tol})
         
         # Solve
         solver.solve(QPproblem)
 
-        # Extract primal vars
+        # Stage optimal point
         x = solver.get_primal_variables()
-        offset = 0
-        p = x[offset:offset+self.num_p]
-        offset += self.num_p
-        q = x[offset:offset+self.num_q]
-        offset += self.num_q
-        w = x[offset:offset+self.num_w]
-        offset += self.num_w
-        s = x[offset:offset+self.num_s]
-        offset += self.num_s
-        y = x[offset:offset+self.num_y]
-        offset += self.num_y
-        z = x[offset:offset+self.num_z]
-        offset += self.num_z
-
-        # Extract dual vars
+        
+        # Optimal duals
         lam,nu,mu,pi = solver.get_dual_variables()
+
+        # Optimal value
+        Q = np.dot(g,x)+0.5*np.dot(x,H*x)
+
+        # Subgradient
+        gQ = np.hstack(((-mu+pi)[offset:offset+self.num_y],
+                        self.oq,self.ow,self.os,self.oy,self.oz))
+
+        # Return
+        return x[:self.num_x],Q,gQ
 
     def sample_w(self,t,observations):
         """
