@@ -12,16 +12,16 @@ from numpy.linalg import norm
 from optalg.opt_solver.opt_solver_error import *
 from optalg.stoch_solver import StochObjMS_Problem
 from optalg.opt_solver import OptSolverIQP,QuadProblem
-from scipy.sparse import triu,bmat,coo_matrix,eye,spdiags
+from scipy.sparse import triu,bmat,coo_matrix,eye,block_diag
             
 class MS_DCOPF(StochObjMS_Problem):
     
     # Parameters
     parameters = {'cost_factor' : 1e2,   # factor for determining fast gen cost
                   'infinity' : 1e3,      # infinity
-                  'flow_factor' : 1.,    # factor for relaxing thermal limits
+                  'flow_factor' : 1.0,   # factor for relaxing thermal limits
                   'max_ramping' : 0.1,   # factor for constructing ramping limits
-                  'r_eps' : 1e-4,          # smallest renewable injection
+                  'r_eps' : 1e-3,        # smallest renewable injection
                   'num_samples' : 1000}  # number of samples
 
     def __init__(self,net,stages):
@@ -36,7 +36,7 @@ class MS_DCOPF(StochObjMS_Problem):
 
         # Parameters
         self.parameters = MS_DCOPF.parameters.copy()
-
+        
         # Save info
         self.net = net
         self.T = stages
@@ -166,9 +166,12 @@ class MS_DCOPF(StochObjMS_Problem):
         self.z_max = hu
         self.z_min = hl
 
-        self.y_max = self.parameters['max_ramping']*(self.p_max-self.p_min)
-        self.y_min = -self.parameters['max_ramping']*(self.p_max-self.p_min)
-      
+        dp = np.maximum(self.p_max-self.p_min,5e-2)
+        self.y_max = self.parameters['max_ramping']*dp
+        self.y_min = -self.parameters['max_ramping']*dp
+
+        self.d = Pl*x
+
         self.Hp = (Pp*H*Pp.T).tocoo()
         self.gp = Pp*g
         self.Hq = self.Hp*self.parameters['cost_factor']
@@ -179,7 +182,8 @@ class MS_DCOPF(StochObjMS_Problem):
         self.R = A*Pr.T
         self.A = -A*Pw.T
         self.J = G*Pw.T
-        self.b = b
+        self.D = -A*Pl.T
+        self.b = b+self.D*self.d
         
         self.Pp = Pp
         self.Pw = Pw
@@ -187,6 +191,10 @@ class MS_DCOPF(StochObjMS_Problem):
 
         self.r_cov = r_cov
         self.L_cov = L
+
+        self.Ip = eye(self.num_p,format='coo')
+        self.Iy = eye(self.num_y,format='coo')
+        self.Iz = eye(self.num_z,format='coo')
 
         self.Ow = coo_matrix((self.num_w,self.num_w))
         self.Os = coo_matrix((self.num_s,self.num_s))
@@ -202,6 +210,7 @@ class MS_DCOPF(StochObjMS_Problem):
         assert(net.num_vars == num_w+num_p+num_r+num_l)
         assert(self.num_p == self.num_q == self.num_y)
         assert(self.num_z == self.num_br)
+        assert(np.all(self.p_min == 0.))
         assert(np.all(self.p_min < self.p_max))
         assert(np.all(self.q_min < self.q_max))
         assert(np.all(self.p_min == self.q_min))
@@ -215,16 +224,18 @@ class MS_DCOPF(StochObjMS_Problem):
         assert(np.all(self.Hp.data > 0))
         assert(np.all(self.Hq.row == self.Hq.col))
         assert(np.all(self.Hq.data > 0))
-        assert(np.all(self.Hq.data == 100*self.Hp.data))
+        assert(np.all(self.Hq.data == self.parameters['cost_factor']*self.Hp.data))
         assert(np.all(self.gp >= 0))
         assert(np.all(self.gq == 0))
         assert(self.gp.shape == self.gq.shape)
+        assert(self.D.shape == (self.num_bus,self.num_l))
         assert(self.G.shape == (self.num_bus,self.num_p))
         assert(self.C.shape == (self.num_bus,self.num_q))
         assert(self.R.shape == (self.num_bus,self.num_s))
         assert(self.A.shape == (self.num_bus,self.num_w))
         assert(self.J.shape == (self.num_br,self.num_w))
         assert(self.b.shape == (self.num_bus,))
+        assert(self.d.shape == (self.num_l,))
         assert(np.all(D.row == D.col))
         assert(np.all(Dh.row == Dh.col))
         assert(np.all(D.data > 0))
@@ -266,6 +277,10 @@ class MS_DCOPF(StochObjMS_Problem):
         
         H_list = []
         g_list = []
+        A_list = []
+        b_list = []
+        l_list = []
+        u_list = []
 
         for i in range(self.T-t):
 
@@ -277,17 +292,80 @@ class MS_DCOPF(StochObjMS_Problem):
                       [None,None,None,None,None,self.Oz]], # z
                      format='coo')
 
-            g = np.hstack((self.gp + g_corr[i],
-                           self.gq,
-                           self.ow,
-                           self.os,
-                           self.oy,
-                           self.oz))
+            g = np.hstack((self.gp + g_corr[i], # p
+                           self.gq,             # q
+                           self.ow,             # w
+                           self.os,             # s
+                           self.oy,             # y
+                           self.oz))            # z
+
+            Arow1 = 6*(self.T-t)*[None]
+            Arow1[6*i:6*(i+1)] = [self.G,self.C,-self.A,self.R,None,None]
+            
+            Arow2 = 6*(self.T-t)*[None]
+            Arow2[6*i:6*(i+1)] = [self.Ip,None,None,None,-self.Iy,None]
+            if i > 0:
+                Arow2[6*(i-1)] = -self.Ip
+
+            Arow3 = 6*(self.T-t)*[None]
+            Arow3[6*i:6*(i+1)] = [None,None,self.J,None,None,-self.Iz]
 
             H_list.append(H)
             g_list.append(g)
 
-            'good'
+            A_list += [Arow1,Arow2,Arow3]
+            b_list += [self.b,self.p_prev,self.oz] if i == 0 else [self.b,self.oy,self.oz]
+            
+            u_list += [self.p_max,self.q_max,self.w_max,r_list[i],self.y_max,self.z_max]
+            l_list += [self.p_min,self.q_min,self.w_min,self.os,self.y_min,self.z_min]
+            
+        H = block_diag(H_list,format='coo')
+        g = np.hstack(g_list)
+ 
+        A = bmat(A_list,format='coo')
+        b = np.hstack(b_list)
+
+        u = np.hstack((u_list))
+        l = np.hstack((l_list))
+
+        # Checks
+        num_vars = (self.num_p+self.num_q+self.num_w+self.num_s+self.num_y+self.num_z)*(self.T-t)
+        assert(H.shape == (num_vars,num_vars))
+        assert(g.shape == (num_vars,))
+        assert(A.shape == ((self.num_bus+self.num_p+self.num_z)*(self.T-t),num_vars))
+        assert(b.shape == ((self.num_bus+self.num_p+self.num_z)*(self.T-t),))
+        assert(u.shape == (num_vars,))
+        assert(l.shape == (num_vars,))
+        assert(np.all(l < u))
+
+        # Problem
+        QPproblem = QuadProblem(H,g,A,b,l,u)
+
+        # Set up solver
+        solver = OptSolverIQP()
+        solver.set_parameters({'quiet':False})
+        
+        # Solve
+        solver.solve(QPproblem)
+
+        # Extract primal vars
+        x = solver.get_primal_variables()
+        offset = 0
+        p = x[offset:offset+self.num_p]
+        offset += self.num_p
+        q = x[offset:offset+self.num_q]
+        offset += self.num_q
+        w = x[offset:offset+self.num_w]
+        offset += self.num_w
+        s = x[offset:offset+self.num_s]
+        offset += self.num_s
+        y = x[offset:offset+self.num_y]
+        offset += self.num_y
+        z = x[offset:offset+self.num_z]
+        offset += self.num_z
+
+        # Extract dual vars
+        lam,nu,mu,pi = solver.get_dual_variables()
 
     def sample_w(self,t,observations):
         """
@@ -312,7 +390,7 @@ class MS_DCOPF(StochObjMS_Problem):
             return self.r_base
         else:
             r_new = observations[-1]+self.L_cov*np.random.randn(self.num_r)
-            return np.minimum(np.maximum(r_new,self.parameters['r_eps']),self.r_max)
+            return np.maximum(np.minimum(r_new,self.r_max),self.parameters['r_eps'])
 
     def predict_w(self,t,observations):
         """
