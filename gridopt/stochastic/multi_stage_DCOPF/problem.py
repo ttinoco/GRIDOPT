@@ -314,12 +314,12 @@ class MS_DCOPF(StochObjMS_Problem):
                       [None,None,None,None,None,self.Oz]], # z
                      format='coo')
 
-            g = np.hstack((self.gp + g_corr[i], # p
-                           self.gq,             # q
-                           self.ow,             # w
-                           self.os,             # s
-                           self.oy,             # y
-                           self.oz))            # z
+            g = np.hstack((self.gp + g_corr[i][:self.num_p], # p
+                           self.gq,                          # q
+                           self.ow,                          # w
+                           self.os,                          # s
+                           self.oy,                          # y
+                           self.oz))                         # z
 
             Arow1 = 6*(self.T-t)*[None]
             Arow1[6*i:6*(i+1)] = [self.G,self.C,-self.A,self.R,None,None]
@@ -362,6 +362,8 @@ class MS_DCOPF(StochObjMS_Problem):
 
         # Problem
         QPproblem = QuadProblem(H,g,A,b,l,u)
+        if not quiet:
+            QPproblem.show()
 
         # Set up solver
         solver = OptSolverIQP()
