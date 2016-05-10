@@ -243,6 +243,28 @@ class MS_DCOPF(StochObjMS_Problem):
             z = np.random.randn(self.num_r)
             assert(norm(self.r_cov*z-self.L_cov*self.L_cov.T*z) < 1e-10)
 
+    def get_num_stages(self):
+        """
+        Gets number of stages.
+
+        Returns
+        -------
+        num : int
+        """
+        
+        return self.T
+
+    def get_size_x(self):
+        """
+        Gets size of stage vector x.
+
+        Returns
+        -------
+        size : int
+        """
+
+        return self.num_x
+
     def eval_stage_approx(self,t,w_list,x_prev,g_corr=[],quiet=False,tol=1e-4):
         """
         Evaluates approximate optimal stage cost.
