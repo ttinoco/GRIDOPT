@@ -23,7 +23,8 @@ class DCOPF(PFmethod):
     parameters = {'quiet' : False,
                   'thermal_limits': True,
                   'thermal_factor': 1.,
-                  'inf_flow': 1e4}
+                  'inf_flow': 1e4,
+                  'vargen_curtailment': False}
                                     
     def __init__(self):
 
@@ -52,13 +53,20 @@ class DCOPF(PFmethod):
                       pfnet.FLAG_VARS|pfnet.FLAG_BOUNDED,
                       pfnet.LOAD_PROP_P_ADJUST,
                       pfnet.LOAD_VAR_P)
+        if params['vargen_curtailment']:
+            net.set_flags(pfnet.OBJ_VARGEN,
+                          pfnet.FLAG_VARS|pfnet.FLAG_BOUNDED,
+                          pfnet.VARGEN_PROP_ANY,
+                          pfnet.VARGEN_VAR_P)
 
         try:
             num_gvar =  len([g for g in net.generators if 
                              (not g.is_on_outage()) and g.is_P_adjustable()])
-            assert(net.num_bounded == num_gvar + net.get_num_P_adjust_loads())
+            num_cur = net.num_vargens if params['vargen_curtailment'] else 0
+            assert(net.num_bounded == num_gvar + net.get_num_P_adjust_loads() + num_cur)
             assert(net.num_vars == (net.num_buses-net.get_num_slack_buses()+
-                                    num_gvar+net.get_num_P_adjust_loads()))
+                                    num_gvar+net.get_num_P_adjust_loads()+
+                                    num_cur))
         except AssertionError:
             raise PFmethodError_BadProblem(self)
             

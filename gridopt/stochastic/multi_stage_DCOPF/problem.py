@@ -9,6 +9,7 @@
 import pfnet as pf
 import numpy as np
 from numpy.linalg import norm
+from gridopt.power_flow import new_method
 from optalg.opt_solver.opt_solver_error import *
 from optalg.stoch_solver import StochObjMS_Problem
 from optalg.opt_solver import OptSolverIQP,QuadProblem
@@ -24,22 +25,35 @@ class MS_DCOPF(StochObjMS_Problem):
                   'r_eps' : 1e-3,        # smallest renewable injection
                   'num_samples' : 1000}  # number of samples
 
-    def __init__(self,net,stages):
+    def __init__(self,net,profile):
         """
         Class constructor.
         
         Parameters
         ----------
         net : PFNET Network
-        stages : int
+        profile : dict
         """
+
+        # Check profile
+        assert(profile.has_key('hour'))
+        assert(profile.has_key('renewable'))
+        assert(profile.has_key('load'))
+        assert(len(profile['hour']) == len(profile['renewable']))
+        assert(len(profile['load']) == len(profile['renewable']))
+        assert(np.min(profile['hour']) >= 0)
+        assert(np.max(profile['hour']) < 24)
+        assert(np.min(profile['load']) >= 0)
+        assert(np.max(profile['load']) <= 1.)
+        assert(np.min(profile['renewable']) >= 0)
+        assert(np.max(profile['renewable']) <= 1.)
 
         # Parameters
         self.parameters = MS_DCOPF.parameters.copy()
         
         # Save info
         self.net = net
-        self.T = stages
+        self.T = len(profile['hour'])
 
         # Branch flow limits
         for br in net.branches:
@@ -47,6 +61,25 @@ class MS_DCOPF(StochObjMS_Problem):
                 br.ratingA = self.parameters['infinity']
             else:
                 br.ratingA *= self.parameters['flow_factor']
+
+        # Forecasts
+        l_forecast = {}
+        r_forecast = {}
+        for load in net.loads:
+            l_forecast[load.index] = map(lambda s: s*load.P,profile['load'])
+        for gen in net.var_generators:
+            r_forecast[gen.index] = map(lambda s: s*gen.P,profile['renewable'])
+
+        # Initial state
+        for load in net.loads:
+            load.P = l_forecast[load.index][0]
+        for gen in net.var_generators:
+            gen.P = r_forecast[gen.index][0]
+        dcopf = new_method('DCOPF')
+        dcopf.set_parameters({'quiet': True, 'vargen_curtailment': True})
+        dcopf.solve(net)
+        assert(dcopf.results['status'] == 'solved')
+        dcopf.update_network(net)
                 
         # Counters
         num_w = net.num_buses-net.get_num_slack_buses() # voltage angles
@@ -109,7 +142,7 @@ class MS_DCOPF(StochObjMS_Problem):
         cost.analyze()
         cost.eval(x)
         H = (cost.Hphi + cost.Hphi.T - triu(cost.Hphi))/net.base_power # symmetric, scaled
-        g = cost.gphi/net.base_power - H*x
+        g = cost.gphi/net.base_power - H*x                             # scaled
         
         # Bounds
         l = net.get_var_values(pf.LOWER_LIMITS)
@@ -156,7 +189,6 @@ class MS_DCOPF(StochObjMS_Problem):
         self.w_min = -self.parameters['infinity']*np.ones(self.num_w)
 
         self.r_max = Pr*u
-        self.r_base = Pr*x
 
         self.z_max = hu
         self.z_min = hl
@@ -164,8 +196,6 @@ class MS_DCOPF(StochObjMS_Problem):
         dp = np.maximum(self.p_max-self.p_min,5e-2)
         self.y_max = self.parameters['max_ramping']*dp
         self.y_min = -self.parameters['max_ramping']*dp
-
-        self.d = Pl*x
 
         self.Hp = (Pp*H*Pp.T).tocoo()
         self.gp = Pp*g
@@ -178,7 +208,7 @@ class MS_DCOPF(StochObjMS_Problem):
         self.A = -A*Pw.T
         self.J = G*Pw.T
         self.D = -A*Pl.T
-        self.b = b+self.D*self.d
+        self.b = b
         
         self.Pp = Pp
         self.Pw = Pw
@@ -204,6 +234,17 @@ class MS_DCOPF(StochObjMS_Problem):
 
         self.x_prev = np.hstack((self.p_prev,self.oq,self.ow,self.os,self.oy,self.oz)) # stage vars
 
+        self.d_forecast = []
+        self.r_forecast = []
+        for t in range(self.T):
+            for load in net.loads:
+                load.P = l_forecast[load.index][t]
+            for gen in net.var_generators:
+                gen.P = r_forecast[gen.index][t]
+            x = net.get_var_values()
+            self.d_forecast.append(Pl*x)
+            self.r_forecast.append(Pr*x)
+
         # Check problem data
         assert(net.num_vars == num_w+num_p+num_r+num_l)
         assert(self.num_p == self.num_q == self.num_y)
@@ -216,8 +257,6 @@ class MS_DCOPF(StochObjMS_Problem):
         assert(np.all(self.w_min < self.w_max))
         assert(np.all(self.z_min < self.z_max))
         assert(np.all(self.y_min < self.y_max))
-        assert(np.all(self.r_base < self.r_max))
-        assert(np.all(self.r_base >= 0))
         assert(np.all(self.Hp.row == self.Hp.col))
         assert(np.all(self.Hp.data > 0))
         assert(np.all(self.Hq.row == self.Hq.col))
@@ -233,7 +272,10 @@ class MS_DCOPF(StochObjMS_Problem):
         assert(self.A.shape == (self.num_bus,self.num_w))
         assert(self.J.shape == (self.num_br,self.num_w))
         assert(self.b.shape == (self.num_bus,))
-        assert(self.d.shape == (self.num_l,))
+        assert(all(map(lambda d: d.shape == (self.num_l,),self.d_forecast)))
+        assert(all(map(lambda r: r.shape == (self.num_r,),self.r_forecast)))
+        assert(all(map(lambda r: np.all(r < self.r_max),self.r_forecast)))
+        assert(all(map(lambda r: np.all(r >= 0),self.r_forecast)))
         assert(np.all(D.row == D.col))
         assert(np.all(Dh.row == Dh.col))
         assert(np.all(D.data > 0))
