@@ -321,9 +321,10 @@ class MS_DCOPF(StochObjMS_Problem):
 
         Returns
         -------
-        x : stage solution
-        Q : stage cost
-        gQ : stage cost subgradient wrt x_prev
+        x : stage t solution
+        Q : stage t cost
+        gQ : stage t cost subgradient wrt x_prev
+        gQQ : stage t+1 cost subgradient wrt xt
         """
         
         assert(t >= 0)
@@ -424,15 +425,19 @@ class MS_DCOPF(StochObjMS_Problem):
         # Optimal duals
         lam,nu,mu,pi = solver.get_dual_variables()
 
-        # Optimal value
+        # Optimal value (stage t)
         Q = np.dot(g,x)+0.5*np.dot(x,H*x)
 
-        # Subgradient
+        # Subgradient (stage t)
         gQ = np.hstack(((-mu+pi)[y_offset:y_offset+self.num_y],
                         self.oq,self.ow,self.os,self.oy,self.oz))
 
+        # Subgradient (stage t+1)
+        gQQ = np.hstack(((-mu+pi)[self.num_x+y_offset:self.num_x+y_offset+self.num_y],
+                         self.oq,self.ow,self.os,self.oy,self.oz))
+
         # Return
-        return x[:self.num_x],Q,gQ
+        return x[:self.num_x],Q,gQ,gQQ
 
     def sample_w(self,t,observations):
         """
