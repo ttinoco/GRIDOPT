@@ -25,35 +25,31 @@ class MS_DCOPF(StochObjMS_Problem):
                   'r_eps' : 1e-3,        # smallest renewable injection
                   'num_samples' : 1000}  # number of samples
 
-    def __init__(self,net,profile):
+    def __init__(self,net,forecast):
         """
         Class constructor.
         
         Parameters
         ----------
         net : PFNET Network
-        profile : dict
+        forecast : dict
         """
-
+        
         # Check profile
-        assert(profile.has_key('hour'))
-        assert(profile.has_key('renewable'))
-        assert(profile.has_key('load'))
-        assert(len(profile['hour']) == len(profile['renewable']))
-        assert(len(profile['load']) == len(profile['renewable']))
-        assert(np.min(profile['hour']) >= 0)
-        assert(np.max(profile['hour']) < 24)
-        assert(np.min(profile['load']) >= 0)
-        assert(np.max(profile['load']) <= 1.)
-        assert(np.min(profile['renewable']) >= 0)
-        assert(np.max(profile['renewable']) <= 1.)
-
+        assert(forecast.has_key('vargen'))
+        assert(forecast.has_key('load'))
+        assert(forecast.has_key('size'))
+        assert(len(forecast['load']) == net.num_loads)
+        assert(len(forecast['vargen']) == net.num_vargens)
+        assert(set([len(v) for v in forecast['load'].values()]) == set([forecast['size']]))
+        assert(set([len(v) for v in forecast['vargen'].values()]) == set([forecast['size']]))
+        
         # Parameters
         self.parameters = MS_DCOPF.parameters.copy()
         
         # Save info
         self.net = net
-        self.T = len(profile['hour'])
+        self.T = forecast['size']
 
         # Branch flow limits
         for br in net.branches:
@@ -62,19 +58,11 @@ class MS_DCOPF(StochObjMS_Problem):
             else:
                 br.ratingA *= self.parameters['flow_factor']
 
-        # Forecasts
-        l_forecast = {}
-        r_forecast = {}
-        for load in net.loads:
-            l_forecast[load.index] = map(lambda s: s*load.P,profile['load'])
-        for gen in net.var_generators:
-            r_forecast[gen.index] = map(lambda s: s*gen.P,profile['renewable'])
-
         # Initial state
         for load in net.loads:
-            load.P = l_forecast[load.index][0]
+            load.P = forecast['load'][load.index][0]
         for gen in net.var_generators:
-            gen.P = r_forecast[gen.index][0]
+            gen.P = forecast['vargen'][gen.index][0]
         dcopf = new_method('DCOPF')
         dcopf.set_parameters({'quiet': True, 'vargen_curtailment': True})
         dcopf.solve(net)
@@ -216,6 +204,7 @@ class MS_DCOPF(StochObjMS_Problem):
 
         self.r_cov = r_cov
         self.L_cov = L
+        self.L_sca = [np.sqrt(t/(self.T-1.)) for t in range(self.T)]
 
         self.Ip = eye(self.num_p,format='coo')
         self.Iy = eye(self.num_y,format='coo')
@@ -238,9 +227,9 @@ class MS_DCOPF(StochObjMS_Problem):
         self.r_forecast = []
         for t in range(self.T):
             for load in net.loads:
-                load.P = l_forecast[load.index][t]
+                load.P = forecast['load'][load.index][t]
             for gen in net.var_generators:
-                gen.P = r_forecast[gen.index][t]
+                gen.P = forecast['vargen'][gen.index][t]
             x = net.get_var_values()
             self.d_forecast.append(Pl*x)
             self.r_forecast.append(Pr*x)
@@ -500,19 +489,51 @@ class MS_DCOPF(StochObjMS_Problem):
         Shows problem information.
         """
 
-        tot_cap = np.sum(self.r_max)
-        tot_base = np.sum(self.r_base)
-        tot_unc = sum([g.P_std for g in self.net.var_generators])
-        tot_load = sum([l.P for l in self.net.loads])
-        
+        import matplotlib.pyplot as plt
+
+        vargen_cap = np.sum(self.r_max)
+        vargen_for = [np.sum(r) for r in self.r_forecast]
+        vargen_unc = [np.sum(triu(s*self.L_cov).tocoo().data) for s in self.L_sca]
+        load_for = [np.sum(d) for d in self.d_forecast]
+        load_max = max(load_for)
+ 
         print '\nStochastic Multi-Stage DCOPF'
         print '-----------------------------'
-        print 'buses            : %d' %self.num_bus
-        print 'gens             : %d' %self.num_p
-        print 'vargens          : %d' %self.num_r
-        print 'stages           : %d' %self.T
-        print 'penetration cap  : %.2f (%% of load)' %(100.*tot_cap/tot_load)
-        print 'penetration base : %.2f (%% of load)' %(100.*tot_base/tot_load)
-        print 'penetration std  : %.2f (%% of local cap)' %(100.*tot_unc/tot_load)
-        print 'correlation rad  : %d (edges)' %(self.net.vargen_corr_radius)
-        print 'correlation val  : %.2f (unitless)' %(self.net.vargen_corr_value)        
+        print 'num buses          : %d' %self.num_bus
+        print 'num gens           : %d' %self.num_p
+        print 'num vargens        : %d' %self.num_r
+        print 'num loads          : %d' %self.num_l
+        print 'num stages         : %d' %self.T
+        print 'vargen cap         : %.2f (%% of max load)' %(100.*vargen_cap/load_max)
+        print 'vargen corr_rad    : %d (edges)' %(self.net.vargen_corr_radius)
+        print 'vargen corr_val    : %.2f (unitless)' %(self.net.vargen_corr_value)
+        
+        plt.subplot(2,2,1)
+        plt.plot([100.*r/load_max for r in vargen_for])
+        plt.xlabel('stage')
+        plt.ylabel('vargen forecast (% of max load)')
+        plt.axis([0,self.T-1,0.,100.])
+        plt.grid()        
+
+        plt.subplot(2,2,2)
+        plt.plot([100.*u/vargen_cap for u in vargen_unc])
+        plt.xlabel('stage')
+        plt.ylabel('vargen uncertainty (% of local cap)')
+        plt.axis([0,self.T-1,0.,100.])
+        plt.grid()
+
+        plt.subplot(2,2,3)
+        plt.plot([r/max(vargen_for) for r in vargen_for])
+        plt.xlabel('stage')
+        plt.ylabel('vargen profile')
+        plt.axis([0,self.T-1,0.,1.])
+        plt.grid()        
+
+        plt.subplot(2,2,4)
+        plt.plot([l/max(load_for) for l in load_for])
+        plt.xlabel('stage')
+        plt.ylabel('load profile')
+        plt.axis([0,self.T-1,0.,1.])
+        plt.grid()        
+
+        plt.show()
