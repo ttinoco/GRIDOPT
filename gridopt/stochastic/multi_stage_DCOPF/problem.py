@@ -344,7 +344,7 @@ class MS_DCOPF(StochObjMS_Problem):
         l_list = []
         u_list = []
 
-        offset = self.num_p+self.num_q+self.num_w+self.num_s
+        y_offset = self.num_p+self.num_q+self.num_w+self.num_s
 
         for i in range(self.T-t):
 
@@ -378,7 +378,10 @@ class MS_DCOPF(StochObjMS_Problem):
             g_list.append(g)
 
             A_list += [Arow1,Arow2,Arow3]
-            b_list += [self.b,p_prev,self.oz] if i == 0 else [self.b,self.oy,self.oz]
+            if i == 0:
+                b_list += [self.b+self.D*self.d_forecast[t+i],p_prev,self.oz]
+            else:
+                b_list += [self.b+self.D*self.d_forecast[t+i],self.oy,self.oz]
             
             u_list += [self.p_max,self.q_max,self.w_max,w_list[i],self.y_max,self.z_max]
             l_list += [self.p_min,self.q_min,self.w_min,self.os,self.y_min,self.z_min]
@@ -425,7 +428,7 @@ class MS_DCOPF(StochObjMS_Problem):
         Q = np.dot(g,x)+0.5*np.dot(x,H*x)
 
         # Subgradient
-        gQ = np.hstack(((-mu+pi)[offset:offset+self.num_y],
+        gQ = np.hstack(((-mu+pi)[y_offset:y_offset+self.num_y],
                         self.oq,self.ow,self.os,self.oy,self.oz))
 
         # Return
@@ -450,11 +453,8 @@ class MS_DCOPF(StochObjMS_Problem):
         assert(t < self.T)
         assert(len(observations) == t)
 
-        if t == 0:
-            return self.r_base
-        else:
-            r_new = observations[-1]+self.L_cov*np.random.randn(self.num_r)
-            return np.maximum(np.minimum(r_new,self.r_max),self.parameters['r_eps'])
+        r_new = self.r_forecast[t]+self.L_sca[t]*self.L_cov*np.random.randn(self.num_r)
+        return np.maximum(np.minimum(r_new,self.r_max),self.parameters['r_eps'])
 
     def predict_w(self,t,observations):
         """
@@ -475,14 +475,11 @@ class MS_DCOPF(StochObjMS_Problem):
         assert(t < self.T)
         assert(len(observations) == t)
 
-        if t == 0:
-            return self.r_base
-        else:
-            r_pred = np.zeros(self.num_r)
-            for i in range(self.parameters['num_samples']):
-                r_pred *= float(i)/float(i+1)
-                r_pred += self.sample_w(t,observations)/(i+1.)
-            return r_pred
+        r_pred = np.zeros(self.num_r)
+        for i in range(self.parameters['num_samples']):
+            r_pred *= float(i)/float(i+1)
+            r_pred += self.sample_w(t,observations)/(i+1.)
+        return r_pred
  
     def show(self):
         """
