@@ -13,9 +13,9 @@ from method import MS_DCOPF_Method
 from scipy.sparse import eye,coo_matrix,bmat
 from optalg.opt_solver import OptSolverIQP, QuadProblem
 
-class MS_DCOPF_ce(MS_DCOPF_Method):
+class MS_DCOPF_TS(MS_DCOPF_Method):
     """
-    Certainty-Equivalent metohd for multi-stage DC OPF problem.
+    Two-stage method for multi-stage DC OPF problem.
     """
     
     parameters = {'quiet': False}
@@ -23,7 +23,7 @@ class MS_DCOPF_ce(MS_DCOPF_Method):
     def __init__(self):
 
         MS_DCOPF_Method.__init__(self)
-        self.parameters = MC_DCOPF_ce.parameters.copy()
+        self.parameters = MC_DCOPF_TS.parameters.copy()
 
     def create_problem(self,net,forecast):
         

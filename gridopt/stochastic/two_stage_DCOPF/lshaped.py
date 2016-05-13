@@ -13,7 +13,7 @@ from problem import TS_DCOPF
 from scipy.sparse import eye,coo_matrix,bmat
 from optalg.opt_solver import OptSolverIQP, QuadProblem
 
-class LShaped(TS_DCOPF_Method):
+class TS_DCOPF_LS(TS_DCOPF_Method):
     """
     L-shaped method for solving two-stage DCOPF problems.
     """
@@ -27,7 +27,7 @@ class LShaped(TS_DCOPF_Method):
     def __init__(self):
 
         TS_DCOPF_Method.__init__(self)
-        self.parameters = LShaped.parameters.copy()
+        self.parameters = TS_DCOPF_LS.parameters.copy()
     
     def create_problem(self,net):
 

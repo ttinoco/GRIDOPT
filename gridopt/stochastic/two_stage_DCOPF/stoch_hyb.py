@@ -6,30 +6,27 @@
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
 
-import time
-import numpy as np
-from problem import MS_DCOPF
-from method import MS_DCOPF_Method
-from scipy.sparse import eye,coo_matrix,bmat
-from optalg.opt_solver import OptSolverIQP, QuadProblem
+from problem import TS_DCOPF
+from method import TS_DCOPF_Method
+from optalg.stoch_solver import StochHybrid
 
-class MS_DCOPF_ts(MS_DCOPF_Method):
+class TS_DCOPF_SH(TS_DCOPF_Method):
     """
-    Two-stage method for multi-stage DC OPF problem.
+    Stochatic Hybrid Approximation method for two-stage DC OPF problem.
     """
     
     parameters = {'quiet': False}
     
     def __init__(self):
 
-        MS_DCOPF_Method.__init__(self)
-        self.parameters = MC_DCOPF_ts.parameters.copy()
+        TS_DCOPF_Method.__init__(self)
+        self.parameters = TS_DCOPF_SH.parameters.copy()
 
-    def create_problem(self,net,forecast):
+    def create_problem(self,net):
         
-        return None
+        return TS_DCOPF(net)
         
-    def solve(self,net,forecast):
+    def solve(self,net):
         
         pass
 

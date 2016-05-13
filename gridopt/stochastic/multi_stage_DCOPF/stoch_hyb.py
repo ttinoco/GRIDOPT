@@ -8,9 +8,9 @@
 
 from problem import MS_DCOPF
 from method import MS_DCOPF_Method
-from optalg.stoch_solver.stoch_hyb_ms import MultiStage_StochasticHybrid
+from optalg.stoch_solver import MultiStage_StochHybrid
 
-class MS_DCOPF_sha(MS_DCOPF_Method):
+class MS_DCOPF_SH(MS_DCOPF_Method):
     """
     Stochatic Hybrid Approximation method for multi-stage DC OPF problem.
     """
@@ -20,7 +20,7 @@ class MS_DCOPF_sha(MS_DCOPF_Method):
     def __init__(self):
 
         MS_DCOPF_Method.__init__(self)
-        self.parameters = MC_DCOPF_sha.parameters.copy()
+        self.parameters = MS_DCOPF_SH.parameters.copy()
 
     def create_problem(self,net,forecast):
         

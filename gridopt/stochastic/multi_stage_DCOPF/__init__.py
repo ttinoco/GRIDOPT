@@ -6,5 +6,8 @@
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
 
-from problem import MS_DCOPF
+from cert_equiv import MS_DCOPF_CE
+from two_stage import MS_DCOPF_TS
+from stoch_hyb import MS_DCOPF_SH
+
 

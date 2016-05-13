@@ -13,7 +13,7 @@ from problem import TS_DCOPF
 from scipy.sparse import eye,coo_matrix,bmat
 from optalg.opt_solver import OptSolverIQP,QuadProblem
 
-class LShapedMulticut(TS_DCOPF_Method):
+class TS_DCOPF_LSM(TS_DCOPF_Method):
     """
     L-shaped multi-cut method for solving two-stage DCOPF problems.
     """
@@ -27,7 +27,7 @@ class LShapedMulticut(TS_DCOPF_Method):
     def __init__(self):
 
         TS_DCOPF_Method.__init__(self)
-        self.parameters = LShapedMulticut.parameters.copy()
+        self.parameters = TS_DCOPF_LSM.parameters.copy()
     
     def create_problem(self,net):
 
