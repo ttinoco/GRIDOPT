@@ -314,8 +314,8 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         Parameters
         ----------
         t : int (stage)
-        x_prev : vector
         w_list : list of random vectors for stage t,...,T
+        x_prev : vector of previous stage variables
         g_corr : list of slope corrections for stage t,...,T
         quiet : {True,False}
 
@@ -439,6 +439,67 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         # Return
         return x[:self.num_x],Q,gQ,gQQ
 
+    def eval_stage_adjust(self,t,r,p,quiet=False,tol=1e-4):
+        """
+        Evaluates stage fast-gen adjustments cost.
+        
+        Parameters
+        ----------
+        t : int (stage)
+        r : vector of current renewable powers
+        p : vector of current slow-gen powers
+        quiet : {True,False}
+
+        Returns
+        -------
+        q : stage t fast-gen powers
+        Q : stage t fast-gen cost
+        """
+        
+        # Objective
+        H = bmat([[self.Hq,None,None,None],  # q
+                  [None,self.Ow,None,None],  # w
+                  [None,None,self.Os,None],  # s
+                  [None,None,None,self.Oz]], # z
+                 format='coo')
+
+        g = np.hstack((self.gq,  # q
+                       self.ow,  # w
+                       self.os,  # s
+                       self.oz)) # z
+
+        # Linear constraints
+        A = bmat([[self.C,-self.A,self.R,None],
+                  [None,self.J,None,-self.Iz]],format='coo')
+        
+        b = np.hstack((self.b+self.D*self.d_forecast[t]-self.G*p,self.oz))
+        
+        # Bounds
+        u = np.hstack((self.q_max,self.w_max,r,self.z_max))
+        l = np.hstack((self.q_min,self.w_min,self.os,self.z_min))
+
+        # Problem
+        QPproblem = QuadProblem(H,g,A,b,l,u)
+        if not quiet:
+            QPproblem.show()
+
+        # Set up solver
+        solver = OptSolverIQP()
+        solver.set_parameters({'quiet': quiet, 
+                               'tol': tol})
+        
+        # Solve
+        solver.solve(QPproblem)
+
+        # Stage optimal point
+        x = solver.get_primal_variables()
+        
+        # Optimal value (stage t)
+        Q = np.dot(g,x)+0.5*np.dot(x,H*x)
+
+        # Return
+        return x[:self.num_q],Q
+
     def sample_w(self,t,observations):
         """
         Samples realization of renewable powers for the given stage
@@ -461,9 +522,25 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         r_new = self.r_forecast[t]+self.L_sca[t]*self.L_cov*np.random.randn(self.num_r)
         return np.maximum(np.minimum(r_new,self.r_max),self.parameters['r_eps'])
 
+    def sample_W(self,t):
+        """
+        Samples realization of renewable powers up
+        to the given stage.
+
+        Parameters
+        ----------
+        t : int (stage)
+
+        Parameters
+        ----------
+        W : list
+        """
+
+        return None
+
     def predict_w(self,t,observations):
         """
-        Prodicts renewable powers for the given stage
+        Predicts renewable powers for the given stage
         given the observations.
 
         Parameters
@@ -485,6 +562,22 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
             r_pred *= float(i)/float(i+1)
             r_pred += self.sample_w(t,observations)/(i+1.)
         return r_pred
+
+    def predict_W(self,t):
+        """
+        Predicts renewable powers up to the
+        given stage.
+
+        Parameters
+        ----------
+        t : int (stage)
+
+        Returns
+        -------
+        W : list
+        """
+
+        return None
  
     def show(self):
         """
