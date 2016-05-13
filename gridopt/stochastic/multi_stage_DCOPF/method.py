@@ -35,6 +35,19 @@ class MS_DCOPF_Method:
         
         return None
 
+    def set_parameters(self,parameters):
+        """
+        Sets solver parameters.
+
+        Parameters
+        ----------
+        parameters : dict
+        """
+        
+        for key,value in parameters.items():
+            if self.parameters.has_key(key):
+                self.parameters[key] = value
+
     def get_results(self):
         """
         Gets dictionary with results.

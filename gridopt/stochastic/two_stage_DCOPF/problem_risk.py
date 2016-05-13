@@ -9,14 +9,14 @@
 import numpy as np
 from utils import ApplyFunc
 from types import MethodType
-from problem import TS_DCOPF
 from numpy.linalg import norm
+from problem import TS_DCOPF_Problem
 from multiprocessing import Pool,cpu_count
 from optalg.stoch_solver import StochGen_Problem
 from optalg.opt_solver import OptProblem,OptSolverLCCP
 from scipy.sparse import csr_matrix,eye,bmat,coo_matrix,tril
 
-class TS_DCOPF_RiskAverse(StochGen_Problem):
+class TS_DCOPF_RA_Problem(StochGen_Problem):
     """"
     This class represents a problem of the form
     
@@ -53,14 +53,14 @@ class TS_DCOPF_RiskAverse(StochGen_Problem):
         """
 
         # Parameters
-        self.parameters = TS_DCOPF_RiskAverse.parameters.copy()
+        self.parameters = TS_DCOPF_RA_Problem.parameters.copy()
         
         # Save args
         self.Qfac = Qfac    # factor for setting Qmax
         self.gamma = gamma  # parameter for CVaR (e.g. 0.95)
         
         # Regular problem
-        self.ts_dcopf = TS_DCOPF(net)
+        self.ts_dcopf = TS_DCOPF_Problem(net)
 
         # Qnorm and Qmax
         p_ce,results = self.ts_dcopf.solve_approx(quiet=True)

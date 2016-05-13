@@ -8,8 +8,8 @@
 
 import time
 import numpy as np
-from problem import MS_DCOPF
 from method import MS_DCOPF_Method
+from problem import MS_DCOPF_Problem
 from scipy.sparse import eye,coo_matrix,bmat
 from optalg.opt_solver import OptSolverIQP, QuadProblem
 
@@ -27,7 +27,7 @@ class MS_DCOPF_CE(MS_DCOPF_Method):
 
     def create_problem(self,net,forecast):
         
-        return None
+        return MS_DCOPF_Problem(net,forecast)
         
     def solve(self,net,forecast):
         

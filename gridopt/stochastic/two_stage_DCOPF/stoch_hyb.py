@@ -6,8 +6,8 @@
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
 
-from problem import TS_DCOPF
 from method import TS_DCOPF_Method
+from problem import TS_DCOPF_Problem
 from optalg.stoch_solver import StochHybrid
 
 class TS_DCOPF_SH(TS_DCOPF_Method):
@@ -24,7 +24,7 @@ class TS_DCOPF_SH(TS_DCOPF_Method):
 
     def create_problem(self,net):
         
-        return TS_DCOPF(net)
+        return TS_DCOPF_Problem(net)
         
     def solve(self,net):
         

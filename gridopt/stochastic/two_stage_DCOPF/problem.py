@@ -19,7 +19,7 @@ from optalg.stoch_solver import StochObj_Problem
 from optalg.opt_solver import OptSolverIQP,QuadProblem
 from scipy.sparse import triu,bmat,coo_matrix,eye,spdiags
             
-class TS_DCOPF(StochObj_Problem):
+class TS_DCOPF_Problem(StochObj_Problem):
     """"
     This class represents a problem of the form
     
@@ -52,7 +52,7 @@ class TS_DCOPF(StochObj_Problem):
         """
 
         # Parameters
-        self.parameters = TS_DCOPF.parameters.copy()
+        self.parameters = TS_DCOPF_Problem.parameters.copy()
 
         # Save info
         self.total_load = sum([l.P for l in net.loads])

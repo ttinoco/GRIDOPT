@@ -9,7 +9,7 @@
 import time
 import numpy as np
 from method import TS_DCOPF_Method
-from problem import TS_DCOPF
+from problem import TS_DCOPF_Problem
 from scipy.sparse import eye,coo_matrix,bmat
 from optalg.opt_solver import OptSolverIQP,QuadProblem
 
@@ -31,7 +31,7 @@ class TS_DCOPF_LSM(TS_DCOPF_Method):
     
     def create_problem(self,net):
 
-        return TS_DCOPF(net)
+        return TS_DCOPF_Problem(net)
 
     def solve(self,net):
 

@@ -7,7 +7,7 @@
 #*****************************************************#
 
 from method import TS_DCOPF_Method
-from problem_risk import TS_DCOPF_RiskAverse
+from problem_risk import TS_DCOPF_RA_Problem
 from optalg.stoch_solver import PrimalDual_StochGradient
 
 class TS_DCOPF_PDSG(TS_DCOPF_Method):
@@ -25,7 +25,7 @@ class TS_DCOPF_PDSG(TS_DCOPF_Method):
 
     def create_problem(self,net):
         
-        return TS_DCOPF_RiskAverse(net)
+        return TS_DCOPF_RA_Problem(net)
         
     def solve(self,net):
         

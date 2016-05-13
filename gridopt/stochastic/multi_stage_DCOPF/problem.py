@@ -15,7 +15,7 @@ from optalg.stoch_solver import StochObjMS_Problem
 from optalg.opt_solver import OptSolverIQP,QuadProblem
 from scipy.sparse import triu,bmat,coo_matrix,eye,block_diag
             
-class MS_DCOPF(StochObjMS_Problem):
+class MS_DCOPF_Problem(StochObjMS_Problem):
     
     # Parameters
     parameters = {'cost_factor' : 1e2,   # factor for determining fast gen cost
@@ -45,7 +45,7 @@ class MS_DCOPF(StochObjMS_Problem):
         assert(set([len(v) for v in forecast['vargen'].values()]) == set([forecast['size']]))
         
         # Parameters
-        self.parameters = MS_DCOPF.parameters.copy()
+        self.parameters = MS_DCOPF_Problem.parameters.copy()
         
         # Save info
         self.net = net
