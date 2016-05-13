@@ -6,13 +6,11 @@
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
 
-import numpy as np
-
-class TS_DCOPF_Method:
+class MS_DCOPF_Method:
 
     def __init__(self):
         """
-        Two-stage DC OPF method class.
+        Multi-stage DC OPF method class.
         """
         
         #: Results dictionary
@@ -21,17 +19,18 @@ class TS_DCOPF_Method:
         #: Parameters dictionary
         self.parameters = {}
 
-    def create_problem(self,net):
+    def create_problem(self,net,forecast):
         """
         Creates optimization problem.
 
         Parameters
         ----------
         net : PFNET Network
+        forecast : dict
 
         Returns
         -------
-        prob : OPTALG StochObj_Problem
+        prob : OPTALG StochObjMS_Problem
         """
         
         return None
@@ -39,7 +38,7 @@ class TS_DCOPF_Method:
     def get_results(self):
         """
         Gets dictionary with results.
-
+        
         Returns
         -------
         results : dict
@@ -58,13 +57,14 @@ class TS_DCOPF_Method:
 
         self.results = results
                 
-    def solve(self,net):
+    def solve(self,net,forecast):
         """
         Solves power flow problem.
         
         Parameters
         ----------
         net : PFNET Network
+        forecast : dict
         """        
         
         pass
