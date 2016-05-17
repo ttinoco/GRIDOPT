@@ -1,4 +1,4 @@
-FROM jupyterhub/jupyterhub
+FROM ubuntu
 
 MAINTAINER Tomas Tinoco De Rubira <tomast@eeh.ee.ethz.ch>
 
@@ -46,10 +46,7 @@ RUN python3 setup.py install
 
 RUN nosetests -v -s
 
-RUN mkdir /notebooks/
-ADD PFNET.ipynb /notebooks/PFNET.ipynb
 
-ADD jupyterhub_config.py /srv/jupyterhub/jupyterhub_config.py
 # Dockerized GRIDOPT
 #-------------------
 #
