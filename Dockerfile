@@ -1,38 +1,55 @@
-FROM ubuntu:14.04
+FROM jupyterhub/jupyterhub
 
 MAINTAINER Tomas Tinoco De Rubira <tomast@eeh.ee.ethz.ch>
 
 ENV PFNET /packages/pfnet
 
-RUN apt-get update -y
-RUN apt-get install -y build-essential
-RUN apt-get install -y python-numpy
-RUN apt-get install -y python-scipy
-RUN apt-get install -y libgraphviz-dev
-RUN apt-get install -y cython
-RUN apt-get install -y python-nose
-RUN apt-get install -y libmumps-dev
-RUN apt-get install -y libmumps-seq-dev
-RUN apt-get install -y python-matplotlib
-RUN apt-get install -y x11-apps
-RUN apt-get install -y gpicview
+RUN apt-get update -y; apt-get install -y build-essential python-numpy python-scipy libgraphviz-dev cython python-nose libmumps-dev libmumps-seq-dev python-matplotlib git
 
-ADD ./packages/pfnet.tar.gz /packages/
-ADD ./packages/optalg.tar.gz /packages/
+RUN apt-get update -y; apt-get install -y python3-matplotlib
 
-RUN cd /packages/pfnet; rm ./data/*.raw; make lib NO_RAW_PARSER=1
-ENV LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:${PFNET}/lib;/usr/local/lib
-RUN cd /packages/pfnet/python; python setup.py install --no_raw_parser; nosetests -v -s
+RUN pip install cython numpy notebook scipy
 
-RUN cd /packages/optalg; python setup.py install
+# Make PFNET
+RUN mkdir /packages
+WORKDIR /packages
+RUN git clone https://github.com/ttinoco/PFNET.git
+WORKDIR /packages/PFNET/
+#RUN rm ./data/*.raw
+ENV PFNET /packages/PFNET
+ENV LD_LIBRARY_PATH ${LD_LIBRARY_PATH}:${PFNET}/lib:/usr/local/lib
+RUN make clean
+RUN make NO_RAW_PARSER=1
+RUN ln -s /packages/PFNET/lib/libpfnet.so  /usr/lib/libpfnet.so
 
-ADD ./ /gridopt/
-RUN cd /gridopt; rm ./tests/resources/*.raw; python setup.py install; nosetests -v -s
+# Install PFNET python bindings
+WORKDIR /packages/PFNET/python 
+RUN python2.7 setup.py install --no_raw_parser
+RUN python3 setup.py install --no_raw_parser
 
-ENTRYPOINT ["gridopt"]
+#RUN nosetests -v -s
 
-CMD ["--help"]
+# Install OPTALG
+WORKDIR /packages
+RUN git clone -b python-3 https://github.com/ttinoco/OPTALG.git
+WORKDIR /packages/OPTALG
+RUN python2.7 setup.py install
+RUN python3 setup.py install
 
+# Install GRIDOPT
+WORKDIR /packages
+RUN git clone -b python-3 https://github.com/ttinoco/GRIDOPT.git
+WORKDIR /packages/GRIDOPT
+#RUN rm ./tests/resources/*.raw
+RUN python2.7 setup.py install
+RUN python3 setup.py install
+
+RUN nosetests -v -s
+
+RUN mkdir /notebooks/
+ADD PFNET.ipynb /notebooks/PFNET.ipynb
+
+ADD jupyterhub_config.py /srv/jupyterhub/jupyterhub_config.py
 # Dockerized GRIDOPT
 #-------------------
 #
