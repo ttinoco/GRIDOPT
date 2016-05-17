@@ -31,5 +31,21 @@ class MS_DCOPF_CE(MS_DCOPF_Method):
         
     def solve(self,net,forecast):
         
-        pass
+        # Local variables
+        params = self.parameters
 
+        # Parameters
+        quiet = params['quiet']
+
+        # Problem
+        problem = self.create_problem(net,forecast)
+        if not quiet:
+            problem.show()
+
+        # Prediction
+        Er_list = problem.predict_W(problem.get_num_stages()-1)
+        
+        # Solve certainty equivalent
+        x,Q,gQ,gQQ = problem.eval_stage_approx(0,Er_list,quiet=quiet)
+        
+        
