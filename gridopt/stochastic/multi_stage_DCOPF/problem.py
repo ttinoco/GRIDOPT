@@ -274,6 +274,51 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
             z = np.random.randn(self.num_r)
             assert(norm(self.r_cov*z-self.L_cov*self.L_cov.T*z) < 1e-10)
 
+    def construct_x(self,p=None,q=None,w=None,s=None,y=None,z=None):
+        """
+        Constructs stage vector from components.
+        
+        Parameters
+        ----------
+
+        Returns
+        -------
+        """
+
+        return np.hstack((p,q,w,s,y,z))
+
+    def separate_x(self,x):
+        """
+        Separates stage vector into components.
+        
+        Parameters
+        ----------
+
+        Returns
+        -------
+        """
+        
+        offset = 0
+        p = x[offset:offset+self.num_p]
+        offset += self.num_p
+        
+        q = x[offset:offset+self.num_q]
+        offset += self.num_q
+
+        w = x[offset:offset+self.num_w]
+        offset += self.num_w
+
+        s = x[offset:offset+self.num_s]
+        offset += self.num_s
+
+        y = x[offset:offset+self.num_y]
+        offset += self.num_y
+
+        z = x[offset:offset+self.num_z]
+        offset += self.num_z
+
+        return p,q,w,s,y,z
+
     def get_num_stages(self):
         """
         Gets number of stages.
@@ -333,7 +378,7 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         assert(x_prev.shape == (self.num_x,))
 
         if len(g_corr) == 0:
-            g_corr = (self.T-t)*[0]
+            g_corr = (self.T-t)*[np.zeros(self.num_x)]
         
         p_prev = x_prev[:self.num_p]
 
@@ -343,8 +388,6 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         b_list = []
         l_list = []
         u_list = []
-
-        y_offset = self.num_p+self.num_q+self.num_w+self.num_s
 
         for i in range(self.T-t):
 
@@ -429,21 +472,22 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         Q_list = []
         gQ_list = []
         x_offset = 0
-        
-
-        # Optimal value (stage t)
-        Q = np.dot(g,x)+0.5*np.dot(x,H*x)
-
-        # Subgradient (stage t)
-        gQ = np.hstack(((-mu+pi)[y_offset:y_offset+self.num_y],
-                        self.oq,self.ow,self.os,self.oy,self.oz))
-
-        # Subgradient (stage t+1)
-        gQQ = np.hstack(((-mu+pi)[self.num_x+y_offset:self.num_x+y_offset+self.num_y],
-                         self.oq,self.ow,self.os,self.oy,self.oz))
-
+        y_offset = self.num_p+self.num_q+self.num_w+self.num_s
+        for i in range(self.T-t):
+            
+            xt = x[x_offset:x_offset+self.num_x]
+            Qt = np.dot(g_list[i],xt)+0.5*np.dot(xt,H_list[i]*xt)
+            gQt = np.hstack(((-mu+pi)[y_offset:y_offset+self.num_y],
+                             self.oq,self.ow,self.os,self.oy,self.oz))
+            x_offset += self.num_x
+            y_offset += self.num_y
+           
+            x_list.append(xt)
+            Q_list.append(Qt)
+            gQ_list.append(gQt)
+            
         # Return
-        return x[:self.num_x],Q,gQ,gQQ
+        return x_list,Q_list,gQ_list
 
     def eval_stage_adjust(self,t,r,p,quiet=False,tol=1e-4):
         """
@@ -458,8 +502,8 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
 
         Returns
         -------
-        q : stage t fast-gen powers
-        Q : stage t fast-gen cost
+        q : stage t vars (q,w,s,z)
+        Q : stage t cost
         """
         
         # Objective
@@ -498,13 +542,45 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         solver.solve(QPproblem)
 
         # Stage optimal point
-        x = solver.get_primal_variables()
+        xadj = solver.get_primal_variables()
+        q = xadj[:self.num_q]
+        w = xadj[self.num_q:self.num_q+self.num_w]
+        s = xadj[self.num_q+self.num_w:self.num_q+self.num_w+self.num_s]
+        z = xadj[self.num_q+self.num_w+self.num_s:]
         
-        # Optimal value (stage t)
-        Q = np.dot(g,x)+0.5*np.dot(x,H*x)
-
         # Return
-        return x[:self.num_q],Q
+        return q,w,s,z
+
+    def is_point_feasible(self,t,p,p_prev,q,w,s,z,r):
+        """
+        Checks wether point is feasible for the given stage.
+
+        Parameters
+        ----------
+        a lot
+
+        Returns
+        -------
+        flag : {True,False}
+        """
+
+        assert(0 <= t < self.T)
+        assert(np.all(self.y_min <= p-p_prev))
+        assert(np.all(self.y_max >= p-p_prev))
+        assert(np.all(self.z_min <= z))
+        assert(np.all(self.z_max >= z))
+        assert(np.all(self.q_min <= q))
+        assert(np.all(self.q_max >= q))
+        assert(np.all(self.p_min <= p))
+        assert(np.all(self.p_max >= p))
+        assert(np.all(self.w_min <= w))
+        assert(np.all(self.w_max >= w))
+        assert(np.all(0 <= s))
+        assert(np.all(r >= s))
+        assert(norm(self.G*p+self.C*q+self.R*s-self.A*w-self.b-self.D*self.d_forecast[t])/norm(self.A.data) < 1e-8)
+        assert(norm(self.J*w-z)/norm(self.J.data) < 1e-8)
+        
+        return True
 
     def sample_w(self,t,observations):
         """
@@ -621,7 +697,8 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         print 'vargen cap         : %.2f (%% of max load)' %(100.*vargen_cap/load_max)
         print 'vargen corr_rad    : %d (edges)' %(self.net.vargen_corr_radius)
         print 'vargen corr_val    : %.2f (unitless)' %(self.net.vargen_corr_value)
-        
+
+        # Vargen forecast
         plt.subplot(2,2,1)
         plt.plot([100.*r/load_max for r in vargen_for])
         plt.xlabel('stage')
@@ -629,6 +706,7 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         plt.axis([0,self.T-1,0.,100.])
         plt.grid()        
 
+        # Vargen uncertainty
         plt.subplot(2,2,2)
         plt.plot([100.*u/vargen_cap for u in vargen_unc])
         plt.xlabel('stage')
@@ -636,6 +714,7 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         plt.axis([0,self.T-1,0.,100.])
         plt.grid()
 
+        # Vargen profile
         plt.subplot(2,2,3)
         plt.plot([r/max(vargen_for) for r in vargen_for])
         plt.xlabel('stage')
@@ -643,11 +722,92 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         plt.axis([0,self.T-1,0.,1.])
         plt.grid()        
 
+        # Load profile
         plt.subplot(2,2,4)
         plt.plot([l/max(load_for) for l in load_for])
         plt.xlabel('stage')
         plt.ylabel('load profile')
         plt.axis([0,self.T-1,0.,1.])
-        plt.grid()        
+        plt.grid()    
 
+        # Vargen prediction
+        fig = plt.figure()
+        plt.hold(True)
+        for i in range(100):
+            RT = map(lambda w: np.sum(w),self.sample_W(self.T-1))
+            plt.plot([100.*r/load_max for r in RT],'--b')
+        RT = map(lambda w: np.sum(w),self.predict_W(self.T-1))
+        plt.plot([100.*r/load_max for r in RT],'r')
+        plt.xlabel('stage')
+        plt.ylabel('vargen samples (% of max load)')
+        plt.axis([0,self.T-1,0.,100.])
+        plt.grid()        
+            
         plt.show()
+
+    def simulate_policy(self,policy,num_runs,seed=0):
+        """
+        Simulates operation policy.
+
+        Parameters
+        ----------
+        policy : StochObjMS_Policy
+        num_runs : int
+        seed : int
+        """
+
+        np.random.seed(seed)
+        
+        cost_list = []
+        ptot_list = []
+        qtot_list = []
+        dtot_list = []
+        rtot_list = []
+        stot_list = []
+        for i in range(num_runs):
+            print 'sim run %d' %i
+            R = []
+            cost = 0.
+            ptot = []
+            qtot = []
+            dtot = []
+            rtot = []
+            stot = []
+            x_prev = self.x_prev
+            for t in range(self.T):
+                r = self.sample_w(t,R)
+                R.append(r)
+                x = policy.apply(t,x_prev,R)
+                p,q,w,s,y,z = self.separate_x(x)
+                cost += (np.dot(self.gp,p)+0.5*np.dot(p,self.Hp*p)+
+                         np.dot(self.gq,q)+0.5*np.dot(q,self.Hq*q))
+                ptot.append(np.sum(p))
+                qtot.append(np.sum(q))
+                dtot.append(np.sum(self.d_forecast[t]))
+                rtot.append(np.sum(r))
+                stot.append(np.sum(s))
+                x_prev = x
+            cost_list.append(cost)
+            ptot_list.append(np.array(ptot))
+            qtot_list.append(np.array(qtot))
+            dtot_list.append(np.array(dtot))
+            rtot_list.append(np.array(rtot))
+            stot_list.append(np.array(stot))                
+            
+        cost = np.average(cost_list)
+        ptot = np.average(ptot_list,axis=0)
+        qtot = np.average(qtot_list,axis=0)
+        dtot = np.average(dtot_list,axis=0)
+        rtot = np.average(rtot_list,axis=0)
+        stot = np.average(stot_list,axis=0)
+        
+        assert(np.isscalar(cost))
+        assert(ptot.shape == (self.T,))
+        assert(qtot.shape == (self.T,))
+        assert(dtot.shape == (self.T,))
+        assert(rtot.shape == (self.T,))
+        assert(stot.shape == (self.T,))
+        
+        
+
+        
