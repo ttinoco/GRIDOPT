@@ -204,7 +204,7 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
 
         self.r_cov = r_cov
         self.L_cov = L
-        self.L_sca = [np.sqrt(t/(self.T-1.)) for t in range(self.T)]
+        self.L_sca = [np.sqrt(t/(self.T-1.)) for t in range(self.T)] # variance grows linearly
 
         self.Ip = eye(self.num_p,format='coo')
         self.Iy = eye(self.num_y,format='coo')
@@ -322,7 +322,7 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
     def get_num_stages(self):
         """
         Gets number of stages.
-
+        
         Returns
         -------
         num : int
@@ -366,9 +366,9 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
 
         Returns
         -------
-        x : list
-        Q : list
-        gQ : list
+        x : list (stage solutions)
+        Q : list (stage costs)
+        gQ : list (stage subgradients with respect to previous stage variables)
         """
         
         assert(t >= 0)
@@ -480,7 +480,7 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
             gQt = np.hstack(((-mu+pi)[y_offset:y_offset+self.num_y],
                              self.oq,self.ow,self.os,self.oy,self.oz))
             x_offset += self.num_x
-            y_offset += self.num_y
+            y_offset += self.num_x
            
             x_list.append(xt)
             Q_list.append(Qt)
@@ -505,6 +505,11 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         q : stage t vars (q,w,s,z)
         Q : stage t cost
         """
+
+        # Check
+        assert(0 <= t < self.T)
+        assert(r.shape == (self.num_r,))
+        assert(p.shape == (self.num_p,))
         
         # Objective
         H = bmat([[self.Hq,None,None,None],  # q
@@ -673,6 +678,21 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
             r_pred *= float(i)/float(i+1)
             r_pred += np.array(self.sample_W(t))/(i+1.)
         return [r_pred[tau,:] for tau in range(t+1)] 
+
+    def set_parameters(self,params):
+        """
+        Sets problem parameters.
+        
+        Parameters
+        ----------
+        params : dic
+        """
+        
+        for key,value in params.items():
+            if self.parameters.has_key(key):
+                self.parameters[key] = value
+            else:
+                raise ValueError('invalid parameter %s' %key)
  
     def show(self):
         """
@@ -680,6 +700,9 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         """
 
         import matplotlib.pyplot as plt
+        import seaborn
+
+        seaborn.set_style("ticks")
 
         vargen_cap = np.sum(self.r_max)
         vargen_for = [np.sum(r) for r in self.r_forecast]
@@ -704,7 +727,7 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         plt.xlabel('stage')
         plt.ylabel('vargen forecast (% of max load)')
         plt.axis([0,self.T-1,0.,100.])
-        plt.grid()        
+        plt.grid()
 
         # Vargen uncertainty
         plt.subplot(2,2,2)
@@ -720,7 +743,7 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         plt.xlabel('stage')
         plt.ylabel('vargen profile')
         plt.axis([0,self.T-1,0.,1.])
-        plt.grid()        
+        plt.grid()
 
         # Load profile
         plt.subplot(2,2,4)
@@ -728,7 +751,7 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         plt.xlabel('stage')
         plt.ylabel('load profile')
         plt.axis([0,self.T-1,0.,1.])
-        plt.grid()    
+        plt.grid()
 
         # Vargen prediction
         fig = plt.figure()
@@ -741,11 +764,11 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         plt.xlabel('stage')
         plt.ylabel('vargen samples (% of max load)')
         plt.axis([0,self.T-1,0.,100.])
-        plt.grid()        
-            
+        plt.grid()            
+
         plt.show()
 
-    def simulate_policy(self,policy,num_runs,seed=0):
+    def simulate_policy(self,policy,num_runs,seed=0,sim_name=''):
         """
         Simulates operation policy.
 
@@ -756,21 +779,26 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         seed : int
         """
 
+        import matplotlib.pyplot as plt
+        import seaborn
+
+        seaborn.set_style("ticks")
+
         np.random.seed(seed)
         
         cost_list = []
+        dtot_list = [] 
         ptot_list = []
         qtot_list = []
-        dtot_list = []
         rtot_list = []
         stot_list = []
         for i in range(num_runs):
             print 'sim run %d' %i
             R = []
-            cost = 0.
+            cost = self.T*[0.]
+            dtot = []
             ptot = []
             qtot = []
-            dtot = []
             rtot = []
             stot = []
             x_prev = self.x_prev
@@ -779,35 +807,107 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
                 R.append(r)
                 x = policy.apply(t,x_prev,R)
                 p,q,w,s,y,z = self.separate_x(x)
-                cost += (np.dot(self.gp,p)+0.5*np.dot(p,self.Hp*p)+
-                         np.dot(self.gq,q)+0.5*np.dot(q,self.Hq*q))
+                for tau in range(t+1):
+                    cost[tau] += (np.dot(self.gp,p)+0.5*np.dot(p,self.Hp*p)+ # slow gen cost
+                                  np.dot(self.gq,q)+0.5*np.dot(q,self.Hq*q)) # fast gen cost
+                dtot.append(np.sum(self.d_forecast[t]))
                 ptot.append(np.sum(p))
                 qtot.append(np.sum(q))
-                dtot.append(np.sum(self.d_forecast[t]))
                 rtot.append(np.sum(r))
                 stot.append(np.sum(s))
-                x_prev = x
-            cost_list.append(cost)
+                x_prev = x.copy()
+            cost_list.append(np.array(cost))
+            dtot_list.append(np.array(dtot))
             ptot_list.append(np.array(ptot))
             qtot_list.append(np.array(qtot))
-            dtot_list.append(np.array(dtot))
             rtot_list.append(np.array(rtot))
             stot_list.append(np.array(stot))                
             
-        cost = np.average(cost_list)
+        cost = np.average(cost_list,axis=0)
+        dtot = np.average(dtot_list,axis=0)
         ptot = np.average(ptot_list,axis=0)
         qtot = np.average(qtot_list,axis=0)
-        dtot = np.average(dtot_list,axis=0)
         rtot = np.average(rtot_list,axis=0)
         stot = np.average(stot_list,axis=0)
         
-        assert(np.isscalar(cost))
+        # Checks
+        assert(cost.shape == (self.T,))
+        assert(dtot.shape == (self.T,))
         assert(ptot.shape == (self.T,))
         assert(qtot.shape == (self.T,))
-        assert(dtot.shape == (self.T,))
         assert(rtot.shape == (self.T,))
         assert(stot.shape == (self.T,))
         
+        # Color
+        cc,cl,cq,cp,cr,cs = seaborn.color_palette("muted",6)
+
+        # Max
+        ymax = 20*np.ceil(100.*np.max(ptot+qtot+rtot)/(np.max(dtot)*20))
+
+        # Figure
+        fig = plt.figure()
+        if sim_name:
+            fig.suptitle('%s, %d simulations' %(sim_name,num_runs))
+        else:
+            fig.suptitle('%d simulations' %num_runs)
         
+        # Plot generation
+        plt.subplot(2,2,1)
+        ax = plt.gca()
+        ax.fill_between(range(self.T),
+                        np.zeros(self.T),
+                        100.*ptot/np.max(dtot),
+                        edgecolor='black',
+                        facecolor=cp)
+        ax.fill_between(range(self.T),
+                        100.*ptot/np.max(dtot),
+                        100.*(ptot+qtot)/np.max(dtot),
+                        edgecolor='black',
+                        facecolor=cq)
+        ax.fill_between(range(self.T),
+                        100.*(ptot+qtot)/np.max(dtot),
+                        100.*(ptot+qtot+stot)/np.max(dtot),
+                        edgecolor='black',
+                        facecolor=cs)
+        ax.fill_between(range(self.T),
+                        100.*(ptot+qtot+stot)/np.max(dtot),
+                        100.*(ptot+qtot+rtot)/np.max(dtot),
+                        edgecolor='black',
+                        facecolor=cr)
+        plt.plot([],color=cr,label='renenwable left')
+        plt.plot([],color=cs,label='renewable used')
+        plt.plot([],color=cq,label='fast-ramping gen')
+        plt.plot([],color=cp,label='slow-ramping gen')
+        plt.title('Generation')
+        plt.xlabel('stage')
+        plt.ylabel('power (% of max total load)')
+        plt.axis([0,self.T-1,0.,ymax])
+        l = plt.legend(loc='lower center',frameon=True)
+        plt.grid()
+
+        # Cost
+        plt.subplot(2,2,2)
+        plt.step(range(self.T),cost)
+        plt.title('Cost-To-Go')
+        plt.xlabel('stage')
+        plt.ylabel('cost units')
+        plt.axis('tight')
+        plt.grid()
+
+        # Plot load
+        plt.subplot(2,2,3)
+        ax = plt.gca()
+        ax.fill_between(range(self.T),
+                        np.zeros(self.T),
+                        100.*dtot/np.max(dtot),
+                        edgecolor='black',
+                        facecolor=cl)
+        plt.title('Load')
+        plt.xlabel('stage')
+        plt.ylabel('power (% of max total load)')
+        plt.axis([0,self.T-1,0.,ymax])
+        plt.grid()
+
+        plt.show()
 
         
