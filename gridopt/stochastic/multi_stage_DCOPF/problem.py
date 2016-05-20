@@ -21,7 +21,7 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
     parameters = {'cost_factor' : 1e2,   # factor for determining fast gen cost
                   'infinity' : 1e3,      # infinity
                   'flow_factor' : 1.0,   # factor for relaxing thermal limits
-                  'max_ramping' : 0.1,   # factor for constructing ramping limits
+                  'max_ramping' : 0.01,   # factor for constructing ramping limits
                   'r_eps' : 1e-3,        # smallest renewable injection
                   'num_samples' : 1000}  # number of samples
 
@@ -352,7 +352,7 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         
         return self.x_prev
 
-    def eval_stage_approx(self,t,w_list,x_prev,g_corr=[],quiet=False,tol=1e-4):
+    def eval_stage_approx(self,t,w_list,x_prev,g_corr=[],quiet=False,tol=1e-4,tf=None):
         """
         Evaluates approximate optimal stage cost.
         
@@ -370,15 +370,21 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         Q : list (stage costs)
         gQ : list (stage subgradients with respect to previous stage variables)
         """
+
+        if tf is None:
+            tf = self.T-1
+
+        if len(g_corr) == 0:
+            g_corr = (tf-t+1)*[np.zeros(self.num_x)]
         
         assert(t >= 0)
         assert(t < self.T)
-        assert(len(w_list) == self.T-t)
-        assert(len(g_corr) == self.T-t or len(g_corr) == 0)
+        assert(tf >= 0)
+        assert(tf < self.T)
+        assert(t <= tf)
+        assert(len(w_list) == tf-t+1)
+        assert(len(g_corr) == tf-t+1)
         assert(x_prev.shape == (self.num_x,))
-
-        if len(g_corr) == 0:
-            g_corr = (self.T-t)*[np.zeros(self.num_x)]
         
         p_prev = x_prev[:self.num_p]
 
@@ -389,7 +395,7 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         l_list = []
         u_list = []
 
-        for i in range(self.T-t):
+        for i in range(tf-t+1):
 
             H = bmat([[self.Hp,None,None,None,None,None],  # p
                       [None,self.Hq,None,None,None,None],  # q
@@ -406,15 +412,15 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
                            self.oy,                          # y
                            self.oz))                         # z
 
-            Arow1 = 6*(self.T-t)*[None]
+            Arow1 = 6*(tf-t+1)*[None]
             Arow1[6*i:6*(i+1)] = [self.G,self.C,-self.A,self.R,None,None]
             
-            Arow2 = 6*(self.T-t)*[None]
+            Arow2 = 6*(tf-t+1)*[None]
             Arow2[6*i:6*(i+1)] = [self.Ip,None,None,None,-self.Iy,None]
             if i > 0:
                 Arow2[6*(i-1)] = -self.Ip
 
-            Arow3 = 6*(self.T-t)*[None]
+            Arow3 = 6*(tf-t+1)*[None]
             Arow3[6*i:6*(i+1)] = [None,None,self.J,None,None,-self.Iz]
 
             H_list.append(H)
@@ -439,11 +445,11 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         l = np.hstack((l_list))
 
         # Checks
-        num_vars = self.num_x*(self.T-t)
+        num_vars = self.num_x*(tf-t+1)
         assert(H.shape == (num_vars,num_vars))
         assert(g.shape == (num_vars,))
-        assert(A.shape == ((self.num_bus+self.num_p+self.num_z)*(self.T-t),num_vars))
-        assert(b.shape == ((self.num_bus+self.num_p+self.num_z)*(self.T-t),))
+        assert(A.shape == ((self.num_bus+self.num_p+self.num_z)*(tf-t+1),num_vars))
+        assert(b.shape == ((self.num_bus+self.num_p+self.num_z)*(tf-t+1),))
         assert(u.shape == (num_vars,))
         assert(l.shape == (num_vars,))
         assert(np.all(l < u))
@@ -473,7 +479,7 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         gQ_list = []
         x_offset = 0
         y_offset = self.num_p+self.num_q+self.num_w+self.num_s
-        for i in range(self.T-t):
+        for i in range(tf-t+1):
             
             xt = x[x_offset:x_offset+self.num_x]
             Qt = np.dot(g_list[i],xt)+0.5*np.dot(xt,H_list[i]*xt)
@@ -569,6 +575,7 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         flag : {True,False}
         """
 
+        #try: 
         assert(0 <= t < self.T)
         assert(np.all(self.y_min <= p-p_prev))
         assert(np.all(self.y_max >= p-p_prev))
@@ -584,7 +591,8 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         assert(np.all(r >= s))
         assert(norm(self.G*p+self.C*q+self.R*s-self.A*w-self.b-self.D*self.d_forecast[t])/norm(self.A.data) < 1e-8)
         assert(norm(self.J*w-z)/norm(self.J.data) < 1e-8)
-        
+        #except Exception:
+        #    return False
         return True
 
     def sample_w(self,t,observations):
