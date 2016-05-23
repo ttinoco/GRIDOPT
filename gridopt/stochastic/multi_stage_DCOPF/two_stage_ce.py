@@ -26,10 +26,11 @@ class MS_DCOPF_TSCE(MS_DCOPF_Method):
         
         MS_DCOPF_Method.__init__(self)
         self.parameters = MS_DCOPF_TSCE.parameters.copy()
-
-    def create_problem(self,net,forecast):
+        self.parameters.update(MS_DCOPF_Problem.parameters)
         
-        return MS_DCOPF_Problem(net,forecast)
+    def create_problem(self,net,forecast,parameters):
+        
+        return MS_DCOPF_Problem(net,forecast,parameters) 
         
     def solve(self,net,forecast):
         
@@ -40,7 +41,7 @@ class MS_DCOPF_TSCE(MS_DCOPF_Method):
         quiet = params['quiet']
 
         # Problem
-        self.problem = self.create_problem(net,forecast)
+        self.problem = self.create_problem(net,forecast,params)
         if not quiet:
             self.problem.show()
 

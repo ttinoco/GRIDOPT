@@ -19,14 +19,14 @@ from scipy.sparse import triu,bmat,coo_matrix,eye,block_diag
 class MS_DCOPF_Problem(StochObjMS_Problem):
     
     # Parameters
-    parameters = {'cost_factor' : 1e2,   # factor for determining fast gen cost
+    parameters = {'cost_factor' : 1e1,   # factor for determining fast gen cost
                   'infinity' : 1e3,      # infinity
                   'flow_factor' : 1.0,   # factor for relaxing thermal limits
-                  'max_ramping' : 0.1,   # factor for constructing ramping limits
+                  'max_ramping' : 0.01,  # factor for constructing ramping limits
                   'r_eps' : 1e-3,        # smallest renewable injection
                   'num_samples' : 1000}  # number of samples
 
-    def __init__(self,net,forecast):
+    def __init__(self,net,forecast,parameters={}):
         """
         Class constructor.
         
@@ -34,6 +34,7 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         ----------
         net : PFNET Network
         forecast : dict
+        parameters : dict
         """
         
         # Check profile
@@ -47,6 +48,7 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         
         # Parameters
         self.parameters = MS_DCOPF_Problem.parameters.copy()
+        self.set_parameters(parameters)
         
         # Save info
         self.T = forecast['size']
@@ -100,7 +102,7 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
 
         # Current values
         x = net.get_var_values()
-
+        
         # Projections
         Pw = net.get_var_projection(pf.OBJ_BUS,pf.BUS_VAR_VANG)
         Pp = net.get_var_projection(pf.OBJ_GEN,pf.GEN_VAR_P)
@@ -190,7 +192,7 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         self.Hp = (Pp*H*Pp.T).tocoo()
         self.gp = Pp*g
         self.Hq = self.Hp*self.parameters['cost_factor']
-        self.gq = np.zeros(self.num_q)
+        self.gq = self.gp*self.parameters['cost_factor']
 
         self.G = A*Pp.T
         self.C = A*Pp.T
@@ -254,7 +256,7 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         assert(np.all(self.Hq.data > 0))
         assert(np.all(self.Hq.data == self.parameters['cost_factor']*self.Hp.data))
         assert(np.all(self.gp >= 0))
-        assert(np.all(self.gq == 0))
+        assert(np.all(self.gq == self.gp*self.parameters['cost_factor']))
         assert(self.gp.shape == self.gq.shape)
         assert(self.D.shape == (self.num_bus,self.num_l))
         assert(self.G.shape == (self.num_bus,self.num_p))
@@ -701,8 +703,6 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         for key,value in params.items():
             if self.parameters.has_key(key):
                 self.parameters[key] = value
-            else:
-                raise ValueError('invalid parameter %s' %key)
  
     def show(self):
         """

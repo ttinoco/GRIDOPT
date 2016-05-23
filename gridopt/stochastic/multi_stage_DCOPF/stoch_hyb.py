@@ -21,11 +21,14 @@ class MS_DCOPF_SH(MS_DCOPF_Method):
 
         MS_DCOPF_Method.__init__(self)
         self.parameters = MS_DCOPF_SH.parameters.copy()
+        self.parameters.update(MS_DCOPF_Problem.parameters)
         self.parameters.update(MultiStage_StochHybrid.parameters)
 
     def create_problem(self,net,forecast):
         
-        return MS_DCOPF_Problem(net,forecast)
+        problem = MS_DCOPF_Problem(net,forecast)
+        problem.set_parameters(self.parameters)
+        return problem
         
     def solve(self,net,forecast):
         

@@ -26,10 +26,11 @@ class MS_DCOPF_GR(MS_DCOPF_Method):
         
         MS_DCOPF_Method.__init__(self)
         self.parameters = MS_DCOPF_GR.parameters.copy()
+        self.parameters.update(MS_DCOPF_Problem.parameters)
 
-    def create_problem(self,net,forecast):
+    def create_problem(self,net,forecast,parameters):
         
-        return MS_DCOPF_Problem(net,forecast)
+        return MS_DCOPF_Problem(net,forecast,parameters)
         
     def solve(self,net,forecast):
         
@@ -40,7 +41,7 @@ class MS_DCOPF_GR(MS_DCOPF_Method):
         quiet = params['quiet']
 
         # Problem
-        self.problem = self.create_problem(net,forecast)
+        self.problem = self.create_problem(net,forecast,params)
         if not quiet:
             self.problem.show()
  
@@ -57,8 +58,8 @@ class MS_DCOPF_GR(MS_DCOPF_Method):
             p_prev = x_prev[:cls.problem.num_p]
             
             # Check dims
-            assert(p.shape,(cls.problem.num_p,))
-            assert(p_prev.shape,(cls.problem.num_p,))
+            assert(p.shape == (cls.problem.num_p,))
+            assert(p_prev.shape == (cls.problem.num_p,))
             
             # Check feasibility
             if not cls.problem.is_point_feasible(t,p,p_prev,q,w,s,z,Wt[-1]):

@@ -97,6 +97,9 @@ class DCOPF(PFmethod):
 
         # Problem
         problem = self.create_problem(net)
+
+        # Renewables
+        Pr = net.get_var_projection(pfnet.OBJ_VARGEN,pfnet.VARGEN_VAR_P)
        
         # Construct QP
         x = problem.get_init_point()
@@ -124,6 +127,8 @@ class DCOPF(PFmethod):
         lx = c_bounds.l
         ux = c_bounds.u
         Gx = c_bounds.G
+        
+        ux += Pr.T*Pr*(x-ux) # correct limit for curtailment
 
         nx = net.num_vars
         nz = net.get_num_branches_not_on_outage()
