@@ -15,7 +15,7 @@ from scipy.sparse import eye,coo_matrix,bmat
 from optalg.stoch_solver import StochObjMS_Policy
 from optalg.opt_solver import OptSolverIQP, QuadProblem
 
-class MS_DCOPF_CE(MS_DCOPF_Method):
+class MS_DCOPF_TSCE(MS_DCOPF_Method):
     """
     Certainty-Equivalent metohd for multi-stage DC OPF problem.
     """
@@ -25,7 +25,7 @@ class MS_DCOPF_CE(MS_DCOPF_Method):
     def __init__(self):
         
         MS_DCOPF_Method.__init__(self)
-        self.parameters = MS_DCOPF_CE.parameters.copy()
+        self.parameters = MS_DCOPF_TSCE.parameters.copy()
 
     def create_problem(self,net,forecast):
         
@@ -58,22 +58,22 @@ class MS_DCOPF_CE(MS_DCOPF_Method):
         # Construct policy
         def apply(cls,t,x_prev,Wt):
             
-            assert(0 <= t < self.problem.T)
+            assert(0 <= t < cls.problem.T)
             assert(len(Wt) == t+1)
             
-            p = p_list[t]
-            p_prev = x_prev[:self.problem.num_p]
+            p = cls.data[t]
+            p_prev = x_prev[:cls.problem.num_p]
             
-            q,w,s,z = self.problem.eval_stage_adjust(t,Wt[-1],p,quiet=True)
+            q,w,s,z = cls.problem.eval_stage_adjust(t,Wt[-1],p,quiet=True)
             
             # Check feasibility
-            if not self.problem.is_point_feasible(t,p,p_prev,q,w,s,z,Wt[-1]):
-                exit()
+            if not cls.problem.is_point_feasible(t,p,p_prev,q,w,s,z,Wt[-1]):
+                raise ValueError('point not feasible')
             
             # Return
-            return self.problem.construct_x(p=p,q=q,w=w,s=s,y=p-p_prev,z=z)
+            return cls.problem.construct_x(p=p,q=q,w=w,s=s,y=p-p_prev,z=z)
             
-        policy = StochObjMS_Policy()
+        policy = StochObjMS_Policy(self.problem,data=p_list,name='Two-Stage Certainty-Equivalent Algorithm')
         policy.apply = MethodType(apply,policy)
         
         # Return

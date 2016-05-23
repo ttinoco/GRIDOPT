@@ -21,7 +21,7 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
     parameters = {'cost_factor' : 1e2,   # factor for determining fast gen cost
                   'infinity' : 1e3,      # infinity
                   'flow_factor' : 1.0,   # factor for relaxing thermal limits
-                  'max_ramping' : 0.01,   # factor for constructing ramping limits
+                  'max_ramping' : 0.1,   # factor for constructing ramping limits
                   'r_eps' : 1e-3,        # smallest renewable injection
                   'num_samples' : 1000}  # number of samples
 
@@ -48,8 +48,9 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         self.parameters = MS_DCOPF_Problem.parameters.copy()
         
         # Save info
-        self.net = net
         self.T = forecast['size']
+        self.corr_value = net.vargen_corr_value
+        self.corr_radius = net.vargen_corr_radius
 
         # Branch flow limits
         for br in net.branches:
@@ -726,8 +727,8 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         print 'num loads          : %d' %self.num_l
         print 'num stages         : %d' %self.T
         print 'vargen cap         : %.2f (%% of max load)' %(100.*vargen_cap/load_max)
-        print 'vargen corr_rad    : %d (edges)' %(self.net.vargen_corr_radius)
-        print 'vargen corr_val    : %.2f (unitless)' %(self.net.vargen_corr_value)
+        print 'vargen corr_rad    : %d (edges)' %(self.corr_radius)
+        print 'vargen corr_val    : %.2f (unitless)' %(self.corr_value)
 
         # Vargen forecast
         plt.subplot(2,2,1)
@@ -776,13 +777,13 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
 
         plt.show()
 
-    def simulate_policy(self,policy,num_runs,seed=0,sim_name=''):
+    def simulate_policies(self,policies,num_runs,seed=0):
         """
-        Simulates operation policy.
+        Simulates operation policies.
 
         Parameters
         ----------
-        policy : StochObjMS_Policy
+        policies : list of StochObjMS_Policy
         num_runs : int
         seed : int
         """
