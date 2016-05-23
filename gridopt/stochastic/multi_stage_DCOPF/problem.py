@@ -788,134 +788,144 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         seed : int
         """
 
+        from multiprocessing import Pool
         import matplotlib.pyplot as plt
         import seaborn
 
+        # Configure
         seaborn.set_style("ticks")
-
         np.random.seed(seed)
         
-        cost_list = []
-        dtot_list = [] 
-        ptot_list = []
-        qtot_list = []
+        # Local vars
+        num_pol = len(policies)
+        
+        # Eval
+        dtot_list = []
         rtot_list = []
-        stot_list = []
-        for i in range(num_runs):
-            print 'sim run %d' %i
+        cost_list = dict([(i,[]) for i in range(num_pol)])
+        ptot_list = dict([(i,[]) for i in range(num_pol)])
+        qtot_list = dict([(i,[]) for i in range(num_pol)])
+        stot_list = dict([(i,[]) for i in range(num_pol)])
+        for j in range(num_runs):
+            
+            print 'sim run %d' %j
+            
             R = []
-            cost = self.T*[0.]
             dtot = []
-            ptot = []
-            qtot = []
             rtot = []
-            stot = []
-            x_prev = self.x_prev
+            cost = dict([(i,self.T*[0.]) for i in range(num_pol)])
+            ptot = dict([(i,[]) for i in range(num_pol)])
+            qtot = dict([(i,[]) for i in range(num_pol)])
+            stot = dict([(i,[]) for i in range(num_pol)])
+            x_prev = dict([(i,self.x_prev) for i in range(num_pol)])
+            
             for t in range(self.T):
                 r = self.sample_w(t,R)
                 R.append(r)
-                x = policy.apply(t,x_prev,R)
-                p,q,w,s,y,z = self.separate_x(x)
-                for tau in range(t+1):
-                    cost[tau] += (np.dot(self.gp,p)+0.5*np.dot(p,self.Hp*p)+ # slow gen cost
-                                  np.dot(self.gq,q)+0.5*np.dot(q,self.Hq*q)) # fast gen cost
                 dtot.append(np.sum(self.d_forecast[t]))
-                ptot.append(np.sum(p))
-                qtot.append(np.sum(q))
                 rtot.append(np.sum(r))
-                stot.append(np.sum(s))
-                x_prev = x.copy()
-            cost_list.append(np.array(cost))
+                for i in range(num_pol):
+                    x = policies[i].apply(t,x_prev[i],R)
+                    p,q,w,s,y,z = self.separate_x(x)
+                    for tau in range(t+1):
+                        cost[i][tau] += (np.dot(self.gp,p)+0.5*np.dot(p,self.Hp*p)+ # slow gen cost
+                                         np.dot(self.gq,q)+0.5*np.dot(q,self.Hq*q)) # fast gen cost
+                    ptot[i].append(np.sum(p))
+                    qtot[i].append(np.sum(q))
+                    stot[i].append(np.sum(s))
+                    x_prev[i] = x.copy()
+
             dtot_list.append(np.array(dtot))
-            ptot_list.append(np.array(ptot))
-            qtot_list.append(np.array(qtot))
             rtot_list.append(np.array(rtot))
-            stot_list.append(np.array(stot))                
-            
-        cost = np.average(cost_list,axis=0)
+            for i in range(num_pol):
+                cost_list[i].append(np.array(cost[i]))
+                ptot_list[i].append(np.array(ptot[i]))
+                qtot_list[i].append(np.array(qtot[i]))
+                stot_list[i].append(np.array(stot[i]))
+
         dtot = np.average(dtot_list,axis=0)
-        ptot = np.average(ptot_list,axis=0)
-        qtot = np.average(qtot_list,axis=0)
         rtot = np.average(rtot_list,axis=0)
-        stot = np.average(stot_list,axis=0)
+        cost = dict([(i,np.average(cost_list[i],axis=0)) for i in range(num_pol)])
+        ptot = dict([(i,np.average(ptot_list[i],axis=0)) for i in range(num_pol)])
+        qtot = dict([(i,np.average(qtot_list[i],axis=0)) for i in range(num_pol)])
+        stot = dict([(i,np.average(stot_list[i],axis=0)) for i in range(num_pol)])
         
         # Checks
-        assert(cost.shape == (self.T,))
         assert(dtot.shape == (self.T,))
-        assert(ptot.shape == (self.T,))
-        assert(qtot.shape == (self.T,))
         assert(rtot.shape == (self.T,))
-        assert(stot.shape == (self.T,))
+        for i in range(num_pol):
+            assert(cost[i].shape == (self.T,))
+            assert(ptot[i].shape == (self.T,))
+            assert(qtot[i].shape == (self.T,))
+            assert(stot[i].shape == (self.T,))
         
         # Color
         cc,cl,cq,cp,cr,cs = seaborn.color_palette("muted",6)
 
         # Max
-        ymax = 20*np.ceil(100.*np.max(ptot+qtot+rtot)/(np.max(dtot)*20))
-
-        # Figure
-        fig = plt.figure()
-        if sim_name:
-            fig.suptitle('%s, %d simulations' %(sim_name,num_runs))
-        else:
-            fig.suptitle('%d simulations' %num_runs)
+        ymax = max([20*np.ceil(100.*np.max(ptot[i]+qtot[i]+rtot)/(np.max(dtot)*20)) 
+                    for i in range(num_pol)])
         
         # Plot generation
-        plt.subplot(2,2,1)
-        ax = plt.gca()
-        ax.fill_between(range(self.T),
-                        np.zeros(self.T),
-                        100.*ptot/np.max(dtot),
-                        edgecolor='black',
-                        facecolor=cp)
-        ax.fill_between(range(self.T),
-                        100.*ptot/np.max(dtot),
-                        100.*(ptot+qtot)/np.max(dtot),
-                        edgecolor='black',
-                        facecolor=cq)
-        ax.fill_between(range(self.T),
-                        100.*(ptot+qtot)/np.max(dtot),
-                        100.*(ptot+qtot+stot)/np.max(dtot),
-                        edgecolor='black',
-                        facecolor=cs)
-        ax.fill_between(range(self.T),
-                        100.*(ptot+qtot+stot)/np.max(dtot),
-                        100.*(ptot+qtot+rtot)/np.max(dtot),
-                        edgecolor='black',
-                        facecolor=cr)
-        plt.plot([],color=cr,label='renenwable left')
-        plt.plot([],color=cs,label='renewable used')
-        plt.plot([],color=cq,label='fast-ramping gen')
-        plt.plot([],color=cp,label='slow-ramping gen')
-        plt.title('Generation')
-        plt.xlabel('stage')
-        plt.ylabel('power (% of max total load)')
-        plt.axis([0,self.T-1,0.,ymax])
-        l = plt.legend(loc='lower center',frameon=True)
-        plt.grid()
+        for i in range(num_pol):
+            fig = plt.figure()
+            plt.title(policies[i].get_name())
+            ax = plt.gca()
+            ax.fill_between(range(self.T),
+                            np.zeros(self.T),
+                            100.*ptot[i]/np.max(dtot),
+                            edgecolor='black',
+                            facecolor=cp)
+            ax.fill_between(range(self.T),
+                            100.*ptot[i]/np.max(dtot),
+                            100.*(ptot[i]+qtot[i])/np.max(dtot),
+                            edgecolor='black',
+                            facecolor=cq)
+            ax.fill_between(range(self.T),
+                            100.*(ptot[i]+qtot[i])/np.max(dtot),
+                            100.*(ptot[i]+qtot[i]+stot[i])/np.max(dtot),
+                            edgecolor='black',
+                            facecolor=cs)
+            ax.fill_between(range(self.T),
+                            100.*(ptot[i]+qtot[i]+stot[i])/np.max(dtot),
+                            100.*(ptot[i]+qtot[i]+rtot)/np.max(dtot),
+                            edgecolor='black',
+                            facecolor=cr)
+            plt.plot([],color=cr,label='renenwable left')
+            plt.plot([],color=cs,label='renewable used')
+            plt.plot([],color=cq,label='fast-ramping gen')
+            plt.plot([],color=cp,label='slow-ramping gen')
+            plt.xlabel('stage')
+            plt.ylabel('power (% of max total load)')
+            plt.axis([0,self.T-1,0.,ymax])
+            l = plt.legend(loc='lower center',frameon=True)
+            plt.grid()
 
         # Cost
-        plt.subplot(2,2,2)
-        plt.step(range(self.T),cost)
+        fig = plt.figure()
+        plt.hold(True)
+        for i in range(num_pol):
+            plt.step(range(self.T),cost[i],label=policies[i].get_name())
         plt.title('Cost-To-Go')
         plt.xlabel('stage')
         plt.ylabel('cost units')
         plt.axis('tight')
+        plt.legend()
         plt.grid()
 
         # Plot load
-        plt.subplot(2,2,3)
-        ax = plt.gca()
-        ax.fill_between(range(self.T),
-                        np.zeros(self.T),
-                        100.*dtot/np.max(dtot),
-                        edgecolor='black',
-                        facecolor=cl)
-        plt.title('Load')
-        plt.xlabel('stage')
-        plt.ylabel('power (% of max total load)')
-        plt.axis([0,self.T-1,0.,ymax])
-        plt.grid()
+        #plt.
+        #ax = plt.gca()
+        #ax.fill_between(range(self.T),
+        #                np.zeros(self.T),
+        #                100.*dtot/np.max(dtot),
+        #                edgecolor='black',
+        #                facecolor=cl)
+        #plt.title('Load')
+        #plt.xlabel('stage')
+        #plt.ylabel('power (% of max total load)')
+        #plt.axis([0,self.T-1,0.,ymax])
+        #plt.grid()
 
         plt.show()
 

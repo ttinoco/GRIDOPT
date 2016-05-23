@@ -73,7 +73,7 @@ class MS_DCOPF_TSCE(MS_DCOPF_Method):
             # Return
             return cls.problem.construct_x(p=p,q=q,w=w,s=s,y=p-p_prev,z=z)
             
-        policy = StochObjMS_Policy(self.problem,data=p_list,name='Two-Stage Certainty-Equivalent Algorithm')
+        policy = StochObjMS_Policy(self.problem,data=p_list,name='Two-Stage Certainty-Equivalent')
         policy.apply = MethodType(apply,policy)
         
         # Return
