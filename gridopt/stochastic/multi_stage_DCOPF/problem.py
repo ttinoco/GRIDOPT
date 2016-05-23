@@ -8,13 +8,14 @@
 
 import pfnet as pf
 import numpy as np
+from utils import ApplyFunc
 from numpy.linalg import norm
 from gridopt.power_flow import new_method
 from optalg.opt_solver.opt_solver_error import *
 from optalg.stoch_solver import StochObjMS_Problem
 from optalg.opt_solver import OptSolverIQP,QuadProblem
 from scipy.sparse import triu,bmat,coo_matrix,eye,block_diag
-            
+
 class MS_DCOPF_Problem(StochObjMS_Problem):
     
     # Parameters
@@ -766,10 +767,10 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         fig = plt.figure()
         plt.hold(True)
         for i in range(100):
-            RT = map(lambda w: np.sum(w),self.sample_W(self.T-1))
-            plt.plot([100.*r/load_max for r in RT],'--b')
-        RT = map(lambda w: np.sum(w),self.predict_W(self.T-1))
-        plt.plot([100.*r/load_max for r in RT],'r')
+            R = map(lambda w: np.sum(w),self.sample_W(self.T-1))
+            plt.plot([100.*r/load_max for r in R],'--b')
+        R = map(lambda w: np.sum(w),self.predict_W(self.T-1))
+        plt.plot([100.*r/load_max for r in R],'r')
         plt.xlabel('stage')
         plt.ylabel('vargen samples (% of max load)')
         plt.axis([0,self.T-1,0.,100.])
@@ -777,7 +778,53 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
 
         plt.show()
 
-    def simulate_policies(self,policies,num_runs,seed=0):
+    def simulate_policies(self,policies,R):
+        """
+        Simulates policies for a given
+        realization of uncertainty.
+
+        Parameters
+        ----------
+        policies : list
+        R : list
+
+        Returns
+        -------
+        a lot
+        """
+
+        assert(len(R) == self.T)
+
+        print 'simulating policies'
+
+        num = len(policies)
+        dtot = np.zeros(self.T)
+        rtot = np.zeros(self.T)
+        cost = dict([(i,np.zeros(self.T)) for i in range(num)])
+        ptot = dict([(i,np.zeros(self.T)) for i in range(num)])
+        qtot = dict([(i,np.zeros(self.T)) for i in range(num)])
+        stot = dict([(i,np.zeros(self.T)) for i in range(num)])
+        x_prev = dict([(i,self.x_prev) for i in range(num)])
+        for t in range(self.T):
+            r = R[t]
+            dtot[t] = np.sum(self.d_forecast[t])
+            rtot[t] = np.sum(r)
+            for i in range(num):
+                x = policies[i].apply(t,x_prev[i],R[:t+1])
+                p,q,w,s,y,z = self.separate_x(x)
+                for tau in range(t+1):
+                    cost[i][tau] += (np.dot(self.gp,p)+
+                                     0.5*np.dot(p,self.Hp*p)+ # slow gen cost
+                                     np.dot(self.gq,q)+
+                                     0.5*np.dot(q,self.Hq*q)) # fast gen cost
+                ptot[i][t] = np.sum(p)
+                qtot[i][t] = np.sum(q)
+                stot[i][t] = np.sum(s)
+                x_prev[i] = x.copy()
+                    
+        return dtot,rtot,cost,ptot,qtot,stot
+
+    def evaluate_policies(self,policies,num_sims,seed=0,num_procs=0):
         """
         Simulates operation policies.
 
@@ -788,67 +835,27 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         seed : int
         """
 
-        from multiprocessing import Pool
+        from multiprocess import Pool, cpu_count
         import matplotlib.pyplot as plt
         import seaborn
 
         # Configure
         seaborn.set_style("ticks")
         np.random.seed(seed)
-        
-        # Local vars
-        num_pol = len(policies)
-        
+                            
         # Eval
-        dtot_list = []
-        rtot_list = []
-        cost_list = dict([(i,[]) for i in range(num_pol)])
-        ptot_list = dict([(i,[]) for i in range(num_pol)])
-        qtot_list = dict([(i,[]) for i in range(num_pol)])
-        stot_list = dict([(i,[]) for i in range(num_pol)])
-        for j in range(num_runs):
-            
-            print 'sim run %d' %j
-            
-            R = []
-            dtot = []
-            rtot = []
-            cost = dict([(i,self.T*[0.]) for i in range(num_pol)])
-            ptot = dict([(i,[]) for i in range(num_pol)])
-            qtot = dict([(i,[]) for i in range(num_pol)])
-            stot = dict([(i,[]) for i in range(num_pol)])
-            x_prev = dict([(i,self.x_prev) for i in range(num_pol)])
-            
-            for t in range(self.T):
-                r = self.sample_w(t,R)
-                R.append(r)
-                dtot.append(np.sum(self.d_forecast[t]))
-                rtot.append(np.sum(r))
-                for i in range(num_pol):
-                    x = policies[i].apply(t,x_prev[i],R)
-                    p,q,w,s,y,z = self.separate_x(x)
-                    for tau in range(t+1):
-                        cost[i][tau] += (np.dot(self.gp,p)+0.5*np.dot(p,self.Hp*p)+ # slow gen cost
-                                         np.dot(self.gq,q)+0.5*np.dot(q,self.Hq*q)) # fast gen cost
-                    ptot[i].append(np.sum(p))
-                    qtot[i].append(np.sum(q))
-                    stot[i].append(np.sum(s))
-                    x_prev[i] = x.copy()
+        pool = Pool(num_procs if num_procs else cpu_count())
+        results = pool.map(ApplyFunc, [(self,'simulate_policies',policies,self.sample_W(self.T-1)) for j in range(num_sims)])
 
-            dtot_list.append(np.array(dtot))
-            rtot_list.append(np.array(rtot))
-            for i in range(num_pol):
-                cost_list[i].append(np.array(cost[i]))
-                ptot_list[i].append(np.array(ptot[i]))
-                qtot_list[i].append(np.array(qtot[i]))
-                stot_list[i].append(np.array(stot[i]))
-
-        dtot = np.average(dtot_list,axis=0)
-        rtot = np.average(rtot_list,axis=0)
-        cost = dict([(i,np.average(cost_list[i],axis=0)) for i in range(num_pol)])
-        ptot = dict([(i,np.average(ptot_list[i],axis=0)) for i in range(num_pol)])
-        qtot = dict([(i,np.average(qtot_list[i],axis=0)) for i in range(num_pol)])
-        stot = dict([(i,np.average(stot_list[i],axis=0)) for i in range(num_pol)])
+        # Process
+        num_pol = len(policies)
+        dtot,rtot,cost,ptot,qtot,stot = zip(*results)
+        dtot = np.average(np.array(dtot),axis=0)
+        rtot = np.average(np.array(rtot),axis=0)
+        cost = dict([(i,np.average(np.array([cost[j][i] for j in range(num_sims)]),axis=0)) for i in range(num_pol)])
+        ptot = dict([(i,np.average(np.array([ptot[j][i] for j in range(num_sims)]),axis=0)) for i in range(num_pol)])
+        qtot = dict([(i,np.average(np.array([qtot[j][i] for j in range(num_sims)]),axis=0)) for i in range(num_pol)])
+        stot = dict([(i,np.average(np.array([stot[j][i] for j in range(num_sims)]),axis=0)) for i in range(num_pol)])
         
         # Checks
         assert(dtot.shape == (self.T,))
