@@ -8,5 +8,6 @@
 
 from greedy import MS_DCOPF_GR
 from stoch_hyb import MS_DCOPF_SH
+from cert_equiv import MS_DCOPF_CE
 from two_stage_ce import MS_DCOPF_TSCE
 
