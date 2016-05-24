@@ -566,7 +566,7 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         # Return
         return q,w,s,z
 
-    def is_point_feasible(self,t,p,p_prev,q,w,s,z,r):
+    def is_point_feasible(self,t,x,x_prev,w):
         """
         Checks wether point is feasible for the given stage.
 
@@ -578,6 +578,10 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         -------
         flag : {True,False}
         """
+
+        r = w
+        p,q,w,s,y,z = self.separate_x(x)
+        p_prev,q_prev,w_prev,s_prev,y_prev,z_prev = self.separate_x(x_prev)
 
         #try: 
         assert(0 <= t < self.T)
@@ -595,6 +599,7 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         assert(np.all(r >= s))
         assert(norm(self.G*p+self.C*q+self.R*s-self.A*w-self.b-self.D*self.d_forecast[t])/norm(self.A.data) < 1e-8)
         assert(norm(self.J*w-z)/norm(self.J.data) < 1e-8)
+        assert(norm(p-p_prev-y) < 1e-8)
         #except Exception:
         #    return False
         return True

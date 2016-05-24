@@ -39,7 +39,7 @@ class MS_DCOPF_GR(MS_DCOPF_Method):
 
         # Parameters
         quiet = params['quiet']
-
+        
         # Problem
         self.problem = self.create_problem(net,forecast,params)
         if not quiet:
@@ -53,20 +53,13 @@ class MS_DCOPF_GR(MS_DCOPF_Method):
             
             x_list,Q_list,gQ_list = cls.problem.eval_stage_approx(t,[Wt[-1]],x_prev,quiet=True,tf=t)
             assert(len(x_list) == 1)
-            x = x_list[0]
-            p,q,w,s,y,z = cls.problem.separate_x(x)
-            p_prev = x_prev[:cls.problem.num_p]
-            
-            # Check dims
-            assert(p.shape == (cls.problem.num_p,))
-            assert(p_prev.shape == (cls.problem.num_p,))
             
             # Check feasibility
-            if not cls.problem.is_point_feasible(t,p,p_prev,q,w,s,z,Wt[-1]):
+            if not cls.problem.is_point_feasible(t,x_list[0],x_prev,Wt[-1]):
                 raise ValueError('infeasible point')
             
             # Return
-            return cls.problem.construct_x(p=p,q=q,w=w,s=s,y=p-p_prev,z=z)
+            return x_list[0]
             
         policy = StochObjMS_Policy(self.problem,data=None,name='Greedy')
         policy.apply = MethodType(apply,policy)

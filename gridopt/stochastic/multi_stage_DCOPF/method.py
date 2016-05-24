@@ -78,6 +78,10 @@ class MS_DCOPF_Method:
         ----------
         net : PFNET Network
         forecast : dict
+        
+        Returns
+        -------
+        policy : 
         """        
         
         pass

@@ -66,13 +66,15 @@ class MS_DCOPF_TSCE(MS_DCOPF_Method):
             p_prev = x_prev[:cls.problem.num_p]
             
             q,w,s,z = cls.problem.eval_stage_adjust(t,Wt[-1],p,quiet=True)
-            
+
+            x = cls.problem.construct_x(p=p,q=q,w=w,s=s,y=p-p_prev,z=z)
+
             # Check feasibility
-            if not cls.problem.is_point_feasible(t,p,p_prev,q,w,s,z,Wt[-1]):
+            if not cls.problem.is_point_feasible(t,x,x_prev,Wt[-1]):
                 raise ValueError('point not feasible')
             
             # Return
-            return cls.problem.construct_x(p=p,q=q,w=w,s=s,y=p-p_prev,z=z)
+            return x
             
         policy = StochObjMS_Policy(self.problem,data=p_list,name='Two-Stage Certainty-Equivalent')
         policy.apply = MethodType(apply,policy)
