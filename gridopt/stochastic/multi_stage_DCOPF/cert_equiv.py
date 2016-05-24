@@ -47,14 +47,13 @@ class MS_DCOPF_CE(MS_DCOPF_Method):
         # Construct policy
         def apply(cls,t,x_prev,Wt):
             
-            assert(0 <= t < cls.problem.T)
+            T = cls.problem.T
+            assert(0 <= t < T)
             assert(len(Wt) == t+1)
             
-            w_list = list(Wt)
-            for tau in range(t+1,cls.problem.T):
-                w_list.append(cls.problem.predict_w(tau,w_list))
+            w_list = Wt[-1:] + cls.problem.predict_W(T-1,t+1,Wt)
             x_list,Q_list,gQ_list = cls.problem.eval_stage_approx(t,
-                                                                  w_list[t:],
+                                                                  w_list,
                                                                   x_prev,
                                                                   quiet=True)
             

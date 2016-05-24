@@ -583,25 +583,25 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         p,q,w,s,y,z = self.separate_x(x)
         p_prev,q_prev,w_prev,s_prev,y_prev,z_prev = self.separate_x(x_prev)
 
-        #try: 
-        assert(0 <= t < self.T)
-        assert(np.all(self.y_min <= p-p_prev))
-        assert(np.all(self.y_max >= p-p_prev))
-        assert(np.all(self.z_min <= z))
-        assert(np.all(self.z_max >= z))
-        assert(np.all(self.q_min <= q))
-        assert(np.all(self.q_max >= q))
-        assert(np.all(self.p_min <= p))
-        assert(np.all(self.p_max >= p))
-        assert(np.all(self.w_min <= w))
-        assert(np.all(self.w_max >= w))
-        assert(np.all(0 <= s))
-        assert(np.all(r >= s))
-        assert(norm(self.G*p+self.C*q+self.R*s-self.A*w-self.b-self.D*self.d_forecast[t])/norm(self.A.data) < 1e-8)
-        assert(norm(self.J*w-z)/norm(self.J.data) < 1e-8)
-        assert(norm(p-p_prev-y) < 1e-8)
-        #except Exception:
-        #    return False
+        try: 
+            assert(0 <= t < self.T)
+            assert(np.all(self.y_min <= p-p_prev))
+            assert(np.all(self.y_max >= p-p_prev))
+            assert(np.all(self.z_min <= z))
+            assert(np.all(self.z_max >= z))
+            assert(np.all(self.q_min <= q))
+            assert(np.all(self.q_max >= q))
+            assert(np.all(self.p_min <= p))
+            assert(np.all(self.p_max >= p))
+            assert(np.all(self.w_min <= w))
+            assert(np.all(self.w_max >= w))
+            assert(np.all(0 <= s))
+            assert(np.all(r >= s))
+            assert(norm(self.G*p+self.C*q+self.R*s-self.A*w-self.b-self.D*self.d_forecast[t])/norm(self.A.data) < 1e-8)
+            assert(norm(self.J*w-z)/norm(self.J.data) < 1e-8)
+            assert(norm(p-p_prev-y) < 1e-8)
+        except AssertionError:
+            return False
         return True
 
     def sample_w(self,t,observations):
@@ -626,14 +626,16 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         r_new = self.r_forecast[t]+self.L_sca[t]*self.L_cov*np.random.randn(self.num_r)
         return np.maximum(np.minimum(r_new,self.r_max),self.parameters['r_eps'])
 
-    def sample_W(self,t):
+    def sample_W(self,t,t_from=0,observations=[]):
         """
         Samples realization of renewable powers up
         to the given stage.
-
+        
         Parameters
         ----------
         t : int (stage)
+        t_from : int
+        observations : list
 
         Parameters
         ----------
@@ -642,11 +644,15 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
 
         assert(t >= 0)
         assert(t < self.T)
+        assert(len(observations) == t_from)
+        if t_from > t:
+            return []
 
-        samples = []
-        for tau in range(t+1):
+        samples = list(observations)
+        for tau in range(t_from,t+1):
             samples.append(self.sample_w(tau,samples))
-        return samples
+        assert(len(samples) == t+1)
+        return samples[t_from:]
 
     def predict_w(self,t,observations):
         """
@@ -673,7 +679,7 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
             r_pred += self.sample_w(t,observations)/(i+1.)
         return r_pred
 
-    def predict_W(self,t):
+    def predict_W(self,t,t_from=0,observations=[]):
         """
         Predicts renewable powers up to the
         given stage.
@@ -686,15 +692,20 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         -------
         W : list
         """
-
+        
         assert(t >= 0)
         assert(t < self.T)
-
-        r_pred = np.zeros((t+1,self.num_r))
+        assert(len(observations) == t_from)
+        if t_from > t:
+            return []
+        
+        r_pred = np.zeros((t-t_from+1,self.num_r))
         for i in range(self.parameters['num_samples']):
             r_pred *= float(i)/float(i+1)
-            r_pred += np.array(self.sample_W(t))/(i+1.)
-        return [r_pred[tau,:] for tau in range(t+1)] 
+            r_pred += np.array(self.sample_W(t,t_from,observations))/(i+1.)
+        predictions = [r_pred[tau,:] for tau in range(t-t_from+1)]
+        assert(len(predictions) == t-t_from+1)
+        return predictions
 
     def set_parameters(self,params):
         """
