@@ -278,6 +278,112 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
             z = np.random.randn(self.num_r)
             assert(norm(self.r_cov*z-self.L_cov*self.L_cov.T*z) < 1e-10)
 
+        # Construct base problems
+        self.base_problem = []
+        for t in range(self.T):
+            self.base_problem.append(self.construct_base_problem(t))
+
+    def construct_base_problem(self,t,tf=None):
+        """
+        Constructs base problem for given time period.
+
+        Parameters
+        ----------
+        t : int
+        tf : int
+
+        Returns
+        -------
+        problem : QuadProblem
+        """
+
+        if tf is None:
+            tf = self.T-1
+        
+        assert(t >= 0)
+        assert(t < self.T)
+        assert(tf >= 0)
+        assert(tf < self.T)
+        assert(t <= tf)
+
+        H_list = []
+        g_list = []
+        A_list = []
+        b_list = []
+        l_list = []
+        u_list = []
+
+        for i in range(tf-t+1):
+
+            H = bmat([[self.Hp,None,None,None,None,None],  # p
+                      [None,self.Hq,None,None,None,None],  # q
+                      [None,None,self.Ow,None,None,None],  # w
+                      [None,None,None,self.Os,None,None],  # s
+                      [None,None,None,None,self.Oy,None],  # y
+                      [None,None,None,None,None,self.Oz]], # z
+                     format='coo')
+
+            g = np.hstack((self.gp,  # p (add correction)
+                           self.gq,  # q
+                           self.ow,  # w
+                           self.os,  # s
+                           self.oy,  # y
+                           self.oz)) # z
+
+            Arow1 = 6*(tf-t+1)*[None]
+            Arow1[6*i:6*(i+1)] = [self.G,self.C,-self.A,self.R,None,None]
+            
+            Arow2 = 6*(tf-t+1)*[None]
+            Arow2[6*i:6*(i+1)] = [self.Ip,None,None,None,-self.Iy,None]
+            if i > 0:
+                Arow2[6*(i-1)] = -self.Ip
+
+            Arow3 = 6*(tf-t+1)*[None]
+            Arow3[6*i:6*(i+1)] = [None,None,self.J,None,None,-self.Iz]
+
+            H_list.append(H)
+            g_list.append(g)
+
+            A_list += [Arow1,Arow2,Arow3]
+            b_list += [self.b+self.D*self.d_forecast[t+i],
+                       self.oy, # (add p_prev for first stage)
+                       self.oz]
+            
+            u_list += [self.p_max,
+                       self.q_max,
+                       self.w_max,
+                       self.r_max, # (add available r)
+                       self.y_max,
+                       self.z_max]
+            l_list += [self.p_min,
+                       self.q_min,
+                       self.w_min,
+                       self.os,
+                       self.y_min,
+                       self.z_min]
+            
+        H = block_diag(H_list,format='coo')
+        g = np.hstack(g_list)
+ 
+        A = bmat(A_list,format='coo')
+        b = np.hstack(b_list)
+
+        u = np.hstack((u_list))
+        l = np.hstack((l_list))
+
+        # Checks
+        num_vars = self.num_x*(tf-t+1)
+        assert(H.shape == (num_vars,num_vars))
+        assert(g.shape == (num_vars,))
+        assert(A.shape == ((self.num_bus+self.num_p+self.num_z)*(tf-t+1),num_vars))
+        assert(b.shape == ((self.num_bus+self.num_p+self.num_z)*(tf-t+1),))
+        assert(u.shape == (num_vars,))
+        assert(l.shape == (num_vars,))
+        assert(np.all(l < u))
+
+        # Return problem
+        return QuadProblem(H,g,A,b,l,u)
+
     def construct_x(self,p=None,q=None,w=None,s=None,y=None,z=None):
         """
         Constructs stage vector from components.
@@ -392,81 +498,28 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         
         p_prev = x_prev[:self.num_p]
 
-        H_list = []
-        g_list = []
-        A_list = []
-        b_list = []
-        l_list = []
-        u_list = []
-
-        for i in range(tf-t+1):
-
-            H = bmat([[self.Hp,None,None,None,None,None],  # p
-                      [None,self.Hq,None,None,None,None],  # q
-                      [None,None,self.Ow,None,None,None],  # w
-                      [None,None,None,self.Os,None,None],  # s
-                      [None,None,None,None,self.Oy,None],  # y
-                      [None,None,None,None,None,self.Oz]], # z
-                     format='coo')
-
-            g = np.hstack((self.gp + g_corr[i][:self.num_p], # p
-                           self.gq,                          # q
-                           self.ow,                          # w
-                           self.os,                          # s
-                           self.oy,                          # y
-                           self.oz))                         # z
-
-            Arow1 = 6*(tf-t+1)*[None]
-            Arow1[6*i:6*(i+1)] = [self.G,self.C,-self.A,self.R,None,None]
-            
-            Arow2 = 6*(tf-t+1)*[None]
-            Arow2[6*i:6*(i+1)] = [self.Ip,None,None,None,-self.Iy,None]
-            if i > 0:
-                Arow2[6*(i-1)] = -self.Ip
-
-            Arow3 = 6*(tf-t+1)*[None]
-            Arow3[6*i:6*(i+1)] = [None,None,self.J,None,None,-self.Iz]
-
-            H_list.append(H)
-            g_list.append(g)
-
-            A_list += [Arow1,Arow2,Arow3]
-            if i == 0:
-                b_list += [self.b+self.D*self.d_forecast[t+i],p_prev,self.oz]
-            else:
-                b_list += [self.b+self.D*self.d_forecast[t+i],self.oy,self.oz]
-            
-            u_list += [self.p_max,self.q_max,self.w_max,w_list[i],self.y_max,self.z_max]
-            l_list += [self.p_min,self.q_min,self.w_min,self.os,self.y_min,self.z_min]
-            
-        H = block_diag(H_list,format='coo')
-        g = np.hstack(g_list)
- 
-        A = bmat(A_list,format='coo')
-        b = np.hstack(b_list)
-
-        u = np.hstack((u_list))
-        l = np.hstack((l_list))
-
-        # Checks
-        num_vars = self.num_x*(tf-t+1)
-        assert(H.shape == (num_vars,num_vars))
-        assert(g.shape == (num_vars,))
-        assert(A.shape == ((self.num_bus+self.num_p+self.num_z)*(tf-t+1),num_vars))
-        assert(b.shape == ((self.num_bus+self.num_p+self.num_z)*(tf-t+1),))
-        assert(u.shape == (num_vars,))
-        assert(l.shape == (num_vars,))
-        assert(np.all(l < u))
-
-        # Problem
-        if init_data is None:
-            QPproblem = QuadProblem(H,g,A,b,l,u)
+        # Base
+        if tf == self.T-1:
+            QPproblem = self.base_problem[t]
         else:
-            QPproblem = QuadProblem(H,g,A,b,l,u,
-                                    x=init_data['x'],
-                                    lam=init_data['lam'],
-                                    mu=init_data['mu'],
-                                    pi=init_data['pi'])
+            QPproblem = self.construct_base_problem(t,tf=tf)
+        
+        # Updates
+        p_offset = 0
+        s_offset = self.num_p+self.num_q+self.num_w
+        QPproblem.b[self.num_bus:self.num_bus+self.num_y] = p_prev
+        for i in range(tf-t+1):
+            QPproblem.g[p_offset:p_offset+self.num_p] = self.gp+g_corr[i][:self.num_p]
+            QPproblem.u[s_offset:s_offset+self.num_s] = w_list[i]
+            p_offset += self.num_x
+            s_offset += self.num_x
+
+        if init_data is not None:
+            QPproblem.x = init_data['x']
+            QPproblem.lam = init_data['lam']
+            QPproblem.mu = init_data['mu']
+            QPproblem.pi = init_data['pi']
+
         if not quiet:
             QPproblem.show()
 
@@ -494,9 +547,10 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         x_offset = 0
         y_offset = self.num_p+self.num_q+self.num_w+self.num_s
         for i in range(tf-t+1):
-            
             xt = x[x_offset:x_offset+self.num_x]
-            Qt = np.dot(g_list[i],xt)+0.5*np.dot(xt,H_list[i]*xt)
+            xte = np.zeros(x.size)
+            xte[x_offset:x_offset+self.num_x] = xt
+            Qt = np.dot(QPproblem.g,xte)+0.5*np.dot(xte,QPproblem.H*xte)
             gQt = np.hstack(((-mu+pi)[y_offset:y_offset+self.num_y],
                              self.oq,self.ow,self.os,self.oy,self.oz))
             x_offset += self.num_x
