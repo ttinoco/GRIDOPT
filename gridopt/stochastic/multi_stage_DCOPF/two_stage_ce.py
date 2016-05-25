@@ -50,7 +50,7 @@ class MS_DCOPF_TSCE(MS_DCOPF_Method):
         assert(len(Er_list) == self.problem.T)
 
         # Solve certainty equivalent
-        x_list,Q_list,gQ_list = self.problem.eval_stage_approx(0,Er_list,self.problem.x_prev,quiet=quiet)
+        x_list,Q_list,gQ_list,results = self.problem.eval_stage_approx(0,Er_list,self.problem.x_prev,quiet=quiet)
         
         # Slow generator powers
         p_list = [x[:self.problem.num_p] for x in x_list]

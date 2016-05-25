@@ -356,7 +356,7 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         
         return self.x_prev
 
-    def eval_stage_approx(self,t,w_list,x_prev,g_corr=[],quiet=False,tol=1e-4,tf=None):
+    def eval_stage_approx(self,t,w_list,x_prev,g_corr=[],quiet=False,tol=1e-4,tf=None,init_data=None):
         """
         Evaluates approximate optimal stage cost.
         
@@ -459,7 +459,14 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         assert(np.all(l < u))
 
         # Problem
-        QPproblem = QuadProblem(H,g,A,b,l,u)
+        if init_data is None:
+            QPproblem = QuadProblem(H,g,A,b,l,u)
+        else:
+            QPproblem = QuadProblem(H,g,A,b,l,u,
+                                    x=init_data['x'],
+                                    lam=init_data['lam'],
+                                    mu=init_data['mu'],
+                                    pi=init_data['pi'])
         if not quiet:
             QPproblem.show()
 
@@ -470,6 +477,9 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         
         # Solve
         solver.solve(QPproblem)
+
+        # Results
+        results = solver.get_results()
 
         # Stage optimal point
         x = solver.get_primal_variables()
@@ -497,7 +507,7 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
             gQ_list.append(gQt)
             
         # Return
-        return x_list,Q_list,gQ_list
+        return x_list,Q_list,gQ_list,results
 
     def eval_stage_adjust(self,t,r,p,quiet=False,tol=1e-4):
         """
@@ -583,25 +593,22 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         p,q,w,s,y,z = self.separate_x(x)
         p_prev,q_prev,w_prev,s_prev,y_prev,z_prev = self.separate_x(x_prev)
 
-        try: 
-            assert(0 <= t < self.T)
-            assert(np.all(self.y_min <= p-p_prev))
-            assert(np.all(self.y_max >= p-p_prev))
-            assert(np.all(self.z_min <= z))
-            assert(np.all(self.z_max >= z))
-            assert(np.all(self.q_min <= q))
-            assert(np.all(self.q_max >= q))
-            assert(np.all(self.p_min <= p))
-            assert(np.all(self.p_max >= p))
-            assert(np.all(self.w_min <= w))
-            assert(np.all(self.w_max >= w))
-            assert(np.all(0 <= s))
-            assert(np.all(r >= s))
-            assert(norm(self.G*p+self.C*q+self.R*s-self.A*w-self.b-self.D*self.d_forecast[t])/norm(self.A.data) < 1e-8)
-            assert(norm(self.J*w-z)/norm(self.J.data) < 1e-8)
-            assert(norm(p-p_prev-y) < 1e-8)
-        except AssertionError:
-            return False
+        assert(0 <= t < self.T)
+        assert(np.all(self.y_min <= p-p_prev))
+        assert(np.all(self.y_max >= p-p_prev))
+        assert(np.all(self.z_min <= z))
+        assert(np.all(self.z_max >= z))
+        assert(np.all(self.q_min <= q))
+        assert(np.all(self.q_max >= q))
+        assert(np.all(self.p_min <= p))
+        assert(np.all(self.p_max >= p))
+        assert(np.all(self.w_min <= w))
+        assert(np.all(self.w_max >= w))
+        assert(np.all(0 <= s))
+        assert(np.all(r >= s))
+        assert(norm(self.G*p+self.C*q+self.R*s-self.A*w-self.b-self.D*self.d_forecast[t])/norm(self.A.data) < 1e-7)
+        assert(norm(self.J*w-z)/norm(self.J.data) < 1e-7)
+        assert(norm(p-p_prev-y)/(norm(p)+norm(p_prev)+norm(y)) < 1e-7)
         return True
 
     def sample_w(self,t,observations):

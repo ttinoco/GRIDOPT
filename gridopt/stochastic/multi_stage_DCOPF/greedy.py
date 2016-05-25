@@ -51,7 +51,7 @@ class MS_DCOPF_GR(MS_DCOPF_Method):
             assert(0 <= t < cls.problem.T)
             assert(len(Wt) == t+1)
             
-            x_list,Q_list,gQ_list = cls.problem.eval_stage_approx(t,[Wt[-1]],x_prev,quiet=True,tf=t)
+            x_list,Q_list,gQ_list,results = cls.problem.eval_stage_approx(t,[Wt[-1]],x_prev,quiet=True,tf=t)
             assert(len(x_list) == 1)
             
             # Check feasibility

@@ -52,10 +52,10 @@ class MS_DCOPF_CE(MS_DCOPF_Method):
             assert(len(Wt) == t+1)
             
             w_list = Wt[-1:] + cls.problem.predict_W(T-1,t+1,Wt)
-            x_list,Q_list,gQ_list = cls.problem.eval_stage_approx(t,
-                                                                  w_list,
-                                                                  x_prev,
-                                                                  quiet=True)
+            x_list,Q_list,gQ_list,results = cls.problem.eval_stage_approx(t,
+                                                                          w_list,
+                                                                          x_prev,
+                                                                          quiet=True)
             
             # Check feasibility
             if not cls.problem.is_point_feasible(t,x_list[0],x_prev,Wt[-1]):
