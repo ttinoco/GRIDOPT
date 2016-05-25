@@ -921,9 +921,14 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         from multiprocess import Pool, cpu_count
         
         np.random.seed(seed)
+
+        if not num_procs:
+            num_procs = cpu_count()
+
+        print 'Evaluating policies using %d cpus' %num_procs
                             
         # Eval
-        pool = Pool(num_procs if num_procs else cpu_count())
+        pool = Pool(num_procs)
         results = pool.map(ApplyFunc, [(self,'simulate_policies',policies,self.sample_W(self.T-1)) for j in range(num_sims)])
 
         # Process
