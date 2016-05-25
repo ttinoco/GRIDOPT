@@ -24,7 +24,8 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
                   'flow_factor' : 1.0,   # factor for relaxing thermal limits
                   'max_ramping' : 0.01,  # factor for constructing ramping limits
                   'r_eps' : 1e-3,        # smallest renewable injection
-                  'num_samples' : 1000}  # number of samples
+                  'num_samples' : 1000,  # number of samples
+                  'draw': False}         # drawing flag
 
     def __init__(self,net,forecast,parameters={}):
         """
@@ -786,11 +787,6 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         Shows problem information.
         """
 
-        import matplotlib.pyplot as plt
-        import seaborn
-
-        seaborn.set_style("ticks")
-
         vargen_cap = np.sum(self.r_max)
         vargen_for = [np.sum(r) for r in self.r_forecast]
         vargen_unc = [np.sum(np.sqrt(tril(triu((s**2.)*self.r_cov)).tocoo().data)) for s in self.L_sca]
@@ -808,52 +804,62 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         print 'vargen corr_rad    : %d (edges)' %(self.corr_radius)
         print 'vargen corr_val    : %.2f (unitless)' %(self.corr_value)
 
-        # Vargen forecast
-        plt.subplot(2,2,1)
-        plt.plot([100.*r/load_max for r in vargen_for])
-        plt.xlabel('stage')
-        plt.ylabel('vargen forecast (% of max load)')
-        plt.axis([0,self.T-1,0.,100.])
-        plt.grid()
 
-        # Vargen uncertainty
-        plt.subplot(2,2,2)
-        plt.plot([100.*u/vargen_cap for u in vargen_unc])
-        plt.xlabel('stage')
-        plt.ylabel('vargen uncertainty (% of local cap)')
-        plt.axis([0,self.T-1,0.,100.])
-        plt.grid()
+        # Draw
+        if self.parameters['draw']:
+        
+            import matplotlib.pyplot as plt
+            import seaborn
 
-        # Vargen profile
-        plt.subplot(2,2,3)
-        plt.plot([r/max(vargen_for) for r in vargen_for])
-        plt.xlabel('stage')
-        plt.ylabel('vargen profile')
-        plt.axis([0,self.T-1,0.,1.])
-        plt.grid()
+            seaborn.set_style("ticks")
 
-        # Load profile
-        plt.subplot(2,2,4)
-        plt.plot([l/max(load_for) for l in load_for])
-        plt.xlabel('stage')
-        plt.ylabel('load profile')
-        plt.axis([0,self.T-1,0.,1.])
-        plt.grid()
+            
+            # Vargen forecast
+            plt.subplot(2,2,1)
+            plt.plot([100.*r/load_max for r in vargen_for])
+            plt.xlabel('stage')
+            plt.ylabel('vargen forecast (% of max load)')
+            plt.axis([0,self.T-1,0.,100.])
+            plt.grid()
 
-        # Vargen prediction
-        fig = plt.figure()
-        plt.hold(True)
-        for i in range(100):
-            R = map(lambda w: np.sum(w),self.sample_W(self.T-1))
-            plt.plot([100.*r/load_max for r in R],'--b')
-        R = map(lambda w: np.sum(w),self.predict_W(self.T-1))
-        plt.plot([100.*r/load_max for r in R],'r')
-        plt.xlabel('stage')
-        plt.ylabel('vargen samples (% of max load)')
-        plt.axis([0,self.T-1,0.,100.])
-        plt.grid()            
-
-        plt.show()
+            # Vargen uncertainty
+            plt.subplot(2,2,2)
+            plt.plot([100.*u/vargen_cap for u in vargen_unc])
+            plt.xlabel('stage')
+            plt.ylabel('vargen uncertainty (% of local cap)')
+            plt.axis([0,self.T-1,0.,100.])
+            plt.grid()
+            
+            # Vargen profile
+            plt.subplot(2,2,3)
+            plt.plot([r/max(vargen_for) for r in vargen_for])
+            plt.xlabel('stage')
+            plt.ylabel('vargen profile')
+            plt.axis([0,self.T-1,0.,1.])
+            plt.grid()
+            
+            # Load profile
+            plt.subplot(2,2,4)
+            plt.plot([l/max(load_for) for l in load_for])
+            plt.xlabel('stage')
+            plt.ylabel('load profile')
+            plt.axis([0,self.T-1,0.,1.])
+            plt.grid()
+            
+            # Vargen prediction
+            fig = plt.figure()
+            plt.hold(True)
+            for i in range(100):
+                R = map(lambda w: np.sum(w),self.sample_W(self.T-1))
+                plt.plot([100.*r/load_max for r in R],'--b')
+            R = map(lambda w: np.sum(w),self.predict_W(self.T-1))
+            plt.plot([100.*r/load_max for r in R],'r')
+            plt.xlabel('stage')
+            plt.ylabel('vargen samples (% of max load)')
+            plt.axis([0,self.T-1,0.,100.])
+            plt.grid()            
+            
+            plt.show()
 
     def simulate_policies(self,policies,R):
         """
@@ -913,11 +919,7 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         """
 
         from multiprocess import Pool, cpu_count
-        import matplotlib.pyplot as plt
-        import seaborn
-
-        # Configure
-        seaborn.set_style("ticks")
+        
         np.random.seed(seed)
                             
         # Eval
@@ -943,38 +945,46 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
             assert(qtot[i].shape == (self.T,))
             assert(stot[i].shape == (self.T,))
         
-        # Color
-        cc,cl,cq,cp,cr,cs = seaborn.color_palette("muted",6)
-
         # Max
         ymax = max([20*np.ceil(100.*np.max(ptot[i]+qtot[i]+rtot)/(np.max(dtot)*20)) 
                     for i in range(num_pol)])
+
+        # Draw
+        if self.parameters['draw']:
         
-        # Plot generation
-        for i in range(num_pol):
-            fig = plt.figure()
-            plt.title(policies[i].get_name())
-            ax = plt.gca()
-            ax.fill_between(range(self.T),
-                            np.zeros(self.T),
-                            100.*ptot[i]/np.max(dtot),
-                            edgecolor='black',
-                            facecolor=cp)
-            ax.fill_between(range(self.T),
-                            100.*ptot[i]/np.max(dtot),
-                            100.*(ptot[i]+qtot[i])/np.max(dtot),
-                            edgecolor='black',
-                            facecolor=cq)
-            ax.fill_between(range(self.T),
-                            100.*(ptot[i]+qtot[i])/np.max(dtot),
-                            100.*(ptot[i]+qtot[i]+stot[i])/np.max(dtot),
-                            edgecolor='black',
-                            facecolor=cs)
-            ax.fill_between(range(self.T),
-                            100.*(ptot[i]+qtot[i]+stot[i])/np.max(dtot),
-                            100.*(ptot[i]+qtot[i]+rtot)/np.max(dtot),
-                            edgecolor='black',
-                            facecolor=cr)
+            import matplotlib.pyplot as plt
+            import seaborn
+
+            seaborn.set_style("ticks")
+
+            # Color
+            cc,cl,cq,cp,cr,cs = seaborn.color_palette("muted",6)
+
+            # Plot generation
+            for i in range(num_pol):
+                fig = plt.figure()
+                plt.title(policies[i].get_name())
+                ax = plt.gca()
+                ax.fill_between(range(self.T),
+                                np.zeros(self.T),
+                                100.*ptot[i]/np.max(dtot),
+                                edgecolor='black',
+                                facecolor=cp)
+                ax.fill_between(range(self.T),
+                                100.*ptot[i]/np.max(dtot),
+                                100.*(ptot[i]+qtot[i])/np.max(dtot),
+                                edgecolor='black',
+                                facecolor=cq)
+                ax.fill_between(range(self.T),
+                                100.*(ptot[i]+qtot[i])/np.max(dtot),
+                                100.*(ptot[i]+qtot[i]+stot[i])/np.max(dtot),
+                                edgecolor='black',
+                                facecolor=cs)
+                ax.fill_between(range(self.T),
+                                100.*(ptot[i]+qtot[i]+stot[i])/np.max(dtot),
+                                100.*(ptot[i]+qtot[i]+rtot)/np.max(dtot),
+                                edgecolor='black',
+                                facecolor=cr)
             plt.plot([],color=cr,label='renenwable left')
             plt.plot([],color=cs,label='renewable used')
             plt.plot([],color=cq,label='fast-ramping gen')
@@ -985,32 +995,32 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
             l = plt.legend(loc='lower center',frameon=True)
             plt.grid()
 
-        # Cost
-        fig = plt.figure()
-        plt.hold(True)
-        for i in range(num_pol):
-            plt.step(range(self.T),cost[i],label=policies[i].get_name())
-        plt.title('Cost-To-Go')
-        plt.xlabel('stage')
-        plt.ylabel('cost units')
-        plt.axis('tight')
-        plt.legend()
-        plt.grid()
+            # Cost
+            fig = plt.figure()
+            plt.hold(True)
+            for i in range(num_pol):
+                plt.step(range(self.T),cost[i],label=policies[i].get_name())
+            plt.title('Cost-To-Go')
+            plt.xlabel('stage')
+            plt.ylabel('cost units')
+            plt.axis('tight')
+            plt.legend()
+            plt.grid()
 
-        # Plot load
-        #plt.
-        #ax = plt.gca()
-        #ax.fill_between(range(self.T),
-        #                np.zeros(self.T),
-        #                100.*dtot/np.max(dtot),
-        #                edgecolor='black',
-        #                facecolor=cl)
-        #plt.title('Load')
-        #plt.xlabel('stage')
-        #plt.ylabel('power (% of max total load)')
-        #plt.axis([0,self.T-1,0.,ymax])
-        #plt.grid()
-
-        plt.show()
+            # Plot load
+            #plt.
+            #ax = plt.gca()
+            #ax.fill_between(range(self.T),
+            #                np.zeros(self.T),
+            #                100.*dtot/np.max(dtot),
+            #                edgecolor='black',
+            #                facecolor=cl)
+            #plt.title('Load')
+            #plt.xlabel('stage')
+            #plt.ylabel('power (% of max total load)')
+            #plt.axis([0,self.T-1,0.,ymax])
+            #plt.grid()
+            
+            plt.show()
 
         
