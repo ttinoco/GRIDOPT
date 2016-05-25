@@ -14,7 +14,7 @@ from gridopt.power_flow import new_method
 from optalg.opt_solver.opt_solver_error import *
 from optalg.stoch_solver import StochObjMS_Problem
 from optalg.opt_solver import OptSolverIQP,QuadProblem
-from scipy.sparse import triu,bmat,coo_matrix,eye,block_diag
+from scipy.sparse import triu,tril,bmat,coo_matrix,eye,block_diag
 
 class MS_DCOPF_Problem(StochObjMS_Problem):
     
@@ -732,7 +732,7 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
 
         vargen_cap = np.sum(self.r_max)
         vargen_for = [np.sum(r) for r in self.r_forecast]
-        vargen_unc = [np.sum(triu(s*self.L_cov).tocoo().data) for s in self.L_sca]
+        vargen_unc = [np.sum(np.sqrt(tril(triu((s**2.)*self.r_cov)).tocoo().data)) for s in self.L_sca]
         load_for = [np.sum(d) for d in self.d_forecast]
         load_max = max(load_for)
  
