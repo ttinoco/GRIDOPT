@@ -516,7 +516,7 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
             QPproblem.g[p_offset:p_offset+self.num_p] = self.gp+g_corr[i][:self.num_p]
             QPproblem.u[s_offset:s_offset+self.num_s] = w_list[i]
             p_offset += self.num_x
-            s_offset += self.num_x
+            s_offset += self.num_x        
 
         if init_data is not None:
             QPproblem.x = init_data['x']
