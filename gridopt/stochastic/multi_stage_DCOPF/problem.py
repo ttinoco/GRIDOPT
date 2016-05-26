@@ -21,10 +21,12 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
     
     # Parameters
     parameters = {'cost_factor' : 1e1,   # factor for determining fast gen cost
-                  'infinity' : 1e3,      # infinity
+                  'infinity'    : 1e3,   # infinity
                   'flow_factor' : 1.0,   # factor for relaxing thermal limits
-                  'max_ramping' : 0.01,  # factor for constructing ramping limits
-                  'r_eps' : 1e-3,        # smallest renewable injection
+                  'p_ramp_max'  : 0.01,  # factor for constructing ramping limits for slow gens
+                  'r_ramp_max'  : 0.10,  # factor for constructing ramping limits for renewables
+                  'r_ramp_freq' : 0.10,  # renewable ramping frequency 
+                  'r_eps'       : 1e-3,  # smallest renewable injection
                   'num_samples' : 1000,  # number of samples
                   'draw': False}         # drawing flag
 
@@ -188,8 +190,8 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         self.z_min = hl
 
         dp = np.maximum(self.p_max-self.p_min,5e-2)
-        self.y_max = self.parameters['max_ramping']*dp
-        self.y_min = -self.parameters['max_ramping']*dp
+        self.y_max = self.parameters['p_ramp_max']*dp
+        self.y_min = -self.parameters['p_ramp_max']*dp
 
         self.Hp = (Pp*H*Pp.T).tocoo()
         self.gp = Pp*g
@@ -686,8 +688,18 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         assert(t < self.T)
         assert(len(observations) == t)
 
-        r_new = self.r_forecast[t]+self.L_sca[t]*self.L_cov*np.random.randn(self.num_r)
-        return np.maximum(np.minimum(r_new,self.r_max),self.parameters['r_eps'])
+        r_eps = self.parameters['r_eps']
+        r_ramp_max = self.parameters['r_ramp_max']
+        r_ramp_freq = self.parameters['r_ramp_freq']
+
+        r = self.r_forecast[t]+self.L_sca[t]*self.L_cov*np.random.randn(self.num_r) # perturbed
+        r = np.maximum(np.minimum(r,self.r_max),r_eps)                              # cap bound
+        if observations and np.random.rand() <= 1.-r_ramp_freq:
+            dr = r_ramp_max*self.r_max
+            rprev = observations[-1]
+            return np.maximum(np.minimum(r,rprev+dr),rprev-dr)                      # ramp bound
+        else:
+            return r
 
     def sample_W(self,t,t_from=0,observations=[]):
         """
@@ -814,7 +826,9 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
 
             seaborn.set_style("ticks")
 
-            
+            N = 20
+            colors = seaborn.color_palette("muted",N)
+ 
             # Vargen forecast
             plt.subplot(2,2,1)
             plt.plot([100.*r/load_max for r in vargen_for])
@@ -850,11 +864,11 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
             # Vargen prediction
             fig = plt.figure()
             plt.hold(True)
-            for i in range(100):
+            for i in range(N):
                 R = map(lambda w: np.sum(w),self.sample_W(self.T-1))
-                plt.plot([100.*r/load_max for r in R],'--b')
+                plt.plot([100.*r/load_max for r in R],color=colors[i])
             R = map(lambda w: np.sum(w),self.predict_W(self.T-1))
-            plt.plot([100.*r/load_max for r in R],'r')
+            plt.plot([100.*r/load_max for r in R],color='black',linewidth=3.)
             plt.xlabel('stage')
             plt.ylabel('vargen samples (% of max load)')
             plt.axis([0,self.T-1,0.,100.])
