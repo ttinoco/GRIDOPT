@@ -24,11 +24,9 @@ class MS_DCOPF_SH(MS_DCOPF_Method):
         self.parameters.update(MS_DCOPF_Problem.parameters)
         self.parameters.update(MultiStage_StochHybrid.parameters)
 
-    def create_problem(self,net,forecast):
+    def create_problem(self,net,forecast,parameters):
         
-        problem = MS_DCOPF_Problem(net,forecast)
-        problem.set_parameters(self.parameters)
-        return problem
+        return MS_DCOPF_Problem(net,forecast,parameters)
         
     def solve(self,net,forecast):
         
@@ -39,7 +37,7 @@ class MS_DCOPF_SH(MS_DCOPF_Method):
         quiet = params['quiet']
 
         # Problem
-        problem = self.create_problem(net,forecast)
+        problem = self.create_problem(net,forecast,params)
         if not quiet:
             problem.show()
             
