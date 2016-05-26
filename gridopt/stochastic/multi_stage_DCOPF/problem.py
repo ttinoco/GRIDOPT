@@ -6,6 +6,7 @@
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
 
+import csv
 import pfnet as pf
 import numpy as np
 from utils import ApplyFunc
@@ -907,7 +908,7 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
                     
         return dtot,rtot,cost,ptot,qtot,stot
 
-    def evaluate_policies(self,policies,num_sims,seed=0,num_procs=0):
+    def evaluate_policies(self,policies,num_sims,seed=0,num_procs=0,outfile=''):
         """
         Simulates operation policies.
 
@@ -918,15 +919,19 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         seed : int
         """
 
-        from multiprocess import Pool, cpu_count
+        from multiprocess import Pool,cpu_count
         
-        np.random.seed(seed)
-
         if not num_procs:
             num_procs = cpu_count()
+            
+        if not outfile:
+            outfile = 'evaluation.csv'
 
-        print 'Evaluating policies using %d cpus' %num_procs
-                            
+        csvfile = open(outfile,'wb')
+        writer = csv.writer(csvfile)
+
+        np.random.seed(seed)
+                    
         # Eval
         pool = Pool(num_procs)
         results = pool.map(ApplyFunc, [(self,'simulate_policies',policies,self.sample_W(self.T-1)) for j in range(num_sims)])
@@ -950,82 +955,14 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
             assert(qtot[i].shape == (self.T,))
             assert(stot[i].shape == (self.T,))
         
-        # Max
-        ymax = max([20*np.ceil(100.*np.max(ptot[i]+qtot[i]+rtot)/(np.max(dtot)*20)) 
-                    for i in range(num_pol)])
-
-        # Draw
-        if self.parameters['draw']:
-        
-            import matplotlib.pyplot as plt
-            import seaborn
-
-            seaborn.set_style("ticks")
-
-            # Color
-            cc,cl,cq,cp,cr,cs = seaborn.color_palette("muted",6)
-
-            # Plot generation
+        # Write
+        writer.writerow([p.name for p in policies])
+        writer.writerow(['d','r']+num_pol*['cost','p','q','s'])
+        for t in range(self.T):
+            row = [dtot[t],rtot[t]]
             for i in range(num_pol):
-                fig = plt.figure()
-                plt.title(policies[i].get_name())
-                ax = plt.gca()
-                ax.fill_between(range(self.T),
-                                np.zeros(self.T),
-                                100.*ptot[i]/np.max(dtot),
-                                edgecolor='black',
-                                facecolor=cp)
-                ax.fill_between(range(self.T),
-                                100.*ptot[i]/np.max(dtot),
-                                100.*(ptot[i]+qtot[i])/np.max(dtot),
-                                edgecolor='black',
-                                facecolor=cq)
-                ax.fill_between(range(self.T),
-                                100.*(ptot[i]+qtot[i])/np.max(dtot),
-                                100.*(ptot[i]+qtot[i]+stot[i])/np.max(dtot),
-                                edgecolor='black',
-                                facecolor=cs)
-                ax.fill_between(range(self.T),
-                                100.*(ptot[i]+qtot[i]+stot[i])/np.max(dtot),
-                                100.*(ptot[i]+qtot[i]+rtot)/np.max(dtot),
-                                edgecolor='black',
-                                facecolor=cr)
-            plt.plot([],color=cr,label='renenwable left')
-            plt.plot([],color=cs,label='renewable used')
-            plt.plot([],color=cq,label='fast-ramping gen')
-            plt.plot([],color=cp,label='slow-ramping gen')
-            plt.xlabel('stage')
-            plt.ylabel('power (% of max total load)')
-            plt.axis([0,self.T-1,0.,ymax])
-            l = plt.legend(loc='lower center',frameon=True)
-            plt.grid()
-
-            # Cost
-            fig = plt.figure()
-            plt.hold(True)
-            for i in range(num_pol):
-                plt.step(range(self.T),cost[i],label=policies[i].get_name())
-            plt.title('Cost-To-Go')
-            plt.xlabel('stage')
-            plt.ylabel('cost units')
-            plt.axis('tight')
-            plt.legend()
-            plt.grid()
-
-            # Plot load
-            #plt.
-            #ax = plt.gca()
-            #ax.fill_between(range(self.T),
-            #                np.zeros(self.T),
-            #                100.*dtot/np.max(dtot),
-            #                edgecolor='black',
-            #                facecolor=cl)
-            #plt.title('Load')
-            #plt.xlabel('stage')
-            #plt.ylabel('power (% of max total load)')
-            #plt.axis([0,self.T-1,0.,ymax])
-            #plt.grid()
-            
-            plt.show()
-
+                row += [cost[i][t],ptot[i][t],qtot[i][t],stot[i][t]]
+            writer.writerow(row)
+        csvfile.close()
+                
         
