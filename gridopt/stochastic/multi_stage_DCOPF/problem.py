@@ -12,6 +12,7 @@ import numpy as np
 from utils import ApplyFunc
 from numpy.linalg import norm
 from gridopt.power_flow import new_method
+from optalg.lin_solver import new_linsolver
 from optalg.opt_solver.opt_solver_error import *
 from optalg.stoch_solver import StochObjMS_Problem
 from optalg.opt_solver import OptSolverIQP,QuadProblem
@@ -282,6 +283,9 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
             z = np.random.randn(self.num_r)
             assert(norm(self.r_cov*z-self.L_cov*self.L_cov.T*z) < 1e-10)
 
+        # Linsolver
+        self.linsolver = new_linsolver('default','unsymmetric')
+
         # Construct base problems
         self.base_problem = []
         for t in range(self.T):
@@ -371,6 +375,12 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
  
         A = bmat(A_list,format='coo')
         b = np.hstack(b_list)
+        if A_list[3:]:
+            An = bmat([a[6:] for a in A_list[3:]],format='coo')
+            bn = np.hstack((b_list[3:]))
+        else:
+            An = None
+            bn = None
 
         u = np.hstack((u_list))
         l = np.hstack((l_list))
@@ -385,8 +395,11 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         assert(l.shape == (num_vars,))
         assert(np.all(l < u))
 
-        # Return problem
-        return QuadProblem(H,g,A,b,l,u)
+        # Problem
+        problem = QuadProblem(H,g,A,b,l,u)
+        problem.An = An
+        problem.bn = bn
+        return problem
 
     def construct_x(self,p=None,q=None,w=None,s=None,y=None,z=None):
         """
@@ -480,9 +493,9 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
 
         Returns
         -------
-        x : list (stage solutions)
-        Q : list (stage costs)
-        gQ : list (stage subgradients with respect to previous stage variables)
+        x : stage solution
+        Q : total cost
+        gQ : subgradient with respect to x_prev
         """
 
         if tf is None:
@@ -518,6 +531,7 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
             p_offset += self.num_x
             s_offset += self.num_x        
 
+        # Warm start
         if init_data is not None:
             QPproblem.x = init_data['x']
             QPproblem.lam = init_data['lam']
@@ -545,27 +559,48 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         lam,nu,mu,pi = solver.get_dual_variables()
 
         # Solutions
-        x_list = []
-        Q_list = []
-        gQ_list = []
-        x_offset = 0
+        xt = x[:self.num_x]
         y_offset = self.num_p+self.num_q+self.num_w+self.num_s
-        for i in range(tf-t+1):
-            xt = x[x_offset:x_offset+self.num_x]
-            xte = np.zeros(x.size)
-            xte[x_offset:x_offset+self.num_x] = xt
-            Qt = np.dot(QPproblem.g,xte)+0.5*np.dot(xte,QPproblem.H*xte)
-            gQt = np.hstack(((-mu+pi)[y_offset:y_offset+self.num_y],
-                             self.oq,self.ow,self.os,self.oy,self.oz))
-            x_offset += self.num_x
-            y_offset += self.num_x
-           
-            x_list.append(xt)
-            Q_list.append(Qt)
-            gQ_list.append(gQt)
+        Q = np.dot(QPproblem.g,x)+0.5*np.dot(x,QPproblem.H*x)
+        gQ = np.hstack(((-mu+pi)[y_offset:y_offset+self.num_y],
+                        self.oq,self.ow,self.os,self.oy,self.oz))
+
+        # Next stage subgradient
+        if t < self.T-1:
+            xn = x[self.num_x:]
+            mun = mu[self.num_x:]
+            pin = pi[self.num_x:]
+            un = QPproblem.u[self.num_x:]
+            ln = QPproblem.l[self.num_x:]
+            An = QPproblem.An
+            bn = QPproblem.bn
+            bn[self.num_bus:self.num_bus+self.num_y] = x[:self.num_p]
+            nm = xn.size - An.shape[0]
+            xu_xl = np.hstack((np.abs(xn-un),np.abs(xn-ln)))
+            in_in = np.hstack((range(xn.size),range(xn.size)))
+            indices = np.argpartition(xu_xl,nm)[:nm]
+            I = coo_matrix((np.ones(nm),(range(nm),in_in[indices])),shape=(nm,xn.size))
+            D = bmat([[An.T,I.T]],format='coo')
+            print in_in[indices],D.shape
+            print np.where(np.abs(xn-un) < 1e-5)[0]
+            print np.where(np.abs(xn-ln) < 1e-5)[0]
+            print mun[in_in[indices]]
+            print pin[in_in[indices]]
             
+            raw_input()
+            self.linsolver.analyze(D)
+            muls = self.linsolver.factorize_and_solve(D,(QPproblem.g+QPproblem.H*x)[:self.num_x])
+            lam = muls[:An.shape[0]]
+            mmupi = I.T*(muls[An.shape[0]:])
+            print norm((QPproblem.g+QPproblem.H*x)[:self.num_x] - An.T*lam - mmupi)
+            print mmupi
+            print np.abs(xn-un)
+            print np.abs(xn-ln)
+            results['gQn'] = np.hstack((mmupi[y_offset:y_offset+self.num_y],
+                                        self.oq,self.ow,self.os,self.oy,self.oz))
+           
         # Return
-        return x_list,Q_list,gQ_list,results
+        return xt,Q,gQ,results
 
     def eval_stage_adjust(self,t,r,p,quiet=False,tol=1e-4):
         """
