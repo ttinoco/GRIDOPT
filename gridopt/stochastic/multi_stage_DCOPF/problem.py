@@ -12,11 +12,10 @@ import numpy as np
 from utils import ApplyFunc
 from numpy.linalg import norm
 from gridopt.power_flow import new_method
-from optalg.lin_solver import new_linsolver
 from optalg.opt_solver.opt_solver_error import *
 from optalg.stoch_solver import StochObjMS_Problem
 from optalg.opt_solver import OptSolverIQP,QuadProblem
-from scipy.sparse import triu,tril,bmat,coo_matrix,eye,block_diag
+from scipy.sparse import triu,tril,bmat,coo_matrix,eye,block_diag,spdiags
 
 class MS_DCOPF_Problem(StochObjMS_Problem):
     
@@ -283,9 +282,6 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
             z = np.random.randn(self.num_r)
             assert(norm(self.r_cov*z-self.L_cov*self.L_cov.T*z) < 1e-10)
 
-        # Linsolver
-        self.linsolver = new_linsolver('default','unsymmetric')
-
         # Construct base problems
         self.base_problem = []
         for t in range(self.T):
@@ -375,12 +371,6 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
  
         A = bmat(A_list,format='coo')
         b = np.hstack(b_list)
-        if A_list[3:]:
-            An = bmat([a[6:] for a in A_list[3:]],format='coo')
-            bn = np.hstack((b_list[3:]))
-        else:
-            An = None
-            bn = None
 
         u = np.hstack((u_list))
         l = np.hstack((l_list))
@@ -396,10 +386,7 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         assert(np.all(l < u))
 
         # Problem
-        problem = QuadProblem(H,g,A,b,l,u)
-        problem.An = An
-        problem.bn = bn
-        return problem
+        return QuadProblem(H,g,A,b,l,u)
 
     def construct_x(self,p=None,q=None,w=None,s=None,y=None,z=None):
         """
@@ -479,7 +466,7 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         
         return self.x_prev
 
-    def eval_stage_approx(self,t,w_list,x_prev,g_corr=[],quiet=False,tol=1e-4,tf=None,init_data=None):
+    def eval_stage_approx(self,t,w_list,x_prev,g_corr=[],quiet=False,tol=1e-4,tf=None,init_data=None,xover=None):
         """
         Evaluates approximate optimal stage cost.
         
@@ -538,6 +525,10 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
             QPproblem.mu = init_data['mu']
             QPproblem.pi = init_data['pi']
 
+        # Overwrite
+        if xover is not None:
+            QPproblem.x = xover
+
         if not quiet:
             QPproblem.show()
 
@@ -565,39 +556,9 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         gQ = np.hstack(((-mu+pi)[y_offset:y_offset+self.num_y],
                         self.oq,self.ow,self.os,self.oy,self.oz))
 
-        # Next stage subgradient
-        if t < self.T-1:
-            xn = x[self.num_x:]
-            mun = mu[self.num_x:]
-            pin = pi[self.num_x:]
-            un = QPproblem.u[self.num_x:]
-            ln = QPproblem.l[self.num_x:]
-            An = QPproblem.An
-            bn = QPproblem.bn
-            bn[self.num_bus:self.num_bus+self.num_y] = x[:self.num_p]
-            nm = xn.size - An.shape[0]
-            xu_xl = np.hstack((np.abs(xn-un),np.abs(xn-ln)))
-            in_in = np.hstack((range(xn.size),range(xn.size)))
-            indices = np.argpartition(xu_xl,nm)[:nm]
-            I = coo_matrix((np.ones(nm),(range(nm),in_in[indices])),shape=(nm,xn.size))
-            D = bmat([[An.T,I.T]],format='coo')
-            print in_in[indices],D.shape
-            print np.where(np.abs(xn-un) < 1e-5)[0]
-            print np.where(np.abs(xn-ln) < 1e-5)[0]
-            print mun[in_in[indices]]
-            print pin[in_in[indices]]
-            
-            raw_input()
-            self.linsolver.analyze(D)
-            muls = self.linsolver.factorize_and_solve(D,(QPproblem.g+QPproblem.H*x)[:self.num_x])
-            lam = muls[:An.shape[0]]
-            mmupi = I.T*(muls[An.shape[0]:])
-            print norm((QPproblem.g+QPproblem.H*x)[:self.num_x] - An.T*lam - mmupi)
-            print mmupi
-            print np.abs(xn-un)
-            print np.abs(xn-ln)
-            results['gQn'] = np.hstack((mmupi[y_offset:y_offset+self.num_y],
-                                        self.oq,self.ow,self.os,self.oy,self.oz))
+
+        # Others
+        results['xn'] = x[self.num_x:].copy()
            
         # Return
         return xt,Q,gQ,results
@@ -842,7 +803,7 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         load_max = max(load_for)
  
         print '\nStochastic Multi-Stage DCOPF'
-        print '-----------------------------'
+        print '----------------------------'
         print 'num buses          : %d' %self.num_bus
         print 'num gens           : %d' %self.num_p
         print 'num vargens        : %d' %self.num_r
@@ -851,7 +812,6 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         print 'vargen cap         : %.2f (%% of max load)' %(100.*vargen_cap/load_max)
         print 'vargen corr_rad    : %d (edges)' %(self.corr_radius)
         print 'vargen corr_val    : %.2f (unitless)' %(self.corr_value)
-
 
         # Draw
         if self.parameters['draw']:
