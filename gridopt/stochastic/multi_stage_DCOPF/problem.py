@@ -12,10 +12,11 @@ import numpy as np
 from utils import ApplyFunc
 from numpy.linalg import norm
 from gridopt.power_flow import new_method
+from optalg.lin_solver import new_linsolver
 from optalg.opt_solver.opt_solver_error import *
 from optalg.stoch_solver import StochObjMS_Problem
 from optalg.opt_solver import OptSolverIQP,QuadProblem
-from scipy.sparse import triu,tril,bmat,coo_matrix,eye,block_diag
+from scipy.sparse import triu,tril,bmat,coo_matrix,eye,block_diag,spdiags
 
 class MS_DCOPF_Problem(StochObjMS_Problem):
     
@@ -371,6 +372,12 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
  
         A = bmat(A_list,format='coo')
         b = np.hstack(b_list)
+        if A_list[3:]:
+            An = bmat([a[6:] for a in A_list[3:]],format='coo')
+            bn = np.hstack((b_list[3:]))
+        else:
+            An = None
+            bn = None
 
         u = np.hstack((u_list))
         l = np.hstack((l_list))
@@ -386,7 +393,10 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         assert(np.all(l < u))
 
         # Problem
-        return QuadProblem(H,g,A,b,l,u)
+        problem = QuadProblem(H,g,A,b,l,u)
+        problem.An = An
+        problem.bn = bn
+        return problem
 
     def construct_x(self,p=None,q=None,w=None,s=None,y=None,z=None):
         """
@@ -466,7 +476,7 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         
         return self.x_prev
 
-    def eval_stage_approx(self,t,w_list,x_prev,g_corr=[],init_data=None,xover=None,tf=None,quiet=False,tol=1e-4):
+    def eval_stage_approx(self,t,w_list,x_prev,g_corr=[],init_data=None,tf=None,quiet=False,tol=1e-4,next_stage=False):
         """
         Evaluates approximate optimal stage cost.
         
@@ -524,10 +534,6 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
             QPproblem.lam = init_data['lam']
             QPproblem.mu = init_data['mu']
             QPproblem.pi = init_data['pi']
-
-        # Overwrite
-        if xover is not None:
-            QPproblem.x = xover
             
         if not quiet:
             QPproblem.show()
@@ -556,10 +562,34 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         gQ = np.hstack(((-mu+pi)[y_offset:y_offset+self.num_y],
                         self.oq,self.ow,self.os,self.oy,self.oz))
 
-
         # Others
         results['xn'] = x[self.num_x:].copy()
-           
+        results['gQn'] = None
+        results['lamn'] = None
+        results['mun'] = None
+        results['pin'] = None
+
+        # Next stage sens
+        if t < self.T-1 and next_stage:
+            Pn = eye(x.size-self.num_x,x.size,self.num_x,format='csr')
+            xn = Pn*x
+            assert(norm(xn-x[self.num_x:]) < 1e-10)
+            un = Pn*QPproblem.u
+            ln = Pn*QPproblem.l
+            An = QPproblem.An
+            bn = QPproblem.bn
+            bn[self.num_bus:self.num_bus+self.num_y] = x[:self.num_p]
+            gn = Pn*QPproblem.g
+            Hn = Pn*QPproblem.H*Pn.T
+            solver.solve(QuadProblem(Hn,gn,An,bn,ln,un))#,x=xn,lam=lamn,mu=Pn*mu,pi=Pn*pi))
+            xn = solver.get_primal_variables()
+            lamn,nun,mun,pin = solver.get_dual_variables()
+            results['gQn'] = np.hstack(((-mun+pin)[y_offset:y_offset+self.num_y],
+                                        self.oq,self.ow,self.os,self.oy,self.oz))
+            results['lamn'] = lamn
+            results['mun'] = mun
+            results['pin'] = pin
+            
         # Return
         return xt,Q,gQ,results
 
