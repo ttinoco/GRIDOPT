@@ -15,7 +15,7 @@ from gridopt.power_flow import new_method
 from optalg.opt_solver.opt_solver_error import *
 from optalg.stoch_solver import StochObjMS_Problem
 from optalg.opt_solver import OptSolverIQP,QuadProblem
-from scipy.sparse import triu,tril,bmat,coo_matrix,eye,block_diag,spdiags
+from scipy.sparse import triu,tril,bmat,coo_matrix,eye,block_diag
 
 class MS_DCOPF_Problem(StochObjMS_Problem):
     
@@ -466,7 +466,7 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         
         return self.x_prev
 
-    def eval_stage_approx(self,t,w_list,x_prev,g_corr=[],quiet=False,tol=1e-4,tf=None,init_data=None,xover=None):
+    def eval_stage_approx(self,t,w_list,x_prev,g_corr=[],init_data=None,xover=None,tf=None,quiet=False,tol=1e-4):
         """
         Evaluates approximate optimal stage cost.
         
@@ -528,7 +528,7 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         # Overwrite
         if xover is not None:
             QPproblem.x = xover
-
+            
         if not quiet:
             QPproblem.show()
 
