@@ -972,6 +972,8 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         writer = csv.writer(csvfile)
 
         np.random.seed(seed)
+
+        print 'Evaluating policies with %d cpus' %num_procs
                     
         # Eval
         pool = Pool(num_procs)
