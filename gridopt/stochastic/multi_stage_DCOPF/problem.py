@@ -949,7 +949,7 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
                     
         return dtot,rtot,cost,ptot,qtot,stot
 
-    def evaluate_policies(self,policies,num_sims,seed=0,num_procs=0,outfile=''):
+    def evaluate_policies(self,policies,num_sims,seed=1000,num_procs=0,outfile=''):
         """
         Simulates operation policies.
 
@@ -973,7 +973,7 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
 
         np.random.seed(seed)
 
-        print 'Evaluating policies with %d cpus' %num_procs
+        print 'Evaluating policies with %d processes' %num_procs
                     
         # Eval
         pool = Pool(num_procs)
