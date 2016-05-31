@@ -568,12 +568,12 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         results['lamn'] = None
         results['mun'] = None
         results['pin'] = None
+        results['Qn'] = None
 
         # Next stage sens
         if t < self.T-1 and next_stage:
             Pn = eye(x.size-self.num_x,x.size,self.num_x,format='csr')
             xn = Pn*x
-            assert(norm(xn-x[self.num_x:]) < 1e-10)
             un = Pn*QPproblem.u
             ln = Pn*QPproblem.l
             An = QPproblem.An
@@ -581,14 +581,16 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
             bn[self.num_bus:self.num_bus+self.num_y] = x[:self.num_p]
             gn = Pn*QPproblem.g
             Hn = Pn*QPproblem.H*Pn.T
-            solver.solve(QuadProblem(Hn,gn,An,bn,ln,un))#,x=xn,lam=lamn,mu=Pn*mu,pi=Pn*pi))
+            lamn = lam[self.num_bus+self.num_p+self.num_z:]
+            solver.solve(QuadProblem(Hn,gn,An,bn,ln,un,x=xn,lam=lamn,mu=Pn*mu,pi=Pn*pi))
             xn = solver.get_primal_variables()
-            lamn,nun,mun,pin = solver.get_dual_variables()
+            lamn,nun,mun,pin = solver.get_dual_variables() 
             results['gQn'] = np.hstack(((-mun+pin)[y_offset:y_offset+self.num_y],
                                         self.oq,self.ow,self.os,self.oy,self.oz))
             results['lamn'] = lamn
             results['mun'] = mun
             results['pin'] = pin
+            results['Qn'] = np.dot(gn,xn)+0.5*np.dot(xn,Hn*xn)
             
         # Return
         return xt,Q,gQ,results

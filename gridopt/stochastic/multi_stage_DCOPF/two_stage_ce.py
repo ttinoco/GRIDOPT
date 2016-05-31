@@ -50,10 +50,16 @@ class MS_DCOPF_TSCE(MS_DCOPF_Method):
         assert(len(Er_list) == self.problem.T)
 
         # Solve certainty equivalent
-        x_list,Q_list,gQ_list,results = self.problem.eval_stage_approx(0,Er_list,self.problem.x_prev,quiet=quiet)
+        x,Q,gQ,results = self.problem.eval_stage_approx(0,Er_list,self.problem.x_prev,quiet=quiet)
         
         # Slow generator powers
-        p_list = [x[:self.problem.num_p] for x in x_list]
+        xfull = results['x']
+        assert(xfull.size == self.problem.T*self.problem.num_x)
+        p_list = []
+        offset = 0
+        for t in range(self.problem.T):
+            p_list.append(xfull[offset:offset+self.problem.num_p])
+            offset += self.problem.num_x
         assert(len(p_list) == self.problem.T)
  
         # Construct policy

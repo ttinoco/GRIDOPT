@@ -51,15 +51,14 @@ class MS_DCOPF_GR(MS_DCOPF_Method):
             assert(0 <= t < cls.problem.T)
             assert(len(Wt) == t+1)
             
-            x_list,Q_list,gQ_list,results = cls.problem.eval_stage_approx(t,[Wt[-1]],x_prev,quiet=True,tf=t)
-            assert(len(x_list) == 1)
+            x,Q,gQ,results = cls.problem.eval_stage_approx(t,[Wt[-1]],x_prev,quiet=True,tf=t)
             
             # Check feasibility
-            if not cls.problem.is_point_feasible(t,x_list[0],x_prev,Wt[-1]):
+            if not cls.problem.is_point_feasible(t,x,x_prev,Wt[-1]):
                 raise ValueError('infeasible point')
             
             # Return
-            return x_list[0]
+            return x
             
         policy = StochObjMS_Policy(self.problem,data=None,name='Greedy')
         policy.apply = MethodType(apply,policy)
