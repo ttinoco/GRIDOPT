@@ -692,9 +692,9 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         assert(np.all(self.w_max >= w))
         assert(np.all(0 <= s))
         assert(np.all(r >= s))
-        assert(norm(self.G*p+self.C*q+self.R*s-self.A*w-self.b-self.D*self.d_forecast[t])/norm(self.A.data) < 1e-7)
-        assert(norm(self.J*w-z)/norm(self.J.data) < 1e-7)
-        assert(norm(p-p_prev-y)/(norm(p)+norm(p_prev)+norm(y)) < 1e-7)
+        assert norm(self.G*p+self.C*q+self.R*s-self.A*w-self.b-self.D*self.d_forecast[t])/norm(self.A.data) < 1e-6, 'power flow'
+        assert norm(self.J*w-z)/norm(self.J.data) < 1e-6, 'branch limits'
+        assert norm(p-p_prev-y)/(norm(p)+norm(p_prev)+norm(y)) < 1e-6, 'ramp limits'
         return True
 
     def sample_w(self,t,observations):
