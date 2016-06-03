@@ -679,23 +679,28 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         p,q,w,s,y,z = self.separate_x(x)
         p_prev,q_prev,w_prev,s_prev,y_prev,z_prev = self.separate_x(x_prev)
 
-        assert(0 <= t < self.T)
-        assert(np.all(self.y_min <= p-p_prev))
-        assert(np.all(self.y_max >= p-p_prev))
-        assert(np.all(self.z_min <= z))
-        assert(np.all(self.z_max >= z))
-        assert(np.all(self.q_min <= q))
-        assert(np.all(self.q_max >= q))
-        assert(np.all(self.p_min <= p))
-        assert(np.all(self.p_max >= p))
-        assert(np.all(self.w_min <= w))
-        assert(np.all(self.w_max >= w))
-        assert(np.all(0 <= s))
-        assert(np.all(r >= s))
-        assert norm(self.G*p+self.C*q+self.R*s-self.A*w-self.b-self.D*self.d_forecast[t])/norm(self.A.data) < 1e-6, 'power flow'
-        assert norm(self.J*w-z)/norm(self.J.data) < 1e-6, 'branch limits'
-        assert norm(p-p_prev-y)/(norm(p)+norm(p_prev)+norm(y)) < 1e-6, 'ramp limits'
-        return True
+        try: 
+            eps = 1e-5
+            assert 0 <= t < self.T, 'time'
+            assert np.all(self.y_min <= y), 'ramp min'
+            assert np.all(self.y_max >= y), 'ramp_max'
+            assert np.all(self.z_min <= z), 'thermal_min'
+            assert np.all(self.z_max >= z), 'thermal_max'
+            assert np.all(self.q_min <= q), 'fast_min'
+            assert np.all(self.q_max >= q), 'fast_max'
+            assert np.all(self.p_min <= p), 'slow_min'
+            assert np.all(self.p_max >= p), 'slow_max'
+            assert np.all(self.w_min <= w), 'ang_min'
+            assert np.all(self.w_max >= w), 'ang_max'
+            assert np.all(0 <= s),          'ren_min'
+            assert np.all(r >= s),          'ren_max'
+            assert norm(self.G*p+self.C*q+self.R*s-self.A*w-self.b-self.D*self.d_forecast[t])/norm(self.A.data) < eps, 'power flow'
+            assert norm(self.J*w-z)/norm(self.J.data) < eps, 'thermal eq'
+            assert norm(p-p_prev-y)/(norm(p)+norm(p_prev)+norm(y)) < eps, 'ramp eq'
+            return True
+        except AssertionError as e:
+            print e
+        return False
 
     def sample_w(self,t,observations):
         """
