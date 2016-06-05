@@ -8,8 +8,8 @@
 
 import pfnet
 import numpy as np
-from method_error import *
-from method import PFmethod
+from .method_error import *
+from .method import PFmethod
 from optalg.lin_solver import new_linsolver
 
 class DCPF(PFmethod):
@@ -81,7 +81,7 @@ class DCPF(PFmethod):
             x = linsolver.factorize_and_solve(A,b)
             net.update_properties(x)
             self.set_status('solved')
-        except Exception,e:
+        except Exception as e:
             raise PFmethodError_SolverError(self,e)
         finally:
             

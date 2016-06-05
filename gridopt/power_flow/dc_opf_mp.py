@@ -8,8 +8,8 @@
 
 import pfnet
 import numpy as np
-from method_error import *
-from method import PFmethod
+from .method_error import *
+from .method import PFmethod
 from scipy.sparse import triu,coo_matrix,bmat,eye,block_diag
 from optalg.opt_solver import OptSolverError,OptSolverIQP,QuadProblem
 
@@ -183,7 +183,7 @@ class DCOPF_MP(PFmethod):
             data.append((H,g,A,b,l,u))
             
         # Construct QP
-        H,g,A,b,l,u = zip(*data)
+        H,g,A,b,l,u = list(zip(*data))
         H = block_diag(H,format='coo')
         g = np.hstack(g)
         A = block_diag(A,format='coo')
@@ -203,7 +203,7 @@ class DCOPF_MP(PFmethod):
         # Solve QP
         try:
             solver.solve(QPproblem)
-        except OptSolverError,e:
+        except OptSolverError as e:
             raise PFmethodError_SolverError(self,e)
         finally:
             

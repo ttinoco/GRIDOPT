@@ -6,5 +6,5 @@
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
 
-import two_stage_DCOPF
-import multi_stage_DCOPF
+from . import two_stage_DCOPF
+from . import multi_stage_DCOPF

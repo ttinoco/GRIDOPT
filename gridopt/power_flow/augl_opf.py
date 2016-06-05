@@ -6,10 +6,11 @@
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
 
+from __future__ import print_function
 import pfnet
 import numpy as np
-from method_error import *
-from method import PFmethod
+from .method_error import *
+from .method import PFmethod
 from optalg.opt_solver import OptSolverError,OptCallback,OptTermination,OptSolverAugL
 
 class AugLOPF(PFmethod):
@@ -93,17 +94,17 @@ class AugLOPF(PFmethod):
         def info_printer(solver,header):
             net = solver.problem.network
             if header:
-                print '{0:^5}'.format('vmax'),
-                print '{0:^5}'.format('vmin'),
-                print '{0:^6}'.format('bvvio'),
-                print '{0:^6}'.format('gQvio'),
-                print '{0:^6}'.format('gPvio')
+                print('{0:^5}'.format('vmax'), end=' ')
+                print('{0:^5}'.format('vmin'), end=' ')
+                print('{0:^6}'.format('bvvio'), end=' ')
+                print('{0:^6}'.format('gQvio'), end=' ')
+                print('{0:^6}'.format('gPvio'))
             else:
-                print '{0:^5.2f}'.format(net.bus_v_max),
-                print '{0:^5.2f}'.format(net.bus_v_min),
-                print '{0:^6.0e}'.format(net.bus_v_vio),
-                print '{0:^6.0e}'.format(net.gen_Q_vio),
-                print '{0:^6.0e}'.format(net.gen_P_vio)
+                print('{0:^5.2f}'.format(net.bus_v_max), end=' ')
+                print('{0:^5.2f}'.format(net.bus_v_min), end=' ')
+                print('{0:^6.0e}'.format(net.bus_v_vio), end=' ')
+                print('{0:^6.0e}'.format(net.gen_Q_vio), end=' ')
+                print('{0:^6.0e}'.format(net.gen_P_vio))
         return info_printer
             
     def solve(self,net):
@@ -136,7 +137,7 @@ class AugLOPF(PFmethod):
         # Solve
         try:
             solver.solve(problem)
-        except OptSolverError,e:
+        except OptSolverError as e:
             raise PFmethodError_SolverError(self,e)
         finally:
             

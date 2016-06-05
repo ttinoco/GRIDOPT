@@ -47,9 +47,9 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'GRIDOPT'
-copyright = u'2016, Tomas Tinoco De Rubira'
-author = u'Tomas Tinoco De Rubira'
+project = 'GRIDOPT'
+copyright = '2016, Tomas Tinoco De Rubira'
+author = 'Tomas Tinoco De Rubira'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
@@ -204,8 +204,8 @@ latex_elements = {
 # (source start file, target name, title,
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
-  ('index', 'GRIDOPT.tex', u'GRIDOPT Documentation',
-   u'Tomas Tinoco De Rubira', 'manual'),
+  ('index', 'GRIDOPT.tex', 'GRIDOPT Documentation',
+   'Tomas Tinoco De Rubira', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of
@@ -234,8 +234,8 @@ latex_documents = [
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('index', 'gridopt', u'GRIDOPT Documentation',
-     [u'Tomas Tinoco De Rubira'], 1)
+    ('index', 'gridopt', 'GRIDOPT Documentation',
+     ['Tomas Tinoco De Rubira'], 1)
 ]
 
 # If true, show URL addresses after external links.
@@ -248,8 +248,8 @@ man_pages = [
 # (source start file, target name, title, author,
 #  dir menu entry, description, category)
 texinfo_documents = [
-  ('index', 'GRIDOPT', u'GRIDOPT Documentation',
-   u'Tomas Tinoco De Rubira', 'GRIDOPT', 'One line description of project.',
+  ('index', 'GRIDOPT', 'GRIDOPT Documentation',
+   'Tomas Tinoco De Rubira', 'GRIDOPT', 'One line description of project.',
    'Miscellaneous'),
 ]
 

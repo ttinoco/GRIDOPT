@@ -55,5 +55,5 @@ class Cache:
     def update(self,i,x,d):
 
         xd = np.hstack((x,d))
-        print np.linalg.norm(xd-self.prim_duals[i])
+        print(np.linalg.norm(xd-self.prim_duals[i]))
         self.prim_duals[i] += self.rate*(xd-self.prim_duals[i])

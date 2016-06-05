@@ -21,15 +21,15 @@ method.solve(net)
 
 results = method.get_results()
 
-print results['status']
+print(results['status'])
 
-print results['iterations']
+print(results['iterations'])
 
 problem = results['problem']
 problem.show()
 
-print results['net_properties']['bus_v_max']
+print(results['net_properties']['bus_v_max'])
 
 method.update_network(net)
 
-print '%.2e %.2e' %(net.bus_P_mis,net.bus_Q_mis)
+print('%.2e %.2e' %(net.bus_P_mis,net.bus_Q_mis))

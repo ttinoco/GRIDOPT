@@ -27,12 +27,12 @@ def read_solution_data(sol_file):
         f = open(sol_file)
         reader = csv.reader(f,delimiter=',')
         
-        v_mag_tol,v_ang_tol = map(float,reader.next())
+        v_mag_tol,v_ang_tol = list(map(float,next(reader)))
 
         sol_data['v_mag_tol'] = v_mag_tol
         sol_data['v_ang_tol'] = v_ang_tol
 
-        reader.next() # header
+        next(reader) # header
 
         for row in reader:
             bus_number,code,v_mag,v_ang = int(row[0]),int(row[1]),float(row[2]),float(row[3])

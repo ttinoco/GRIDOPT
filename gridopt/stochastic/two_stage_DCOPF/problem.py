@@ -9,7 +9,7 @@
 import csv
 import pfnet as pf
 import numpy as np
-from utils import ApplyFunc
+from .utils import ApplyFunc
 from numpy.linalg import norm
 from multiprocessing import Pool,cpu_count
 from optalg.lin_solver import new_linsolver
@@ -236,7 +236,7 @@ class TS_DCOPF_Problem(StochObj_Problem):
 
             # Show progress
             if not quiet and i > 0:
-                print '%d\t%.5e' %(i,Q)
+                print('%d\t%.5e' %(i,Q))
 
             # Infinity
             if not q < np.inf:
@@ -265,10 +265,10 @@ class TS_DCOPF_Problem(StochObj_Problem):
             num_procs = cpu_count()
         pool = Pool(num_procs)
         num = int(np.ceil(float(samples)/float(num_procs)))
-        results = zip(*pool.map(ApplyFunc,[(self,'eval_EQ',p,num,i,tol,quiet) for i in range(num_procs)],chunksize=1))
+        results = list(zip(*pool.map(ApplyFunc,[(self,'eval_EQ',p,num,i,tol,quiet) for i in range(num_procs)],chunksize=1)))
         pool.terminate()
         pool.join()
-        return map(lambda vals: sum(map(lambda val: val/float(num_procs),vals)),results)
+        return [sum([val/float(num_procs) for val in vals]) for vals in results]
         
     def eval_Q(self,p,r,quiet=True,check=False,tol=1e-4,problem=None,return_data=False):
         """
@@ -358,7 +358,7 @@ class TS_DCOPF_Problem(StochObj_Problem):
             return np.inf,None
         except OptSolverError_LineSearch:
             return np.inf,None
-        except Exception,e:
+        except Exception as e:
             raise
 
     def get_size_x(self):
@@ -584,16 +584,16 @@ class TS_DCOPF_Problem(StochObj_Problem):
         Ctot = np.sum(self.r_max)
         Btot = np.sum(self.r_base)
         
-        print 'Stochastic Two-Stage DCOPF'
-        print '--------------------------'
-        print 'buses            : %d' %self.num_bus
-        print 'gens             : %d' %self.num_p
-        print 'vargens          : %d' %self.num_r
-        print 'penetration cap  : %.2f (%% of load)' %(100.*Ctot/self.total_load)
-        print 'penetration base : %.2f (%% of load)' %(100.*Btot/self.total_load)
-        print 'penetration std  : %.2f (%% of local cap)' %self.uncertainty
-        print 'correlation rad  : %d (edges)' %(self.corr_radius)
-        print 'correlation val  : %.2f (unitless)' %(self.corr_value)
+        print('Stochastic Two-Stage DCOPF')
+        print('--------------------------')
+        print('buses            : %d' %self.num_bus)
+        print('gens             : %d' %self.num_p)
+        print('vargens          : %d' %self.num_r)
+        print('penetration cap  : %.2f (%% of load)' %(100.*Ctot/self.total_load))
+        print('penetration base : %.2f (%% of load)' %(100.*Btot/self.total_load))
+        print('penetration std  : %.2f (%% of local cap)' %self.uncertainty)
+        print('correlation rad  : %d (edges)' %(self.corr_radius))
+        print('correlation val  : %.2f (unitless)' %(self.corr_value))
 
     def solve_approx(self,g_corr=None,tol=1e-4,quiet=False,samples=500,init_data=None):
         """

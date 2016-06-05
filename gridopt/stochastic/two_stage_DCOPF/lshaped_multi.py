@@ -8,8 +8,8 @@
 
 import time
 import numpy as np
-from method import TS_DCOPF_Method
-from problem import TS_DCOPF_Problem
+from .method import TS_DCOPF_Method
+from .problem import TS_DCOPF_Problem
 from scipy.sparse import eye,coo_matrix,bmat
 from optalg.opt_solver import OptSolverIQP,QuadProblem
 
@@ -61,7 +61,7 @@ class TS_DCOPF_LSM(TS_DCOPF_Method):
         b = np.zeros(0)
 
         # Init eval
-        Qlist,gQlist = zip(*map(lambda r: problem.eval_Q(p,r),scenarios))
+        Qlist,gQlist = list(zip(*[problem.eval_Q(p,r) for r in scenarios]))
 
         # Iteartions
         t = np.zeros(num_sce)
@@ -76,12 +76,12 @@ class TS_DCOPF_LSM(TS_DCOPF_Method):
             Q = sum(Qlist)/float(num_sce)
             F = 0.5*np.dot(p,H0*p)+np.dot(g0,p) + Q
             EF,EgF = problem.eval_EF(p,samples=samples)
-            print '%d,%.2f,%d,%.2e,%.2e,%.5e,%.5e' %(k,t1-t0,counter,Q,np.sum(t)/float(num_sce),F,EF)
+            print('%d,%.2f,%d,%.2e,%.2e,%.5e,%.5e' %(k,t1-t0,counter,Q,np.sum(t)/float(num_sce),F,EF))
             t0 += time.time()-t1
             
             # Solved
             if solved:
-                print 'solved'
+                print('solved')
                 break
             
             # Add cuts
@@ -124,7 +124,7 @@ class TS_DCOPF_LSM(TS_DCOPF_Method):
             assert(np.all(z > 0))
             
             # Eval
-            Qlist,gQlist = zip(*map(lambda r: problem.eval_Q(p,r),scenarios))
+            Qlist,gQlist = list(zip(*[problem.eval_Q(p,r) for r in scenarios]))
             
             # Check solved
             if all([Qlist[i] <= t[i] for i in range(num_sce)]):

@@ -8,8 +8,8 @@
 
 import pfnet
 import numpy as np
-from method_error import *
-from method import PFmethod
+from .method_error import *
+from .method import PFmethod
 from scipy.sparse import triu,coo_matrix,bmat,eye
 from optalg.opt_solver import OptSolverError,OptSolverIQP,QuadProblem
 
@@ -233,7 +233,7 @@ class DCOPF_Prev(PFmethod):
         # Solve
         try:
             solver.solve(QPproblem)
-        except OptSolverError,e:
+        except OptSolverError as e:
             raise PFmethodError_SolverError(self,e)
         finally:
             

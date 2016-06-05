@@ -13,7 +13,7 @@ import gridopt
 net = pfnet.Network()
 net.load(sys.argv[1])
 
-print '%.2e %.2e' %(net.bus_P_mis,net.bus_Q_mis)
+print('%.2e %.2e' %(net.bus_P_mis,net.bus_Q_mis))
 
 method = gridopt.power_flow.new_method('NRPF')
 
@@ -23,9 +23,9 @@ method.solve(net)
 
 results = method.get_results()
 
-print results['status']
+print(results['status'])
 
 method.update_network(net)
 
-print '%.2e %.2e' %(net.bus_P_mis,net.bus_Q_mis)
+print('%.2e %.2e' %(net.bus_P_mis,net.bus_Q_mis))
 

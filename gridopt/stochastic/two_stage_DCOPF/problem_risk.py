@@ -7,10 +7,10 @@
 #*****************************************************#
 
 import numpy as np
-from utils import ApplyFunc
+from .utils import ApplyFunc
 from types import MethodType
 from numpy.linalg import norm
-from problem import TS_DCOPF_Problem
+from .problem import TS_DCOPF_Problem
 from multiprocessing import Pool,cpu_count
 from optalg.stoch_solver import StochGen_Problem
 from optalg.opt_solver import OptProblem,OptSolverLCCP
@@ -110,11 +110,11 @@ class TS_DCOPF_RA_Problem(StochGen_Problem):
 
         problem = self.ts_dcopf.get_problem_for_Q(p,self.ones_r)
         
-        print 'var'
-        print 'k     t'
+        print('var')
+        print('k     t')
         for k in range(iters):
           
-            print '%5d    %.5e' %(k,t)   
+            print('%5d    %.5e' %(k,t))   
             
             r = self.sample_w()
             
@@ -280,10 +280,10 @@ class TS_DCOPF_RA_Problem(StochGen_Problem):
             num_procs = cpu_count()
         pool = Pool(num_procs)
         num = int(np.ceil(float(samples)/float(num_procs)))
-        results = zip(*pool.map(ApplyFunc,[(self,'eval_EFG_sequential',x,num,i,tol,info) for i in range(num_procs)],chunksize=1))
+        results = list(zip(*pool.map(ApplyFunc,[(self,'eval_EFG_sequential',x,num,i,tol,info) for i in range(num_procs)],chunksize=1)))
         pool.terminate()
         pool.join()
-        return map(lambda vals: sum(map(lambda val: val/float(num_procs),vals)),results)
+        return [sum([val/float(num_procs) for val in vals]) for vals in results]
         
     def get_size_x(self):
 
@@ -326,15 +326,15 @@ class TS_DCOPF_RA_Problem(StochGen_Problem):
     def show(self):
 
         self.ts_dcopf.show()
-        print 'Qnorm      : %.5e' %self.Qnorm
-        print 'Qmax       : %.5e' %self.Qmax
-        print 'Qfac       : %.2f' %self.Qfac
-        print 'gamma      : %.2f' %self.gamma
-        print 'smax param : %.2e' %self.parameters['smax_param']
-        print 'lmax       : %.2e' %self.parameters['lam_max']
-        print 't_reg      : %.2e' %self.parameters['t_reg']
-        print 't_min      : %.2e' %self.parameters['t_min']
-        print 't_max      : %.2e' %self.parameters['t_max']
+        print('Qnorm      : %.5e' %self.Qnorm)
+        print('Qmax       : %.5e' %self.Qmax)
+        print('Qfac       : %.2f' %self.Qfac)
+        print('gamma      : %.2f' %self.gamma)
+        print('smax param : %.2e' %self.parameters['smax_param'])
+        print('lmax       : %.2e' %self.parameters['lam_max'])
+        print('t_reg      : %.2e' %self.parameters['t_reg'])
+        print('t_min      : %.2e' %self.parameters['t_min'])
+        print('t_max      : %.2e' %self.parameters['t_max'])
 
     def solve_Lrelaxed_approx(self,lam,g_corr=None,J_corr=None,tol=1e-4,quiet=False,init_data=None):
         """
