@@ -296,7 +296,7 @@ class DCOPF_Corr(PFmethod):
         assert(lam.shape == (net.num_buses+nz,))
         assert(mu.shape == (n,))
         assert(pi.shape == (n,))
-        assert(nu is None)
+        assert(nu is None or not nu.size)
 
         # Network quantities
         net.set_var_values(xz[:nx])

@@ -140,7 +140,7 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         cost.eval(x)
         H = (cost.Hphi + cost.Hphi.T - triu(cost.Hphi))/net.base_power # symmetric, scaled
         g = cost.gphi/net.base_power - H*x                             # scaled
-        
+
         # Bounds
         l = net.get_var_values(pf.LOWER_LIMITS)
         u = net.get_var_values(pf.UPPER_LIMITS)
@@ -680,7 +680,7 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         p_prev,q_prev,w_prev,s_prev,y_prev,z_prev = self.separate_x(x_prev)
 
         try: 
-            eps = 1e-5
+            eps = 1e-4
             assert 0 <= t < self.T, 'time'
             assert np.all(self.y_min <= y), 'ramp min'
             assert np.all(self.y_max >= y), 'ramp_max'

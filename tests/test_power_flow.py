@@ -118,7 +118,9 @@ class TestPowerFlow(unittest.TestCase):
         
             net.load(case)
             
-            method.set_parameters({'quiet':True, 'thermal_factor': 0.93})
+            method.set_parameters({'quiet':True, 
+                                   'thermal_factor': 0.93,
+                                   'tol': 1e-6})
 
             try:
                 method.solve(net)
@@ -147,7 +149,7 @@ class TestPowerFlow(unittest.TestCase):
                                            net.get_num_P_adjust_gens(),))
             self.assertTupleEqual(x.shape,(net.num_vars+net.num_branches,))
             self.assertTupleEqual(lam0.shape,(net.num_buses+net.num_branches,))
-            self.assertTrue(nu0 is None)
+            self.assertTrue(nu0.size == 0)
             self.assertTupleEqual(mu0.shape,x.shape)
             self.assertTupleEqual(pi0.shape,x.shape)
 
@@ -220,7 +222,7 @@ class TestPowerFlow(unittest.TestCase):
                                            net.get_num_P_adjust_gens(),))
             self.assertTupleEqual(x.shape,(net.num_vars+net.num_branches,))
             self.assertTupleEqual(lam2.shape,(net.num_buses+net.num_branches,))
-            self.assertTrue(nu2 is None)
+            self.assertTrue(nu2.size == 0)
             self.assertTupleEqual(mu2.shape,x.shape)
             self.assertTupleEqual(pi2.shape,x.shape)
 
@@ -293,8 +295,8 @@ class TestPowerFlow(unittest.TestCase):
                 self.assertLess(np.linalg.norm(lam-lam_ref,np.inf),1e-5)
                 self.assertLess(np.linalg.norm(mu-mu_ref,np.inf),1e-5)
                 self.assertLess(np.linalg.norm(pi-pi_ref,np.inf),1e-5)
-                self.assertTrue(nu is None)
-                self.assertTrue(nu_ref is None)
+                self.assertTrue(nu.size == 0)
+                self.assertTrue(nu_ref.size == 0)
 
             # Multiple base cases
             try:
@@ -395,8 +397,8 @@ class TestPowerFlow(unittest.TestCase):
                 self.assertLess(np.linalg.norm(lam-lam_ref,np.inf),1e-5)
                 self.assertLess(np.linalg.norm(mu-mu_ref,np.inf),1e-5)
                 self.assertLess(np.linalg.norm(pi-pi_ref,np.inf),1e-5)
-                self.assertTrue(nu is None)
-                self.assertTrue(nu_ref is None)
+                self.assertTrue(nu.size == 0)
+                self.assertTrue(nu_ref.size == 0)
                     
     def tearDown(self):
         

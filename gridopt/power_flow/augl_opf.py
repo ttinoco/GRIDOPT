@@ -166,8 +166,8 @@ class AugLOPF(PFmethod):
         assert(net.num_vars == x.size)
         assert(problem.A.shape[0] == lam.size)
         assert(problem.f.shape[0] == nu.size)
-        assert(mu is None)
-        assert(pi is None)
+        assert(mu is None or not mu.size)
+        assert(pi is None or not pi.size)
 
         # Network quantities
         net.set_var_values(x)

@@ -367,10 +367,10 @@ class NRPF(PFmethod):
         # Checks
         assert(problem.x.shape == x.shape)
         assert(net.num_vars == x.size)
-        assert(lam is None)
-        assert(nu is None)
-        assert(mu is None)
-        assert(pi is None)
+        assert(lam is None or not lam.size)
+        assert(nu is None or not nu.size)
+        assert(mu is None or not mu.size)
+        assert(pi is None or not pi.size)
 
         # Network quantities
         net.set_var_values(x)
