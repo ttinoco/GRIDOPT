@@ -954,7 +954,7 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
                     
         return dtot,rtot,cost,ptot,qtot,stot
 
-    def evaluate_policies(self,policies,num_sims,seed=1000,num_procs=0,outfile=''):
+    def evaluate_policies(self,policies,num_sims,seed=1000,num_procs=0,outfile='',ref_pol=''):
         """
         Simulates operation policies.
 
@@ -963,7 +963,10 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         policies : list of StochObjMS_Policy
         num_runs : int
         seed : int
+        ref_pol : string
         """
+
+        assert(len(policies) > 0)
 
         from multiprocess import Pool,cpu_count
         
@@ -1002,6 +1005,12 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
             assert(ptot[i].shape == (self.T,))
             assert(qtot[i].shape == (self.T,))
             assert(stot[i].shape == (self.T,))
+
+        # Ref policy
+        try:
+            iref = [p.name for p in policies].index(ref_pol)
+        except ValueError:
+            iref = 0
         
         # Write
         writer.writerow([p.name for p in policies])
@@ -1009,8 +1018,9 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         for t in range(self.T):
             row = [dtot[t],rtot[t]]
             for i in range(num_pol):
-                row += [cost[i][t],ptot[i][t],qtot[i][t],stot[i][t]]
+                row += [cost[i][t]/cost[iref][t],
+                        ptot[i][t],
+                        qtot[i][t],
+                        stot[i][t]]
             writer.writerow(row)
         csvfile.close()
-                
-        
