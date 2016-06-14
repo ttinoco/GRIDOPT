@@ -854,6 +854,8 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
         if self.parameters['draw']:
         
             import matplotlib.pyplot as plt
+            from matplotlib import rcParams
+            rcParams.update({'figure.autolayout': True})
             import seaborn
 
             seaborn.set_style("ticks")
@@ -901,11 +903,12 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
                 plt.plot([100.*r/load_max for r in R],color=colors[i])
             R = map(lambda w: np.sum(w),self.predict_W(self.T-1))
             plt.plot([100.*r/load_max for r in R],color='black',linewidth=3.)
-            plt.xlabel('stage')
-            plt.ylabel('vargen samples (% of max load)')
+            plt.xlabel('stage',fontsize=22)
+            plt.ylabel('% of max load',fontsize=22)
             plt.axis([0,self.T-1,0.,100.])
-            plt.grid()            
-            
+            plt.tick_params(axis='both',which='major',labelsize=20)
+            plt.tick_params(axis='both',which='minor',labelsize=20)
+            plt.grid()
             plt.show()
 
     def simulate_policies(self,policies,R):
