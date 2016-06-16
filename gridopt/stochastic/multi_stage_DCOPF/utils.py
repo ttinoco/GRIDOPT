@@ -7,10 +7,18 @@
 #*****************************************************#
 
 def ApplyFunc(args):
+    """
+    Applies class method.
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+    """
 
     cls = args[0]
     fnc = args[1]
     args = args[2:]
     
     return getattr(cls,fnc)(*args)
-
