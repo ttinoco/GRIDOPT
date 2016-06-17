@@ -11,7 +11,7 @@ import numpy as np
 from types import MethodType
 from method import MS_DCOPF_Method
 from problem import MS_DCOPF_Problem
-from optalg.stoch_solver import StochObjMS_Policy
+from optalg.stoch_solver import StochObjMS_Policy, ScenarioTree
 from optalg.opt_solver import OptSolverIQP, QuadProblem
 
 class MS_DCOPF_SDDP(MS_DCOPF_Method):
@@ -39,6 +39,7 @@ class MS_DCOPF_SDDP(MS_DCOPF_Method):
 
         # Parameters
         quiet = params['quiet']
+        bfactor = params['branching_factor']
         
         # Problem
         self.problem = self.create_problem(net,forecast,params)
@@ -46,8 +47,9 @@ class MS_DCOPF_SDDP(MS_DCOPF_Method):
             self.problem.show()
 
         # Scenario tree
-        
-        
+        tree = ScenarioTree(self.problem,bfactor)
+        if not quiet:
+            tree.show()
  
         # Construct policy
         def apply(cls,t,x_prev,Wt):
@@ -69,7 +71,7 @@ class MS_DCOPF_SDDP(MS_DCOPF_Method):
             # Return
             return x
             
-        policy = StochObjMS_Policy(self.problem,data=None,name='Certainty-Equivalent')
+        policy = StochObjMS_Policy(self.problem,data=None,name='Stochastic Dual Dynamic Programming')
         policy.apply = MethodType(apply,policy)
         
         # Return
