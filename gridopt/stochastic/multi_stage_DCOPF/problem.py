@@ -828,9 +828,13 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
             if self.parameters.has_key(key):
                 self.parameters[key] = value
  
-    def show(self):
+    def show(self,scenario_tree=None):
         """
         Shows problem information.
+
+        Parameters
+        ----------
+        sceneario_tree : 
         """
 
         vargen_cap = np.sum(self.r_max)
@@ -908,7 +912,26 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
             plt.axis([0,self.T-1,0.,100.])
             plt.tick_params(axis='both',which='major',labelsize=20)
             plt.tick_params(axis='both',which='minor',labelsize=20)
+            plt.title('Aggregated Renewable Powers')
             plt.grid()
+
+            # Vargen prediction from scenario tree
+            if scenario_tree is not None:
+                fig = plt.figure()
+                plt.hold(True)
+                for i in range(N):
+                    R = map(lambda n: np.sum(n.get_w()),scenario_tree.sample_branch(self.T-1))
+                    plt.plot([100.*r/load_max for r in R],color=colors[i])
+                R = map(lambda w: np.sum(w),self.predict_W(self.T-1))
+                plt.plot([100.*r/load_max for r in R],color='black',linewidth=3.)
+                plt.xlabel('stage',fontsize=22)
+                plt.ylabel('% of max load',fontsize=22)
+                plt.axis([0,self.T-1,0.,100.])
+                plt.tick_params(axis='both',which='major',labelsize=20)
+                plt.tick_params(axis='both',which='minor',labelsize=20)
+                plt.title('Aggregated Renewable Powers (Scenerio Tree)')
+                plt.grid()
+            
             plt.show()
 
     def simulate_policies(self,policies,R):

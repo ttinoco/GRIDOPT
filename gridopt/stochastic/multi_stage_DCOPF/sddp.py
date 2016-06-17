@@ -40,16 +40,17 @@ class MS_DCOPF_SDDP(MS_DCOPF_Method):
         # Parameters
         quiet = params['quiet']
         bfactor = params['branching_factor']
-        
+
         # Problem
         self.problem = self.create_problem(net,forecast,params)
-        if not quiet:
-            self.problem.show()
 
         # Scenario tree
-        tree = ScenarioTree(self.problem,bfactor)
+        self.tree = ScenarioTree(self.problem,bfactor)
+
+        # Show
         if not quiet:
-            tree.show()
+            self.tree.show()
+            self.problem.show(scenario_tree=self.tree)
  
         # Construct policy
         def apply(cls,t,x_prev,Wt):
