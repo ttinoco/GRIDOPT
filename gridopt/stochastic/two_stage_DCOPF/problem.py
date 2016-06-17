@@ -15,11 +15,11 @@ from multiprocessing import Pool,cpu_count
 from optalg.lin_solver import new_linsolver
 from scipy.sparse.linalg import LinearOperator
 from optalg.opt_solver.opt_solver_error import *
-from optalg.stoch_solver import StochObj_Problem
+from optalg.stoch_solver import StochProblem
 from optalg.opt_solver import OptSolverIQP,QuadProblem
 from scipy.sparse import triu,bmat,coo_matrix,eye,spdiags
             
-class TS_DCOPF_Problem(StochObj_Problem):
+class TS_DCOPF_Problem(StochProblem):
     """"
     This class represents a problem of the form
     

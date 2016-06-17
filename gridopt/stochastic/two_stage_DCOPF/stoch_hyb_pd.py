@@ -8,7 +8,7 @@
 
 from method import TS_DCOPF_Method
 from problem_risk import TS_DCOPF_RA_Problem
-from optalg.stoch_solver import PrimalDual_StochHybrid
+from optalg.stoch_solver import StochHybridPD
 
 class TS_DCOPF_PDSH(TS_DCOPF_Method):
     """

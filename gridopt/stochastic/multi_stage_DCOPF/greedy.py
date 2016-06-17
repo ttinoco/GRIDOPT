@@ -12,8 +12,8 @@ from types import MethodType
 from method import MS_DCOPF_Method
 from problem import MS_DCOPF_Problem
 from scipy.sparse import eye,coo_matrix,bmat
-from optalg.stoch_solver import StochObjMS_Policy
-from optalg.opt_solver import OptSolverIQP, QuadProblem
+from optalg.stoch_solver import StochProblemMS_Policy
+from optalg.opt_solver import OptSolverIQP,QuadProblem
 
 class MS_DCOPF_GR(MS_DCOPF_Method):
     """
@@ -60,7 +60,7 @@ class MS_DCOPF_GR(MS_DCOPF_Method):
             # Return
             return x
             
-        policy = StochObjMS_Policy(self.problem,data=None,name='Greedy')
+        policy = StochProblemMS_Policy(self.problem,data=None,name='Greedy')
         policy.apply = MethodType(apply,policy)
         
         # Return

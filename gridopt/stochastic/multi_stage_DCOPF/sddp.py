@@ -8,7 +8,7 @@
 
 from method import MS_DCOPF_Method
 from problem import MS_DCOPF_Problem
-from optalg.stoch_solver import MultiStage_StochDualDynProg,ScenarioTree
+from optalg.stoch_solver import StochDualDynProg,StochProblemMS_Tree
 
 class MS_DCOPF_SDDP(MS_DCOPF_Method):
     """
@@ -42,7 +42,7 @@ class MS_DCOPF_SDDP(MS_DCOPF_Method):
         self.problem = self.create_problem(net,forecast,params)
 
         # Scenario tree
-        self.tree = ScenarioTree(self.problem,bfactor)
+        self.tree = StochProblemMS_Tree(self.problem,bfactor)
 
         # Show
         if not quiet:
@@ -50,7 +50,7 @@ class MS_DCOPF_SDDP(MS_DCOPF_Method):
             self.problem.show(scenario_tree=self.tree)
    
         # Solver
-        solver = MultiStage_StochDualDynProg()
+        solver = StochDualDynProg()
         solver.set_parameters(params)
         
         # Solve

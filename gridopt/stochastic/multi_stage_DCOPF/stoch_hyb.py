@@ -8,7 +8,7 @@
 
 from method import MS_DCOPF_Method
 from problem import MS_DCOPF_Problem
-from optalg.stoch_solver import MultiStage_StochHybrid
+from optalg.stoch_solver import StochHybridMS
 
 class MS_DCOPF_SH(MS_DCOPF_Method):
     """
@@ -22,7 +22,7 @@ class MS_DCOPF_SH(MS_DCOPF_Method):
         MS_DCOPF_Method.__init__(self)
         self.parameters = MS_DCOPF_SH.parameters.copy()
         self.parameters.update(MS_DCOPF_Problem.parameters)
-        self.parameters.update(MultiStage_StochHybrid.parameters)
+        self.parameters.update(StochHybridMS.parameters)
 
     def create_problem(self,net,forecast,parameters):
         
@@ -42,7 +42,7 @@ class MS_DCOPF_SH(MS_DCOPF_Method):
             problem.show()
             
         # Solver
-        solver = MultiStage_StochHybrid()
+        solver = StochHybridMS()
         solver.set_parameters(params)
         
         # Solve

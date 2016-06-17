@@ -11,8 +11,8 @@ import numpy as np
 from types import MethodType
 from method import MS_DCOPF_Method
 from problem import MS_DCOPF_Problem
-from optalg.stoch_solver import StochObjMS_Policy
-from optalg.opt_solver import OptSolverIQP, QuadProblem
+from optalg.stoch_solver import StochProblemMS_Policy
+from optalg.opt_solver import OptSolverIQP,QuadProblem
 
 class MS_DCOPF_CE(MS_DCOPF_Method):
     """
@@ -64,7 +64,7 @@ class MS_DCOPF_CE(MS_DCOPF_Method):
             # Return
             return x
             
-        policy = StochObjMS_Policy(self.problem,data=None,name='Certainty-Equivalent')
+        policy = StochProblemMS_Policy(self.problem,data=None,name='Certainty-Equivalent')
         policy.apply = MethodType(apply,policy)
         
         # Return

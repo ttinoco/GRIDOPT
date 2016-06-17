@@ -14,11 +14,11 @@ from numpy.linalg import norm
 from gridopt.power_flow import new_method
 from optalg.lin_solver import new_linsolver
 from optalg.opt_solver.opt_solver_error import *
-from optalg.stoch_solver import StochObjMS_Problem
+from optalg.stoch_solver import StochProblemMS
 from optalg.opt_solver import OptSolverIQP,QuadProblem
 from scipy.sparse import triu,tril,bmat,coo_matrix,eye,block_diag,spdiags
 
-class MS_DCOPF_Problem(StochObjMS_Problem):
+class MS_DCOPF_Problem(StochProblemMS):
     
     # Parameters
     parameters = {'cost_factor' : 1e1,   # factor for determining fast gen cost
@@ -986,7 +986,7 @@ class MS_DCOPF_Problem(StochObjMS_Problem):
 
         Parameters
         ----------
-        policies : list of StochObjMS_Policy
+        policies : list of StochProblemMS_Policy
         num_runs : int
         seed : int
         ref_pol : string

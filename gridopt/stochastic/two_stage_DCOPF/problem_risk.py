@@ -12,11 +12,11 @@ from types import MethodType
 from numpy.linalg import norm
 from .problem import TS_DCOPF_Problem
 from multiprocessing import Pool,cpu_count
-from optalg.stoch_solver import StochGen_Problem
+from optalg.stoch_solver import StochProblemC
 from optalg.opt_solver import OptProblem,OptSolverLCCP
 from scipy.sparse import csr_matrix,eye,bmat,coo_matrix,tril
 
-class TS_DCOPF_RA_Problem(StochGen_Problem):
+class TS_DCOPF_RA_Problem(StochProblemC):
     """"
     This class represents a problem of the form
     
