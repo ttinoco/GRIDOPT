@@ -476,9 +476,10 @@ class MS_DCOPF_Problem(StochProblemMS):
         
         return self.x_prev
 
-    def eval_stage_approx(self,t,w_list,x_prev,g_corr=[],init_data=None,tf=None,quiet=False,tol=1e-4,next_stage=False):
+    def solve_stages(self,t,w_list,x_prev,g_corr=[],init_data=None,tf=None,quiet=False,tol=1e-4,next_stage=False):
         """
-        Evaluates approximate optimal stage cost.
+        Solves stages using given realizations of uncertainty 
+        and cost-to-go slope corrections.
         
         Parameters
         ----------
@@ -595,7 +596,7 @@ class MS_DCOPF_Problem(StochProblemMS):
         # Return
         return xt,Q,gQ,results
 
-    def eval_stage_adjust(self,t,r,p,quiet=False,tol=1e-4):
+    def solve_stage_adjustments(self,t,r,p,quiet=False,tol=1e-4):
         """
         Evaluates stage fast-gen adjustments cost.
         

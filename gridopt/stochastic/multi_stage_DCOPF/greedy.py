@@ -51,7 +51,7 @@ class MS_DCOPF_GR(MS_DCOPF_Method):
             assert(0 <= t < cls.problem.T)
             assert(len(Wt) == t+1)
             
-            x,Q,gQ,results = cls.problem.eval_stage_approx(t,[Wt[-1]],x_prev,quiet=True,tf=t)
+            x,Q,gQ,results = cls.problem.solve_stages(t,[Wt[-1]],x_prev,quiet=True,tf=t)
             
             # Check feasibility
             if not cls.problem.is_point_feasible(t,x,x_prev,Wt[-1]):

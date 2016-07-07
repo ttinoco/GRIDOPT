@@ -50,7 +50,7 @@ class MS_DCOPF_TSCE(MS_DCOPF_Method):
         assert(len(Er_list) == self.problem.T)
 
         # Solve certainty equivalent
-        x,Q,gQ,results = self.problem.eval_stage_approx(0,Er_list,self.problem.x_prev,quiet=quiet)
+        x,Q,gQ,results = self.problem.solve_stages(0,Er_list,self.problem.x_prev,quiet=quiet)
         
         # Slow generator powers
         xfull = results['x']
@@ -71,7 +71,7 @@ class MS_DCOPF_TSCE(MS_DCOPF_Method):
             p = cls.data[t]
             p_prev = x_prev[:cls.problem.num_p]
             
-            q,w,s,z = cls.problem.eval_stage_adjust(t,Wt[-1],p,quiet=True)
+            q,w,s,z = cls.problem.solve_stage_adjustments(t,Wt[-1],p,quiet=True)
 
             x = cls.problem.construct_x(p=p,q=q,w=w,s=s,y=p-p_prev,z=z)
 
