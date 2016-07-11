@@ -22,10 +22,10 @@ class MS_DCOPF_Problem(StochProblemMS):
     
     # Parameters
     parameters = {'cost_factor' : 1e1,   # factor for determining fast gen cost
-                  'infinity'    : 1e3,   # infinity
+                  'infinity'    : 1e4,   # infinity
                   'flow_factor' : 1.0,   # factor for relaxing thermal limits
-                  'p_ramp_max'  : 0.01,  # factor for constructing ramping limits for slow gens
-                  'r_ramp_max'  : 0.10,  # factor for constructing ramping limits for renewables
+                  'p_ramp_max'  : 0.01,  # factor for constructing ramping limits for slow gens (fraction of pmax)
+                  'r_ramp_max'  : 0.10,  # factor for constructing ramping limits for renewables (fraction of rmax)
                   'r_ramp_freq' : 0.10,  # renewable ramping frequency 
                   'r_eps'       : 1e-3,  # smallest renewable injection
                   'num_samples' : 1000,  # number of samples
@@ -42,7 +42,7 @@ class MS_DCOPF_Problem(StochProblemMS):
         parameters : dict
         """
         
-        # Check profile
+        # Check forecast
         assert(forecast.has_key('vargen'))
         assert(forecast.has_key('load'))
         assert(forecast.has_key('size'))
@@ -70,8 +70,8 @@ class MS_DCOPF_Problem(StochProblemMS):
         # Initial state
         for load in net.loads:
             load.P = forecast['load'][load.index][0]
-        for gen in net.var_generators:
-            gen.P = forecast['vargen'][gen.index][0]
+        for vargen in net.var_generators:
+            vargen.P = forecast['vargen'][vargen.index][0]
         dcopf = new_method('DCOPF')
         dcopf.set_parameters({'quiet': True, 'vargen_curtailment': True})
         dcopf.solve(net)
@@ -294,8 +294,8 @@ class MS_DCOPF_Problem(StochProblemMS):
 
         Parameters
         ----------
-        t : int
-        tf : int
+        t : int (initial stage)
+        tf : int (end stage)
 
         Returns
         -------
@@ -372,6 +372,8 @@ class MS_DCOPF_Problem(StochProblemMS):
  
         A = bmat(A_list,format='coo')
         b = np.hstack(b_list)
+
+        # Stages after start stage
         if A_list[3:]:
             An = bmat([a[6:] for a in A_list[3:]],format='coo')
             bn = np.hstack((b_list[3:]))
@@ -483,12 +485,16 @@ class MS_DCOPF_Problem(StochProblemMS):
         
         Parameters
         ----------
-        t : int (stage)
+        t : int (start stage)
         w_list : list of random vectors for stage t,...,T
         x_prev : vector of previous stage variables
         g_corr : list of slope corrections for stage t,...,T
+        tf : int (end stage)
+        init_data :
         quiet : {True,False}
-
+        tol : 
+        next_stage : 
+        
         Returns
         -------
         x : stage solution
@@ -527,7 +533,7 @@ class MS_DCOPF_Problem(StochProblemMS):
             QPproblem.g[p_offset:p_offset+self.num_p] = self.gp+g_corr[i][:self.num_p]
             QPproblem.u[s_offset:s_offset+self.num_s] = w_list[i]
             p_offset += self.num_x
-            s_offset += self.num_x        
+            s_offset += self.num_x
 
         # Warm start
         if init_data is not None:
