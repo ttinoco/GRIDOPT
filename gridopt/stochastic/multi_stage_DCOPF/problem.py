@@ -737,7 +737,7 @@ class MS_DCOPF_Problem(StochProblemMS):
         if observations and np.random.rand() <= 1.-r_ramp_freq:
             dr = r_ramp_max*self.r_max
             rprev = observations[-1]
-            return np.maximum(np.minimum(r,rprev+dr),rprev-dr)                      # ramp bound
+            return np.maximum(np.minimum(r,rprev+dr),rprev-dr)                      # ramp bound with prob 1-eps
         else:
             return r
 
@@ -919,7 +919,7 @@ class MS_DCOPF_Problem(StochProblemMS):
             plt.axis([0,self.T-1,0.,100.])
             plt.tick_params(axis='both',which='major',labelsize=20)
             plt.tick_params(axis='both',which='minor',labelsize=20)
-            plt.title('Aggregated Renewable Powers')
+            plt.title('Total Renewable Powers')
             plt.grid()
 
             # Vargen prediction from scenario tree
@@ -936,9 +936,25 @@ class MS_DCOPF_Problem(StochProblemMS):
                 plt.axis([0,self.T-1,0.,100.])
                 plt.tick_params(axis='both',which='major',labelsize=20)
                 plt.tick_params(axis='both',which='minor',labelsize=20)
-                plt.title('Aggregated Renewable Powers (Scenerio Tree)')
+                plt.title('Total Renewable Powers (Scenerio Tree)')
                 plt.grid()
-            
+
+            # Vargen closests branch from scenario tree
+            if scenario_tree is not None:
+                fig = plt.figure()
+                plt.hold(True)
+                for i in range(3):
+                    R1 = map(lambda w: np.sum(w),self.sample_W(self.T-1))
+                    R2 = map(lambda n: np.sum(n.get_w()),scenario_tree.sample_branch(self.T-1))
+                    plt.plot([100.*r/load_max for r in R1],color=colors[i],marker='-')
+                    plt.plot([100.*r/load_max for r in R2],color=colors[i],marker='--')
+                    plt.xlabel('stage',fontsize=22)
+                    plt.ylabel('% of max load',fontsize=22)
+                    plt.axis([0,self.T-1,0.,100.])
+                    plt.tick_params(axis='both',which='major',labelsize=20)
+                    plt.tick_params(axis='both',which='minor',labelsize=20)
+                    plt.title('Closest Branch from Scenerio Tree')
+                    plt.grid()
             plt.show()
 
     def simulate_policies(self,policies,R):
@@ -996,7 +1012,8 @@ class MS_DCOPF_Problem(StochProblemMS):
         policies : list of StochProblemMS_Policy
         num_runs : int
         seed : int
-        ref_pol : string
+        outfile : string (name of output file)
+        ref_pol : string (name of refernece policy)
         """
 
         assert(len(policies) > 0)
