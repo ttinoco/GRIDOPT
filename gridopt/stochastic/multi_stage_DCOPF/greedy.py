@@ -11,9 +11,7 @@ import numpy as np
 from types import MethodType
 from method import MS_DCOPF_Method
 from problem import MS_DCOPF_Problem
-from scipy.sparse import eye,coo_matrix,bmat
 from optalg.stoch_solver import StochProblemMS_Policy
-from optalg.opt_solver import OptSolverIQP,QuadProblem
 
 class MS_DCOPF_GR(MS_DCOPF_Method):
     """
@@ -51,7 +49,11 @@ class MS_DCOPF_GR(MS_DCOPF_Method):
             assert(0 <= t < cls.problem.T)
             assert(len(Wt) == t+1)
             
-            x,Q,gQ,results = cls.problem.solve_stages(t,[Wt[-1]],x_prev,quiet=True,tf=t)
+            x,Q,gQ,results = cls.problem.solve_stages(t,
+                                                      [Wt[-1]],
+                                                      x_prev,
+                                                      quiet=True,
+                                                      tf=t)
             
             # Check feasibility
             if not cls.problem.is_point_feasible(t,x,x_prev,Wt[-1]):

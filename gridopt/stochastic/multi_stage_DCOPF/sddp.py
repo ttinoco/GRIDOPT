@@ -23,7 +23,7 @@ class MS_DCOPF_SDDP(MS_DCOPF_Method):
         MS_DCOPF_Method.__init__(self)
         self.parameters = MS_DCOPF_SDDP.parameters.copy()
         self.parameters.update(MS_DCOPF_Problem.parameters)
-        self.parameters.update(MultiStage_StochDualDynProg.parameters)
+        self.parameters.update(StochDualDynProg.parameters)
 
     def create_problem(self,net,forecast,parameters):
         
