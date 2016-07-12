@@ -46,7 +46,6 @@ class MS_DCOPF_SDDP(MS_DCOPF_Method):
 
         # Show
         if not quiet:
-            self.tree.show()
             self.problem.show(scenario_tree=self.tree)
    
         # Solver

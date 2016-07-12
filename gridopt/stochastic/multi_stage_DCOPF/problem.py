@@ -922,6 +922,9 @@ class MS_DCOPF_Problem(StochProblemMS):
             plt.title('Total Renewable Powers')
             plt.grid()
 
+            # Scenario tree
+            scenario_tree.draw()
+
             # Vargen prediction from scenario tree
             if scenario_tree is not None:
                 fig = plt.figure()
@@ -944,10 +947,11 @@ class MS_DCOPF_Problem(StochProblemMS):
                 fig = plt.figure()
                 plt.hold(True)
                 for i in range(3):
-                    R1 = map(lambda w: np.sum(w),self.sample_W(self.T-1))
-                    R2 = map(lambda n: np.sum(n.get_w()),scenario_tree.sample_branch(self.T-1))
-                    plt.plot([100.*r/load_max for r in R1],color=colors[i],marker='-')
-                    plt.plot([100.*r/load_max for r in R2],color=colors[i],marker='--')
+                    W = self.sample_W(self.T-1)
+                    R1 = map(lambda w: np.sum(w),W)
+                    R2 = map(lambda n: np.sum(n.get_w()),scenario_tree.get_closest_branch(W))
+                    plt.plot([100.*r/load_max for r in R1],color=colors[i],linestyle='-')
+                    plt.plot([100.*r/load_max for r in R2],color=colors[i],linestyle='--')
                     plt.xlabel('stage',fontsize=22)
                     plt.ylabel('% of max load',fontsize=22)
                     plt.axis([0,self.T-1,0.,100.])
