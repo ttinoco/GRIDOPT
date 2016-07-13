@@ -478,6 +478,119 @@ class MS_DCOPF_Problem(StochProblemMS):
         
         return self.x_prev
 
+    def solve_stage_with_cuts(self,t,w,x_prev,A,b,quiet=False,tol=1e-4):
+        """
+        Solves approximate stage problem for given realization of
+        uncertainty and cuts that approximate cost-to-go function.
+        """
+        
+        assert(t >= 0)
+        assert(t < self.T)
+        assert(x_prev.shape == (self.num_x,))
+        assert(A.shape[1] == self.num_x)
+        assert(b.shape == (A.shape[0],))
+
+        p_prev = x_prev[:self.num_p]
+        inf = self.parameters['infinity']
+
+        H = bmat([[self.Hp,None,None,None,None,None],  # p
+                  [None,self.Hq,None,None,None,None],  # q
+                  [None,None,self.Ow,None,None,None],  # w
+                  [None,None,None,self.Os,None,None],  # s
+                  [None,None,None,None,self.Oy,None],  # y
+                  [None,None,None,None,None,self.Oz]], # z
+                 format='coo')
+
+        g = np.hstack([self.gp,  # p
+                       self.gq,  # q
+                       self.ow,  # w
+                       self.os,  # s
+                       self.oy,  # y
+                       self.oz]) # z
+
+        Aeq = bmat([[self.G,self.C,-self.A,self.R,None,None], # power balance
+                    [self.Ip,None,None,None,-self.Iy,None],   # ramp eq
+                    [None,None,self.J,None,None,-self.Iz]],   # thermal lim eq
+                   format='coo')
+        
+        beq = np.hstack([self.b+self.D*self.d_forecast[t],
+                         p_prev,
+                         self.oz])
+        
+        u = np.hstack([self.p_max,
+                       self.q_max,
+                       self.w_max,
+                       w,           # avail r
+                       self.y_max,
+                       self.z_max])
+        l = np.hstack([self.p_min,
+                       self.q_min,
+                       self.w_min,
+                       self.os,
+                       self.y_min,
+                       self.z_min])
+        
+        # Cuts (h are slack vectors, v is scalar)
+        num_cuts = A.shape[0]
+        Oh = coo_matrix((num_cuts,num_cuts))
+        oh = np.zeros(num_cuts)
+        Ih = eye(num_cuts,format='coo')
+        Ev = np.ones((num_cuts,1))
+        Ov = coo_matrix((1,1))
+        if num_cuts > 0:
+            
+            H = bmat([[H ,None,None],
+                      [None,Ov,None],
+                      [None,None,Oh]],
+                     format='coo')
+
+            g = np.hstack((g,1.,oh))
+            
+            Aeq = bmat([[Aeq,None,None],
+                        [A,Ev,-Ih]],
+                       format='coo')
+            
+            beq = np.hstack((beq,
+                             -b))
+
+            u = np.hstack((u,
+                           inf,
+                           np.ones(num_cuts)*inf))
+            
+            l = np.hstack((l,
+                           -inf,
+                           oh)) # very important
+        
+        # Construct problem
+        QPproblem = QuadProblem(H,g,Aeq,beq,l,u)
+        
+        # Set up solver
+        solver = OptSolverIQP()
+        solver.set_parameters({'quiet': quiet, 
+                               'tol': tol})
+        
+        # Solve
+        solver.solve(QPproblem)
+
+        # Results
+        results = solver.get_results()
+
+        # Stage optimal point
+        x = solver.get_primal_variables()
+        
+        # Optimal duals
+        lam,nu,mu,pi = solver.get_dual_variables()
+
+        # Solutions
+        xt = x[:self.num_x]
+        y_offset = self.num_p+self.num_q+self.num_w+self.num_s
+        Q = np.dot(QPproblem.g,x)+0.5*np.dot(x,QPproblem.H*x)
+        gQ = np.hstack(((-mu+pi)[y_offset:y_offset+self.num_y],
+                        self.oq,self.ow,self.os,self.oy,self.oz))
+
+        # Return
+        return xt,Q,gQ
+
     def solve_stages(self,t,w_list,x_prev,g_corr=[],init_data=None,tf=None,quiet=False,tol=1e-4,next_stage=False):
         """
         Solves stages using given realizations of uncertainty 
@@ -923,7 +1036,7 @@ class MS_DCOPF_Problem(StochProblemMS):
             plt.grid()
 
             # Scenario tree
-            scenario_tree.draw()
+            #scenario_tree.draw()
 
             # Vargen prediction from scenario tree
             if scenario_tree is not None:
