@@ -16,6 +16,7 @@ class MS_DCOPF_SDDP(MS_DCOPF_Method):
     """
     
     parameters = {'branching_factor': 2,
+                  'branching_type': 'decreasing',
                   'quiet': False}
     
     def __init__(self):
@@ -37,12 +38,13 @@ class MS_DCOPF_SDDP(MS_DCOPF_Method):
         # Parameters
         quiet = params['quiet']
         bfactor = params['branching_factor']
+        btype = params['branching_type']
 
         # Problem
         self.problem = self.create_problem(net,forecast,params)
 
         # Scenario tree
-        self.tree = StochProblemMS_Tree(self.problem,bfactor)
+        self.tree = StochProblemMS_Tree(self.problem,bfactor,btype)
 
         # Show
         if not quiet:

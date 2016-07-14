@@ -1036,7 +1036,8 @@ class MS_DCOPF_Problem(StochProblemMS):
             plt.grid()
 
             # Scenario tree
-            #scenario_tree.draw()
+            if scenario_tree is not None:
+                scenario_tree.draw()
 
             # Vargen prediction from scenario tree
             if scenario_tree is not None:
@@ -1151,8 +1152,12 @@ class MS_DCOPF_Problem(StochProblemMS):
         print 'Evaluating policies with %d processes' %num_procs
                     
         # Eval
-        pool = Pool(num_procs)
-        results = pool.map(ApplyFunc, [(self,'simulate_policies',policies,self.sample_W(self.T-1)) for j in range(num_sims)])
+        if num_procs > 1:
+            pool = Pool(num_procs)
+            func = pool.map
+        else:
+            func = map
+        results = func(ApplyFunc, [(self,'simulate_policies',policies,self.sample_W(self.T-1)) for j in range(num_sims)])
 
         # Process
         num_pol = len(policies)
