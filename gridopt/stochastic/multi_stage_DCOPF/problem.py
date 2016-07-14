@@ -478,7 +478,7 @@ class MS_DCOPF_Problem(StochProblemMS):
         
         return self.x_prev
 
-    def solve_stage_with_cuts(self,t,w,x_prev,A,b,quiet=False,tol=1e-4):
+    def solve_stage_with_cuts(self,t,w,x_prev,A,b,quiet=False,tol=1e-4,init_data=None):
         """
         Solves approximate stage problem for given realization of
         uncertainty and cuts that approximate cost-to-go function.
@@ -563,6 +563,13 @@ class MS_DCOPF_Problem(StochProblemMS):
         
         # Construct problem
         QPproblem = QuadProblem(H,g,Aeq,beq,l,u)
+
+        # Warm start
+        if init_data is not None:
+            QPproblem.x = init_data['x']
+            QPproblem.lam = init_data['lam']
+            QPproblem.mu = init_data['mu']
+            QPproblem.pi = init_data['pi']
         
         # Set up solver
         solver = OptSolverIQP()
