@@ -566,10 +566,14 @@ class MS_DCOPF_Problem(StochProblemMS):
 
         # Warm start
         if init_data is not None:
-            QPproblem.x = init_data['x']
-            QPproblem.lam = init_data['lam']
-            QPproblem.mu = init_data['mu']
-            QPproblem.pi = init_data['pi']
+            x0 = init_data['x']
+            lam0 = init_data['lam']
+            mu0 = init_data['mu']
+            pi0 = init_data['pi']
+            QPproblem.x = np.hstack((x0,np.zeros(g.size-x0.size)))
+            QPproblem.lam = np.hstack((lam0,np.zeros(beq.size-lam0.size)))
+            QPproblem.mu = np.hstack((mu0,np.zeros(g.size-x0.size)))
+            QPproblem.pi = np.hstack((pi0,np.zeros(g.size-x0.size)))
         
         # Set up solver
         solver = OptSolverIQP()
@@ -596,7 +600,7 @@ class MS_DCOPF_Problem(StochProblemMS):
                         self.oq,self.ow,self.os,self.oy,self.oz))
 
         # Return
-        return xt,Q,gQ
+        return xt,Q,gQ,results
 
     def solve_stages(self,t,w_list,x_prev,g_corr=[],init_data=None,tf=None,quiet=False,tol=1e-4,next_stage=False):
         """
