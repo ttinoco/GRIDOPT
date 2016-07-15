@@ -413,6 +413,18 @@ class MS_DCOPF_Problem(StochProblemMS):
 
         return np.hstack((p,q,w,s,y,z))
 
+    def eval_F(self,t,x,w):
+        """
+        Evaluates current cost.
+        """
+        
+        p,q,w,s,y,z = self.separate_x(x)
+
+        return (np.dot(self.gp,p) +
+                0.5*np.dot(p,self.Hp*p) + # slow gen cost
+                np.dot(self.gq,q) +
+                0.5*np.dot(q,self.Hq*q)) # fast gen cost
+
     def separate_x(self,x):
         """
         Separates stage vector into components.
@@ -557,9 +569,9 @@ class MS_DCOPF_Problem(StochProblemMS):
                            inf,
                            np.ones(num_cuts)*inf))
             
-            l = np.hstack((l,
-                           -inf,
-                           oh)) # very important
+            l = np.hstack((l,   # x
+                           0.,  # v
+                           oh)) # h (slack)
         
         # Construct problem
         QPproblem = QuadProblem(H,g,Aeq,beq,l,u)
