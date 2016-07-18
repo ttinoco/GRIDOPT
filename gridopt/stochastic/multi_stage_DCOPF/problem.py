@@ -1101,7 +1101,7 @@ class MS_DCOPF_Problem(StochProblemMS):
                     plt.grid()
             plt.show()
 
-    def simulate_policies(self,policies,R):
+    def simulate_policies(self,policies,R,sim_id):
         """
         Simulates policies for a given
         realization of uncertainty.
@@ -1110,6 +1110,7 @@ class MS_DCOPF_Problem(StochProblemMS):
         ----------
         policies : list
         R : list
+        sim_id : int
 
         Returns
         -------
@@ -1118,7 +1119,7 @@ class MS_DCOPF_Problem(StochProblemMS):
 
         assert(len(R) == self.T)
 
-        print('simulating policies')
+        print('simulation %d' %sim_id)
 
         num = len(policies)
         dtot = np.zeros(self.T)
@@ -1183,7 +1184,7 @@ class MS_DCOPF_Problem(StochProblemMS):
             func = pool.map
         else:
             func = map
-        results = func(ApplyFunc, [(self,'simulate_policies',policies,self.sample_W(self.T-1)) for j in range(num_sims)])
+        results = func(ApplyFunc, [(self,'simulate_policies',policies,self.sample_W(self.T-1),j) for j in range(num_sims)])
 
         # Process
         num_pol = len(policies)
