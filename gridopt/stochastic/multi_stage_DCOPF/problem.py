@@ -997,6 +997,9 @@ class MS_DCOPF_Problem(StochProblemMS):
         print('vargen corr_rad    : %d (edges)' %(self.corr_radius))
         print('vargen corr_val    : %.2f (unitless)' %(self.corr_value))
 
+        if scenario_tree is not None:
+            scenario_tree.show()
+
         # Draw
         if self.parameters['draw']:
         

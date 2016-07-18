@@ -6,6 +6,7 @@ Unreleased
 ----------
 * Multi-stage stochastic DCOPF.
 * Variable generator power curtailment in DCOPF.
+* Python 2 and 3 compatibility.	
 
 Version 1.1
 -----------
