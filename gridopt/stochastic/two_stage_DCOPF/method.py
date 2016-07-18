@@ -43,8 +43,8 @@ class TS_DCOPF_Method:
         parameters : dict
         """
         
-        for key,value in parameters.items():
-            if self.parameters.has_key(key):
+        for key,value in list(parameters.items()):
+            if key in self.parameters:
                 self.parameters[key] = value
 
     def get_results(self):

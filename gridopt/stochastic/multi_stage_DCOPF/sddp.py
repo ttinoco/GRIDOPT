@@ -6,8 +6,8 @@
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
 
-from method import MS_DCOPF_Method
-from problem import MS_DCOPF_Problem
+from .method import MS_DCOPF_Method
+from .problem import MS_DCOPF_Problem
 from optalg.stoch_solver import StochDualDynProg,StochProblemMS_Tree
 
 class MS_DCOPF_SDDP(MS_DCOPF_Method):

@@ -23,5 +23,5 @@ method = gridopt.power_flow.new_method('DCOPF_Corr')
 method.solve(net,[c1,c2])
 method.update_network(net)
 
-print(net.gen_P_cost)
+print((net.gen_P_cost))
 

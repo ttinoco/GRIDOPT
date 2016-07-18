@@ -114,7 +114,7 @@ class TS_DCOPF_RA_Problem(StochProblemC):
         print('k     t')
         for k in range(iters):
           
-            print('%5d    %.5e' %(k,t))   
+            print(('%5d    %.5e' %(k,t)))   
             
             r = self.sample_w()
             
@@ -326,15 +326,15 @@ class TS_DCOPF_RA_Problem(StochProblemC):
     def show(self):
 
         self.ts_dcopf.show()
-        print('Qnorm      : %.5e' %self.Qnorm)
-        print('Qmax       : %.5e' %self.Qmax)
-        print('Qfac       : %.2f' %self.Qfac)
-        print('gamma      : %.2f' %self.gamma)
-        print('smax param : %.2e' %self.parameters['smax_param'])
-        print('lmax       : %.2e' %self.parameters['lam_max'])
-        print('t_reg      : %.2e' %self.parameters['t_reg'])
-        print('t_min      : %.2e' %self.parameters['t_min'])
-        print('t_max      : %.2e' %self.parameters['t_max'])
+        print(('Qnorm      : %.5e' %self.Qnorm))
+        print(('Qmax       : %.5e' %self.Qmax))
+        print(('Qfac       : %.2f' %self.Qfac))
+        print(('gamma      : %.2f' %self.gamma))
+        print(('smax param : %.2e' %self.parameters['smax_param']))
+        print(('lmax       : %.2e' %self.parameters['lam_max']))
+        print(('t_reg      : %.2e' %self.parameters['t_reg']))
+        print(('t_min      : %.2e' %self.parameters['t_min']))
+        print(('t_max      : %.2e' %self.parameters['t_max']))
 
     def solve_Lrelaxed_approx(self,lam,g_corr=None,J_corr=None,tol=1e-4,quiet=False,init_data=None):
         """

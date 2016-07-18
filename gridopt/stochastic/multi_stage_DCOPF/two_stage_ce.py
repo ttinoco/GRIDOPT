@@ -9,8 +9,8 @@
 import time
 import numpy as np
 from types import MethodType
-from method import MS_DCOPF_Method
-from problem import MS_DCOPF_Problem
+from .method import MS_DCOPF_Method
+from .problem import MS_DCOPF_Problem
 from scipy.sparse import eye,coo_matrix,bmat
 from optalg.stoch_solver import StochProblemMS_Policy
 from optalg.opt_solver import OptSolverIQP,QuadProblem

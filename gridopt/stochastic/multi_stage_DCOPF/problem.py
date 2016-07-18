@@ -9,7 +9,7 @@
 import csv
 import pfnet as pf
 import numpy as np
-from utils import ApplyFunc
+from .utils import ApplyFunc
 from numpy.linalg import norm
 from gridopt.power_flow import new_method
 from optalg.lin_solver import new_linsolver
@@ -43,13 +43,13 @@ class MS_DCOPF_Problem(StochProblemMS):
         """
         
         # Check forecast
-        assert(forecast.has_key('vargen'))
-        assert(forecast.has_key('load'))
-        assert(forecast.has_key('size'))
+        assert('vargen' in forecast)
+        assert('load' in forecast)
+        assert('size' in forecast)
         assert(len(forecast['load']) == net.num_loads)
         assert(len(forecast['vargen']) == net.num_vargens)
-        assert(set([len(v) for v in forecast['load'].values()]) == set([forecast['size']]))
-        assert(set([len(v) for v in forecast['vargen'].values()]) == set([forecast['size']]))
+        assert(set([len(v) for v in list(forecast['load'].values())]) == set([forecast['size']]))
+        assert(set([len(v) for v in list(forecast['vargen'].values())]) == set([forecast['size']]))
         
         # Parameters
         self.parameters = MS_DCOPF_Problem.parameters.copy()
@@ -270,10 +270,10 @@ class MS_DCOPF_Problem(StochProblemMS):
         assert(self.A.shape == (self.num_bus,self.num_w))
         assert(self.J.shape == (self.num_br,self.num_w))
         assert(self.b.shape == (self.num_bus,))
-        assert(all(map(lambda d: d.shape == (self.num_l,),self.d_forecast)))
-        assert(all(map(lambda r: r.shape == (self.num_r,),self.r_forecast)))
-        assert(all(map(lambda r: np.all(r < self.r_max),self.r_forecast)))
-        assert(all(map(lambda r: np.all(r >= 0),self.r_forecast)))
+        assert(all([d.shape == (self.num_l,) for d in self.d_forecast]))
+        assert(all([r.shape == (self.num_r,) for r in self.r_forecast]))
+        assert(all([np.all(r < self.r_max) for r in self.r_forecast]))
+        assert(all([np.all(r >= 0) for r in self.r_forecast]))
         assert(np.all(D.row == D.col))
         assert(np.all(Dh.row == Dh.col))
         assert(np.all(D.data > 0))
@@ -842,7 +842,7 @@ class MS_DCOPF_Problem(StochProblemMS):
             assert norm(p-p_prev-y)/(norm(p)+norm(p_prev)+norm(y)) < eps, 'ramp eq'
             return True
         except AssertionError as e:
-            print e
+            print(e)
         return False
 
     def sample_w(self,t,observations):
@@ -967,8 +967,8 @@ class MS_DCOPF_Problem(StochProblemMS):
         params : dic
         """
         
-        for key,value in params.items():
-            if self.parameters.has_key(key):
+        for key,value in list(params.items()):
+            if key in self.parameters:
                 self.parameters[key] = value
  
     def show(self,scenario_tree=None):
@@ -986,16 +986,16 @@ class MS_DCOPF_Problem(StochProblemMS):
         load_for = [np.sum(d) for d in self.d_forecast]
         load_max = max(load_for)
  
-        print '\nStochastic Multi-Stage DCOPF'
-        print '----------------------------'
-        print 'num buses          : %d' %self.num_bus
-        print 'num gens           : %d' %self.num_p
-        print 'num vargens        : %d' %self.num_r
-        print 'num loads          : %d' %self.num_l
-        print 'num stages         : %d' %self.T
-        print 'vargen cap         : %.2f (%% of max load)' %(100.*vargen_cap/load_max)
-        print 'vargen corr_rad    : %d (edges)' %(self.corr_radius)
-        print 'vargen corr_val    : %.2f (unitless)' %(self.corr_value)
+        print('\nStochastic Multi-Stage DCOPF')
+        print('----------------------------')
+        print('num buses          : %d' %self.num_bus)
+        print('num gens           : %d' %self.num_p)
+        print('num vargens        : %d' %self.num_r)
+        print('num loads          : %d' %self.num_l)
+        print('num stages         : %d' %self.T)
+        print('vargen cap         : %.2f (%% of max load)' %(100.*vargen_cap/load_max))
+        print('vargen corr_rad    : %d (edges)' %(self.corr_radius))
+        print('vargen corr_val    : %.2f (unitless)' %(self.corr_value))
 
         # Draw
         if self.parameters['draw']:
@@ -1046,9 +1046,9 @@ class MS_DCOPF_Problem(StochProblemMS):
             fig = plt.figure()
             plt.hold(True)
             for i in range(N):
-                R = map(lambda w: np.sum(w),self.sample_W(self.T-1))
+                R = [np.sum(w) for w in self.sample_W(self.T-1)]
                 plt.plot([100.*r/load_max for r in R],color=colors[i])
-            R = map(lambda w: np.sum(w),self.predict_W(self.T-1))
+            R = [np.sum(w) for w in self.predict_W(self.T-1)]
             plt.plot([100.*r/load_max for r in R],color='black',linewidth=3.)
             plt.xlabel('stage',fontsize=22)
             plt.ylabel('% of max load',fontsize=22)
@@ -1067,9 +1067,9 @@ class MS_DCOPF_Problem(StochProblemMS):
                 fig = plt.figure()
                 plt.hold(True)
                 for i in range(N):
-                    R = map(lambda n: np.sum(n.get_w()),scenario_tree.sample_branch(self.T-1))
+                    R = [np.sum(n.get_w()) for n in scenario_tree.sample_branch(self.T-1)]
                     plt.plot([100.*r/load_max for r in R],color=colors[i])
-                R = map(lambda w: np.sum(w),self.predict_W(self.T-1))
+                R = [np.sum(w) for w in self.predict_W(self.T-1)]
                 plt.plot([100.*r/load_max for r in R],color='black',linewidth=3.)
                 plt.xlabel('stage',fontsize=22)
                 plt.ylabel('% of max load',fontsize=22)
@@ -1085,8 +1085,8 @@ class MS_DCOPF_Problem(StochProblemMS):
                 plt.hold(True)
                 for i in range(3):
                     W = self.sample_W(self.T-1)
-                    R1 = map(lambda w: np.sum(w),W)
-                    R2 = map(lambda n: np.sum(n.get_w()),scenario_tree.get_closest_branch(W))
+                    R1 = [np.sum(w) for w in W]
+                    R2 = [np.sum(n.get_w()) for n in scenario_tree.get_closest_branch(W)]
                     plt.plot([100.*r/load_max for r in R1],color=colors[i],linestyle='-')
                     plt.plot([100.*r/load_max for r in R2],color=colors[i],linestyle='--')
                     plt.xlabel('stage',fontsize=22)
@@ -1115,7 +1115,7 @@ class MS_DCOPF_Problem(StochProblemMS):
 
         assert(len(R) == self.T)
 
-        print 'simulating policies'
+        print('simulating policies')
 
         num = len(policies)
         dtot = np.zeros(self.T)
@@ -1172,7 +1172,7 @@ class MS_DCOPF_Problem(StochProblemMS):
 
         np.random.seed(seed)
 
-        print 'Evaluating policies with %d processes' %num_procs
+        print('Evaluating policies with %d processes' %num_procs)
                     
         # Eval
         if num_procs > 1:
@@ -1184,7 +1184,7 @@ class MS_DCOPF_Problem(StochProblemMS):
 
         # Process
         num_pol = len(policies)
-        dtot,rtot,cost,ptot,qtot,stot = zip(*results)
+        dtot,rtot,cost,ptot,qtot,stot = list(zip(*results))
         dtot = np.average(np.array(dtot),axis=0)
         rtot = np.average(np.array(rtot),axis=0)
         cost = dict([(i,np.average(np.array([cost[j][i] for j in range(num_sims)]),axis=0)) for i in range(num_pol)])

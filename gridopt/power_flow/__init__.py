@@ -31,6 +31,6 @@ def new_method(name):
     """
     
     try:
-        return methods[list(map(lambda x: x.name,methods)).index(name)]()
+        return methods[list([x.name for x in methods]).index(name)]()
     except ValueError:
         raise ValueError('invalid PF method name')

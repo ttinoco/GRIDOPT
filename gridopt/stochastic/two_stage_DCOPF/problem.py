@@ -236,7 +236,7 @@ class TS_DCOPF_Problem(StochProblem):
 
             # Show progress
             if not quiet and i > 0:
-                print('%d\t%.5e' %(i,Q))
+                print(('%d\t%.5e' %(i,Q)))
 
             # Infinity
             if not q < np.inf:
@@ -586,14 +586,14 @@ class TS_DCOPF_Problem(StochProblem):
         
         print('Stochastic Two-Stage DCOPF')
         print('--------------------------')
-        print('buses            : %d' %self.num_bus)
-        print('gens             : %d' %self.num_p)
-        print('vargens          : %d' %self.num_r)
-        print('penetration cap  : %.2f (%% of load)' %(100.*Ctot/self.total_load))
-        print('penetration base : %.2f (%% of load)' %(100.*Btot/self.total_load))
-        print('penetration std  : %.2f (%% of local cap)' %self.uncertainty)
-        print('correlation rad  : %d (edges)' %(self.corr_radius))
-        print('correlation val  : %.2f (unitless)' %(self.corr_value))
+        print(('buses            : %d' %self.num_bus))
+        print(('gens             : %d' %self.num_p))
+        print(('vargens          : %d' %self.num_r))
+        print(('penetration cap  : %.2f (%% of load)' %(100.*Ctot/self.total_load)))
+        print(('penetration base : %.2f (%% of load)' %(100.*Btot/self.total_load)))
+        print(('penetration std  : %.2f (%% of local cap)' %self.uncertainty))
+        print(('correlation rad  : %d (edges)' %(self.corr_radius)))
+        print(('correlation val  : %.2f (unitless)' %(self.corr_value)))
 
     def solve_approx(self,g_corr=None,tol=1e-4,quiet=False,samples=500,init_data=None):
         """

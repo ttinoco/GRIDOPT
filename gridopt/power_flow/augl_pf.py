@@ -7,7 +7,6 @@
 #*****************************************************#
 
 from __future__ import print_function
-
 import pfnet
 import numpy as np
 from .method_error import *

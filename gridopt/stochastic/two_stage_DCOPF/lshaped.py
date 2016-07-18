@@ -74,7 +74,7 @@ class TS_DCOPF_LS(TS_DCOPF_Method):
             t1 = time.time()
             F = 0.5*np.dot(p,H0*p)+np.dot(g0,p) + Q
             EF,EgF = problem.eval_EF(p,samples=samples)
-            print('%d,%.2f,%.2e,%.2e,%.5e,%.5e' %(k,t1-t0,Q,t,F,EF))
+            print(('%d,%.2f,%.2e,%.2e,%.5e,%.5e' %(k,t1-t0,Q,t,F,EF)))
             t0 += time.time()-t1
             
             # Solved

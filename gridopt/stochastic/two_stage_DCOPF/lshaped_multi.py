@@ -76,7 +76,7 @@ class TS_DCOPF_LSM(TS_DCOPF_Method):
             Q = sum(Qlist)/float(num_sce)
             F = 0.5*np.dot(p,H0*p)+np.dot(g0,p) + Q
             EF,EgF = problem.eval_EF(p,samples=samples)
-            print('%d,%.2f,%d,%.2e,%.2e,%.5e,%.5e' %(k,t1-t0,counter,Q,np.sum(t)/float(num_sce),F,EF))
+            print(('%d,%.2f,%d,%.2e,%.2e,%.5e,%.5e' %(k,t1-t0,counter,Q,np.sum(t)/float(num_sce),F,EF)))
             t0 += time.time()-t1
             
             # Solved
