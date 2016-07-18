@@ -14,6 +14,7 @@ from .dc_opf_prev import DCOPF_Prev
 from .dc_opf_corr import DCOPF_Corr
 from .augl_pf import AugLPF
 from .augl_opf import AugLOPF
+from .method import PFmethod
 from .method_error import PFmethodError
 
 methods = [NRPF,DCPF,DCOPF,DCOPF_MP,DCOPF_Prev,DCOPF_Corr,
@@ -33,6 +34,3 @@ def new_method(name):
         return methods[list(map(lambda x: x.name,methods)).index(name)]()
     except ValueError:
         raise ValueError('invalid PF method name')
-        
-    
-    
