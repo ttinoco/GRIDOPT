@@ -6,7 +6,9 @@
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
 
+from __future__ import print_function
 import csv
+import time
 import pfnet as pf
 import numpy as np
 from .utils import ApplyFunc
@@ -1101,7 +1103,7 @@ class MS_DCOPF_Problem(StochProblemMS):
                     plt.grid()
             plt.show()
 
-    def simulate_policies(self,policies,R,sim_id):
+    def simulate_policies(self,sim_id):
         """
         Simulates policies for a given
         realization of uncertainty.
@@ -1117,9 +1119,14 @@ class MS_DCOPF_Problem(StochProblemMS):
         a lot
         """
 
+        t0 = time.time()
+    
+        policies = self.policies
+        R = self.samples[sim_id]
+
         assert(len(R) == self.T)
 
-        print('simulation %d' %sim_id)
+        print('simulation %d,' %sim_id, end=' ')
 
         num = len(policies)
         dtot = np.zeros(self.T)
@@ -1145,6 +1152,8 @@ class MS_DCOPF_Problem(StochProblemMS):
                 qtot[i][t] = np.sum(q)
                 stot[i][t] = np.sum(s)
                 x_prev[i] = x.copy()
+
+        print('time %.2f min' %((time.time()-t0)/60.))
                     
         return dtot,rtot,cost,ptot,qtot,stot
 
@@ -1163,7 +1172,7 @@ class MS_DCOPF_Problem(StochProblemMS):
 
         assert(len(policies) > 0)
 
-        from multiprocess import Pool,cpu_count
+        from multiprocess import Pool,cpu_count,Process
         
         if not num_procs:
             num_procs = cpu_count()
@@ -1177,14 +1186,19 @@ class MS_DCOPF_Problem(StochProblemMS):
         np.random.seed(seed)
 
         print('Evaluating policies with %d processes' %num_procs)
-                    
+                   
         # Eval
+        self.policies = policies
+        self.samples = [self.sample_W(self.T-1) for j in range(num_sims)]
         if num_procs > 1:
             pool = Pool(num_procs)
             func = pool.map
         else:
             func = map
-        results = func(ApplyFunc, [(self,'simulate_policies',policies,self.sample_W(self.T-1),j) for j in range(num_sims)])
+        t0 = time.time()
+        results = func(lambda i: self.simulate_policies(i), range(num_sims))
+        t1 = time.time()            
+        print('Total time: %.2f min' %((t1-t0)/60.))
 
         # Process
         num_pol = len(policies)
