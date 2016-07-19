@@ -1212,6 +1212,7 @@ class MS_DCOPF_Problem(StochProblemMS):
             iref = 0
         
         # Write
+        writer.writerow([self.num_bus,num_sims])
         writer.writerow([p.get_name() for p in policies])
         writer.writerow([p.get_construction_time() for p in policies])
         writer.writerow(['d','r']+num_pol*['cost','p','q','s'])
