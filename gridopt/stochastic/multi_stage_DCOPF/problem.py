@@ -505,7 +505,7 @@ class MS_DCOPF_Problem(StochProblemMS):
         assert(b.shape == (A.shape[0],))
 
         p_prev = x_prev[:self.num_p]
-        inf = self.parameters['infinity']
+        inf = self.parameters['infinity']*1e2
 
         H = bmat([[self.Hp,None,None,None,None,None],  # p
                   [None,self.Hq,None,None,None,None],  # q
