@@ -6,8 +6,8 @@
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
 
-from distutils.core import setup
-                
+from setuptools import setup
+
 setup(name='GRIDOPT',
       version='1.1',
       description='Power Grid Optimization Library',
