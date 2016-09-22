@@ -19,8 +19,8 @@ setup(name='GRIDOPT',
                 'gridopt.stochastic.two_stage_DCOPF',
                 'gridopt.stochastic.multi_stage_DCOPF'],
       scripts=['./gridopt/script/gridopt'],
-      requires=['scipy',
-                'numpy',
-                'pfnet',
-                'optalg',
-                'scikits.sparse'])
+      install_requires=['scipy',
+                        'numpy',
+                        'pfnet',
+                        'optalg',
+                        'multiprocess'])
