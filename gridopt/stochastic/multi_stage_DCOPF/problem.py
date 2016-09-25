@@ -991,6 +991,7 @@ class MS_DCOPF_Problem(StochProblemMS):
         print('\nStochastic Multi-Stage DCOPF')
         print('----------------------------')
         print('num buses          : %d' %self.num_bus)
+        print('num branches       : %d' %self.num_br)
         print('num gens           : %d' %self.num_p)
         print('num vargens        : %d' %self.num_r)
         print('num loads          : %d' %self.num_l)
