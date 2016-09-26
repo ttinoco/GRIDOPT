@@ -31,7 +31,8 @@ class MS_DCOPF_Problem(StochProblemMS):
                   'r_ramp_freq' : 0.10,  # renewable ramping frequency 
                   'r_eps'       : 1e-3,  # smallest renewable injection
                   'num_samples' : 1000,  # number of samples
-                  'draw': False}         # drawing flag
+                  'draw': False,         # drawing flag
+                  'name': ''}            # name
 
     def __init__(self,net,forecast,parameters={}):
         """
@@ -1008,9 +1009,11 @@ class MS_DCOPF_Problem(StochProblemMS):
         
             import matplotlib.pyplot as plt
             from matplotlib import rcParams
-            rcParams.update({'figure.autolayout': True})
             import seaborn
 
+            plt.rc('text', usetex=True)
+            plt.rc('font', family='serif')
+            rcParams.update({'figure.autolayout': True})
             seaborn.set_style("ticks")
 
             N = 20
@@ -1049,19 +1052,19 @@ class MS_DCOPF_Problem(StochProblemMS):
             plt.grid()
             
             # Vargen prediction
-            fig = plt.figure()
+            fig = plt.figure(figsize=(6,5))
             plt.hold(True)
             for i in range(N):
                 R = [np.sum(w) for w in self.sample_W(self.T-1)]
-                plt.plot([100.*r/load_max for r in R],color=colors[i])
+                plt.plot(range(1,self.T+1),[100.*r/load_max for r in R],color=colors[i])
             R = [np.sum(w) for w in self.predict_W(self.T-1)]
-            plt.plot([100.*r/load_max for r in R],color='black',linewidth=3.)
-            plt.xlabel('stage',fontsize=22)
-            plt.ylabel('% of max load',fontsize=22)
-            plt.axis([0,self.T-1,0.,100.])
-            plt.tick_params(axis='both',which='major',labelsize=20)
-            plt.tick_params(axis='both',which='minor',labelsize=20)
-            plt.title('Total Renewable Powers')
+            plt.plot(range(1,self.T+1),[100.*r/load_max for r in R],color='black',linewidth=3.)
+            plt.xlabel(r'stage',fontsize=22)
+            plt.ylabel(r'power (\% of max load)',fontsize=22)
+            plt.axis([1,self.T,0.,100.])
+            plt.tick_params(axis='both',which='major',labelsize=18)
+            plt.tick_params(axis='both',which='minor',labelsize=18)
+            plt.title(r'%s: Aggregate Renewable Powers' %self.parameters['name'],fontsize=22,y=1.05)
             plt.grid()
 
             # Scenario tree
