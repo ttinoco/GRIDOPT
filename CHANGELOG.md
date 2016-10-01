@@ -4,6 +4,9 @@ Targets
 
 Unreleased
 ----------
+
+Version 1.2
+-----------
 * Multi-stage stochastic DCOPF.
 * Variable generator power curtailment in DCOPF.
 * Python 2 and 3 compatibility.	
