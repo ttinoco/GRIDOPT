@@ -10,6 +10,7 @@ import pfnet
 import numpy as np
 from .method_error import *
 from .method import PFmethod
+from numpy.linalg import norm
 from scipy.sparse import triu,coo_matrix,bmat,eye
 from optalg.opt_solver import OptSolverError,OptSolverIQP,QuadProblem
 
@@ -62,11 +63,11 @@ class DCOPF(PFmethod):
         try:
             num_gvar =  len([g for g in net.generators if 
                              (not g.is_on_outage()) and g.is_P_adjustable()])
-            num_cur = net.num_vargens if params['vargen_curtailment'] else 0
-            assert(net.num_bounded == num_gvar + net.get_num_P_adjust_loads() + num_cur)
+            num_cur = net.num_var_generators if params['vargen_curtailment'] else 0
+            assert(net.num_bounded == (num_gvar+net.get_num_P_adjust_loads()+num_cur)*net.num_periods)
             assert(net.num_vars == (net.num_buses-net.get_num_slack_buses()+
                                     num_gvar+net.get_num_P_adjust_loads()+
-                                    num_cur))
+                                    num_cur)*net.num_periods)
         except AssertionError:
             raise PFmethodError_BadProblem(self)
             
@@ -131,7 +132,7 @@ class DCOPF(PFmethod):
         ux += Pr.T*Pr*(x-ux) # correct limit for curtailment
 
         nx = net.num_vars
-        nz = net.get_num_branches_not_on_outage()
+        nz = net.get_num_branches_not_on_outage()*net.num_periods
         n = nx+nz
 
         Iz = eye(nz)
@@ -162,13 +163,13 @@ class DCOPF(PFmethod):
             assert(Gx.shape == (nx,nx))
             assert(np.all(Gx.row == Gx.col))
             assert(np.all(Gx.data == np.ones(nx)))
-            assert(Gz.shape == (net.get_num_branches_not_on_outage(),nx))
+            assert(Gz.shape == (net.get_num_branches_not_on_outage()*net.num_periods,nx))
             assert(l.shape == (n,))
             assert(u.shape == (n,))
             assert(np.all(l < u))
-            assert(np.abs(problem.phi-net.base_power*(0.5*np.dot(y,H*y)+np.dot(g,y))) < 1e-7)
+            assert(norm(np.hstack((problem.gphi,oz))-net.base_power*(H*y+g)) < 1e-10*(1.+norm(problem.gphi)))
             assert(H.shape == (n,n))
-            assert(A.shape == (net.num_buses+nz,n))
+            assert(A.shape == (net.num_buses*net.num_periods+nz,n))
         except AssertionError:
             raise PFmethodError_BadProblem(self)
             
@@ -204,7 +205,7 @@ class DCOPF(PFmethod):
         xz = self.results['primal_variables']
         lam,nu,mu,pi = self.results['dual_variables']
         nx = net.num_vars
-        nz = net.get_num_branches_not_on_outage()
+        nz = net.get_num_branches_not_on_outage()*net.num_periods
         n = nx+nz
         
         # No problem
@@ -213,10 +214,10 @@ class DCOPF(PFmethod):
  
         # Checks
         assert(problem.x.shape == (nx,))
-        assert(problem.A.shape == (net.num_buses,nx))
+        assert(problem.A.shape == (net.num_buses*net.num_periods,nx))
         assert(problem.G.shape == (nx+nz,nx))
         assert(xz.shape == (nx+nz,))
-        assert(lam.shape == (net.num_buses+nz,))
+        assert(lam.shape == (net.num_buses*net.num_periods+nz,))
         assert(mu.shape == (n,))
         assert(pi.shape == (n,))
         assert(nu is None or not nu.size)
@@ -229,7 +230,7 @@ class DCOPF(PFmethod):
         
         # Network sensitivities
         net.clear_sensitivities()
-        problem.store_sensitivities(lam[:net.num_buses]*net.base_power,
+        problem.store_sensitivities(lam[:net.num_buses*net.num_periods]*net.base_power,
                                     nu,
                                     mu*net.base_power,
                                     pi*net.base_power)
