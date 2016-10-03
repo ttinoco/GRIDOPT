@@ -97,17 +97,17 @@ class AugLPF(PFmethod):
             num_vars = (2*(net.num_buses-net.get_num_slack_buses()) +
                         2*(net.get_num_buses_reg_by_gen()-net.get_num_slack_buses()) +
                         net.get_num_slack_gens() +
-                        net.get_num_reg_gens())
+                        net.get_num_reg_gens())*net.num_periods
             if not lock_taps:
                 num_vars += (2*net.get_num_buses_reg_by_tran() +
-                             3*net.get_num_tap_changers_v())
+                             3*net.get_num_tap_changers_v())*net.num_periods
             if not lock_shunts:
                 num_vars += (2*net.get_num_buses_reg_by_shunt() +
-                             3*net.get_num_switched_shunts())
+                             3*net.get_num_switched_shunts())*net.num_periods
             if not lock_shunts and not lock_taps:
                 num_vars -= 2*len([b for b in net.buses 
                                    if (b.is_regulated_by_tran() and
-                                       b.is_regulated_by_shunt())])                                   
+                                       b.is_regulated_by_shunt())])*net.num_periods
             assert(net.num_vars == num_vars)
         except AssertionError:
             raise PFmethodError_BadProblem(self)  
@@ -147,12 +147,12 @@ class AugLPF(PFmethod):
                 print('{0:^8}'.format('tvvio'), end=' ')
                 print('{0:^8}'.format('svvio'))
             else:
-                print('{0:^5.2f}'.format(net.bus_v_max), end=' ')
-                print('{0:^5.2f}'.format(net.bus_v_min), end=' ')
-                print('{0:^8.1e}'.format(net.gen_v_dev), end=' ')
-                print('{0:^8.1e}'.format(net.gen_Q_vio), end=' ')
-                print('{0:^8.1e}'.format(net.tran_v_vio), end=' ')
-                print('{0:^8.1e}'.format(net.shunt_v_vio))
+                print('{0:^5.2f}'.format(np.average(net.bus_v_max)), end=' ')
+                print('{0:^5.2f}'.format(np.average(net.bus_v_min)), end=' ')
+                print('{0:^8.1e}'.format(np.average(net.gen_v_dev)), end=' ')
+                print('{0:^8.1e}'.format(np.average(net.gen_Q_vio)), end=' ')
+                print('{0:^8.1e}'.format(np.average(net.tran_v_vio)), end=' ')
+                print('{0:^8.1e}'.format(np.average(net.shunt_v_vio)))
         return info_printer
             
     def solve(self,net):
@@ -168,7 +168,7 @@ class AugLPF(PFmethod):
 
         # Termination
         def t1(s):
-            if s.problem.network.bus_v_min < vmin_thresh:
+            if np.min(s.problem.network.bus_v_min) < vmin_thresh:
                 return True
             else:
                 return False

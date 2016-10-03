@@ -27,7 +27,12 @@ class TestPowerFlow(unittest.TestCase):
     def test_method_solutions(self):
 
         print('')
-        net = self.net
+
+        net = self.net     # single period
+        netMP = self.netMP # multi period
+        self.assertEqual(net.num_periods,1)
+        self.assertEqual(netMP.num_periods,self.T)
+        
         sol_types = {'sol1': 'no controls',
                      'sol2': 'gen controls',
                      'sol3': 'all controls'}
@@ -35,19 +40,18 @@ class TestPowerFlow(unittest.TestCase):
         for method_name in ['NRPF','AugLPF']:
             for case in utils.test_cases:
                 for sol in list(sol_types.keys()):
-
+                    
                     method = gopt.power_flow.new_method(method_name)
                     
+                    netMP.load(case)
                     net.load(case)
-                    
+
                     sol_data = utils.read_solution_data(case+'.'+sol)
                 
                     # Skip
                     if (sol == 'sol1' and         # no controls
                         method_name == 'AugLPF'):
-
                         continue
-
                     if sol == 'sol1':   # no controls
                         method.set_parameters({'limit_gens': False})
                     elif sol == 'sol2': # generator voltage control
@@ -57,16 +61,18 @@ class TestPowerFlow(unittest.TestCase):
                     method.set_parameters({'quiet': True})
 
                     method.solve(net)
-
                     results = method.get_results()
-
                     self.assertEqual(results['status'],'solved')
-                    
                     method.update_network(net)
 
-                    self.assertLess(np.abs(results['net_properties']['bus_P_mis']-net.bus_P_mis),1e-10)
-                    self.assertLess(np.abs(results['net_properties']['bus_Q_mis']-net.bus_Q_mis),1e-10)
-                    self.assertLess(np.abs(results['net_properties']['gen_P_cost']-net.gen_P_cost),1e-10)
+                    method.solve(netMP)
+                    resultsMP = method.get_results()
+                    self.assertEqual(resultsMP['status'],'solved')
+                    method.update_network(netMP)
+
+                    self.assertLess(norm(resultsMP['net_properties']['bus_P_mis']-netMP.bus_P_mis,np.inf),1e-10)
+                    self.assertLess(norm(resultsMP['net_properties']['bus_Q_mis']-netMP.bus_Q_mis,np.inf),1e-10)
+                    self.assertLess(norm(resultsMP['net_properties']['gen_P_cost']-netMP.gen_P_cost,np.inf),1e-10)
 
                     v_mag_tol = sol_data['v_mag_tol']
                     v_ang_tol = sol_data['v_ang_tol']
@@ -74,20 +80,29 @@ class TestPowerFlow(unittest.TestCase):
 
                     v_mag_error = [0]
                     v_ang_error = [0]
+                    counter = 0
                     for bus_num,val in list(bus_data.items()):
                         
                         v_mag = val['v_mag']
                         v_ang = val['v_ang']
                         
                         try:
+                            busMP = netMP.get_bus_by_number(bus_num)
                             bus = net.get_bus_by_number(bus_num)
                         except pf.NetworkError:
                             continue
-
+                           
+                        counter += 1
+                            
+                        for t in range(self.T):
+                            v_mag_error.append(np.abs(busMP.v_mag[t]-v_mag))
+                            v_ang_error.append(np.abs(busMP.v_ang[t]*180./np.pi-v_ang))
                         v_mag_error.append(np.abs(bus.v_mag-v_mag))
                         v_ang_error.append(np.abs(bus.v_ang*180./np.pi-v_ang))
                     
                     print((method_name,case,sol_types[sol],len(v_mag_error),len(v_ang_error)))
+                    self.assertEqual(len(v_mag_error),counter*(self.T+1)+1)
+                    self.assertEqual(len(v_ang_error),counter*(self.T+1)+1)
 
                     self.assertLessEqual(np.max(v_mag_error),v_mag_tol)
                     self.assertLessEqual(np.max(v_ang_error),v_ang_tol)
@@ -95,6 +110,7 @@ class TestPowerFlow(unittest.TestCase):
     def test_AugLOPF(self):
         
         net = self.netMP # multi period
+        self.assertEqual(net.num_periods,self.T)
 
         method = gopt.power_flow.new_method('AugLOPF')
 
@@ -361,7 +377,8 @@ class TestPowerFlow(unittest.TestCase):
     #@unittest.skip("")
     def test_DCOPF_corr(self):
         
-        net = self.net
+        net = self.net # single period
+
         method = gopt.power_flow.new_method('DCOPF_Corr')
         method_ref = gopt.power_flow.new_method('DCOPF')
 

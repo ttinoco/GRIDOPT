@@ -6,12 +6,12 @@
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
 
-
 from __future__ import print_function
 import pfnet
 import numpy as np
 from .method_error import *
 from .method import PFmethod
+from numpy.linalg import norm
 from optalg.opt_solver import OptSolverError,OptCallback,OptTermination,OptSolverNR
 
 class NRPF(PFmethod):
@@ -50,7 +50,7 @@ class NRPF(PFmethod):
         c = p.find_constraint(pfnet.CONSTR_TYPE_FIX)
         A = c.A        
         b = c.b
-
+        
         # Rhs
         rhs = np.hstack((np.zeros(p.f.size),np.zeros(p.b.size)))
 
@@ -68,53 +68,55 @@ class NRPF(PFmethod):
             bus = net.get_bus(i)
 
             if bus.is_regulated_by_shunt() and not bus.is_slack():
-
+                
                 assert(bus.has_flags(pfnet.FLAG_VARS,pfnet.BUS_VAR_VMAG))
 
-                v = x[bus.index_v_mag]
-                vmax = bus.v_max
-                vmin = bus.v_min
+                for t in range(net.num_periods):
 
-                assert(len(bus.reg_shunts) > 0)
-                assert(vmax >= vmin)
+                    v = x[bus.index_v_mag[t]]
+                    vmax = bus.v_max
+                    vmin = bus.v_min
 
-                # Violation
-                if v > vmax or v < vmin:
+                    assert(len(bus.reg_shunts) > 0)
+                    assert(vmax >= vmin)
 
-                    for reg_shunt in bus.reg_shunts:
+                    # Violation
+                    if v > vmax or v < vmin:
+
+                        for reg_shunt in bus.reg_shunts:
                     
-                        assert(reg_shunt.has_flags(pfnet.FLAG_VARS,pfnet.SHUNT_VAR_SUSC))
-                                
-                        s = x[reg_shunt.index_b]
-                        smax = reg_shunt.b_max
-                        smin = reg_shunt.b_min
-                        assert(smin <= smax)
+                            assert(reg_shunt.has_flags(pfnet.FLAG_VARS,pfnet.SHUNT_VAR_SUSC))
                         
-                        # Fix constr index
-                        k = int(np.where(A.col == reg_shunt.index_b)[0])
-                        i = A.row[k]
-                        assert(np.abs(b[i]-x[reg_shunt.index_b]) < eps)
-                        assert(A.data[k] == 1.)
-                        
-                        # Sensitivity
-                        assert(rhs[p.f.size+offset+i] == 0.)
-                        rhs[p.f.size+offset+i] = dsus
-                        dx = solver.linsolver.solve(rhs)
-                        dv = dx[bus.index_v_mag]
-                        dvds = dv/dsus
-                        rhs[p.f.size+offset+i] = 0.
-                        
-                        # Adjustment
-                        dv = (vmax+vmin)/2.-v
-                        ds = step*dv/dvds if dvds != 0. else 0.
-                        snew = np.maximum(np.minimum(s+ds,smax),smin)
-                        x[reg_shunt.index_b] = snew
-                        b[i] = snew
-                        if np.abs(snew-s) > eps:
-                            break
+                            s = x[reg_shunt.index_b[t]]
+                            smax = reg_shunt.b_max
+                            smin = reg_shunt.b_min
+                            assert(smin <= smax)
+                            
+                            # Fix constr index
+                            k = int(np.where(A.col == reg_shunt.index_b[t])[0])
+                            i = A.row[k]
+                            assert(np.abs(b[i]-x[reg_shunt.index_b[t]]) < eps)
+                            assert(A.data[k] == 1.)
+                            
+                            # Sensitivity
+                            assert(rhs[p.f.size+offset+i] == 0.)
+                            rhs[p.f.size+offset+i] = dsus
+                            dx = solver.linsolver.solve(rhs)
+                            dv = dx[bus.index_v_mag[t]]
+                            dvds = dv/dsus
+                            rhs[p.f.size+offset+i] = 0.
+                            
+                            # Adjustment
+                            dv = (vmax+vmin)/2.-v
+                            ds = step*dv/dvds if dvds != 0. else 0.
+                            snew = np.maximum(np.minimum(s+ds,smax),smin)
+                            x[reg_shunt.index_b[t]] = snew
+                            b[i] = snew
+                            if np.abs(snew-s) > eps:
+                                break
 
         # Update
-        solver.func(x)        
+        solver.func(x)
         solver.problem.update_lin()
 
     def apply_tran_v_regulation(self,solver):
@@ -126,7 +128,7 @@ class NRPF(PFmethod):
         net = p.network
         x = solver.x
         eps = 1e-8
-            
+
         # Fix constraints
         c = p.find_constraint(pfnet.CONSTR_TYPE_FIX)
         A = c.A        
@@ -149,50 +151,52 @@ class NRPF(PFmethod):
             bus = net.get_bus(i)
 
             if bus.is_regulated_by_tran() and not bus.is_slack():
-
+                
                 assert(bus.has_flags(pfnet.FLAG_VARS,pfnet.BUS_VAR_VMAG))
 
-                v = x[bus.index_v_mag]
-                vmax = bus.v_max
-                vmin = bus.v_min
-
-                assert(len(bus.reg_trans) > 0)
-                assert(vmax > vmin)
+                for tau in range(net.num_periods):
+                    
+                    v = x[bus.index_v_mag[tau]]
+                    vmax = bus.v_max
+                    vmin = bus.v_min
+                    
+                    assert(len(bus.reg_trans) > 0)
+                    assert(vmax > vmin)
                 
-                # Violation
-                if v > vmax or v < vmin:
-
-                    for reg_tran in bus.reg_trans:
+                    # Violation
+                    if v > vmax or v < vmin:
+                        
+                        for reg_tran in bus.reg_trans:
                     
-                        assert(reg_tran.has_flags(pfnet.FLAG_VARS,pfnet.BRANCH_VAR_RATIO))
+                            assert(reg_tran.has_flags(pfnet.FLAG_VARS,pfnet.BRANCH_VAR_RATIO))
                                 
-                        t = x[reg_tran.index_ratio]
-                        tmax = reg_tran.ratio_max
-                        tmin = reg_tran.ratio_min
-                        assert(tmax >= tmin)
-                        
-                        # Fix constr index
-                        k = int(np.where(A.col == reg_tran.index_ratio)[0])
-                        i = A.row[k]
-                        assert(np.abs(b[i]-x[reg_tran.index_ratio]) < eps)
-                        assert(A.data[k] == 1.)
-                    
-                        # Sensitivity
-                        assert(rhs[p.f.size+offset+i] == 0.)
-                        rhs[p.f.size+offset+i] = dtap
-                        dx = solver.linsolver.solve(rhs)
-                        dv = dx[bus.index_v_mag]
-                        dvdt = dv/dtap
-                        rhs[p.f.size+offset+i] = 0.
-                        
-                        # Adjustment
-                        dv = (vmax+vmin)/2.-v
-                        dt = step*dv/dvdt if dvdt != 0. else 0.
-                        tnew = np.maximum(np.minimum(t+dt,tmax),tmin)
-                        x[reg_tran.index_ratio] = tnew
-                        b[i] = tnew
-                        if np.abs(tnew-t) > eps:
-                            break
+                            t = x[reg_tran.index_ratio[tau]]
+                            tmax = reg_tran.ratio_max
+                            tmin = reg_tran.ratio_min
+                            assert(tmax >= tmin)
+                            
+                            # Fix constr index
+                            k = int(np.where(A.col == reg_tran.index_ratio[tau])[0])
+                            i = A.row[k]
+                            assert(np.abs(b[i]-x[reg_tran.index_ratio[tau]]) < eps)
+                            assert(A.data[k] == 1.)
+                            
+                            # Sensitivity
+                            assert(rhs[p.f.size+offset+i] == 0.)
+                            rhs[p.f.size+offset+i] = dtap
+                            dx = solver.linsolver.solve(rhs)
+                            dv = dx[bus.index_v_mag[tau]]
+                            dvdt = dv/dtap
+                            rhs[p.f.size+offset+i] = 0.
+                            
+                            # Adjustment
+                            dv = (vmax+vmin)/2.-v
+                            dt = step*dv/dvdt if dvdt != 0. else 0.
+                            tnew = np.maximum(np.minimum(t+dt,tmax),tmin)
+                            x[reg_tran.index_ratio[tau]] = tnew
+                            b[i] = tnew
+                            if np.abs(tnew-t) > eps:
+                                break
 
         # Update
         solver.func(x)        
@@ -249,10 +253,10 @@ class NRPF(PFmethod):
                                     net.get_num_slack_gens() +
                                     net.get_num_reg_gens() +
                                     net.get_num_tap_changers() +
-                                    net.get_num_switched_shunts()))
+                                    net.get_num_switched_shunts())*net.num_periods)
             assert(net.num_fixed == (net.get_num_buses_reg_by_gen() +
                                      net.get_num_tap_changers() +
-                                     net.get_num_switched_shunts()))
+                                     net.get_num_switched_shunts())*net.num_periods)
         except AssertionError:
             raise PFmethodError_BadProblem(self)
 
@@ -282,12 +286,12 @@ class NRPF(PFmethod):
                 print('{0:^8}'.format('tvvio'), end=' ')
                 print('{0:^8}'.format('svvio'))
             else:
-                print('{0:^5.2f}'.format(net.bus_v_max), end=' ')
-                print('{0:^5.2f}'.format(net.bus_v_min), end=' ')
-                print('{0:^8.1e}'.format(net.gen_v_dev), end=' ')
-                print('{0:^8.1e}'.format(net.gen_Q_vio), end=' ')
-                print('{0:^8.1e}'.format(net.tran_v_vio), end=' ')
-                print('{0:^8.1e}'.format(net.shunt_v_vio))
+                print('{0:^5.2f}'.format(np.average(net.bus_v_max)), end=' ')
+                print('{0:^5.2f}'.format(np.average(net.bus_v_min)), end=' ')
+                print('{0:^8.1e}'.format(np.average(net.gen_v_dev)), end=' ')
+                print('{0:^8.1e}'.format(np.average(net.gen_Q_vio)), end=' ')
+                print('{0:^8.1e}'.format(np.average(net.tran_v_vio)), end=' ')
+                print('{0:^8.1e}'.format(np.average(net.shunt_v_vio)))
         return info_printer
             
     def solve(self,net):
@@ -306,13 +310,13 @@ class NRPF(PFmethod):
         def c1(s):
             if (s.k != 0 and
                 (not lock_taps) and 
-                np.linalg.norm(s.problem.f,np.inf) < 100.*feastol):
+                norm(s.problem.f,np.inf) < 100.*feastol):
                 self.apply_tran_v_regulation(s)
             
         def c2(s):
             if (s.k != 0 and
                 (not lock_shunts) and 
-                np.linalg.norm(s.problem.f,np.inf) < 100.*feastol):
+                norm(s.problem.f,np.inf) < 100.*feastol):
                 self.apply_shunt_v_regulation(s)
 
         def c3(s):
@@ -321,7 +325,7 @@ class NRPF(PFmethod):
 
         # Termination
         def t1(s):
-            if s.problem.network.bus_v_min < vmin_thresh:
+            if np.min(s.problem.network.bus_v_min) < vmin_thresh:
                 return True
             else:
                 return False
