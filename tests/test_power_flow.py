@@ -94,7 +94,8 @@ class TestPowerFlow(unittest.TestCase):
 
     def test_AugLOPF(self):
         
-        net = self.net
+        net = self.netMP # multi period
+
         method = gopt.power_flow.new_method('AugLOPF')
 
         for case in utils.test_cases:
@@ -105,7 +106,7 @@ class TestPowerFlow(unittest.TestCase):
 
             method.solve(net)
             self.assertEqual(method.results['status'],'solved')
-            
+ 
             # gen outage
             cont = pf.Contingency([net.get_gen(0)])
             cont.apply()
@@ -114,7 +115,8 @@ class TestPowerFlow(unittest.TestCase):
 
     def test_DCOPF(self):
         
-        net = self.netMP
+        net = self.netMP # multi period
+
         method = gopt.power_flow.new_method('DCOPF')
 
         self.assertEqual(net.num_periods,self.T)

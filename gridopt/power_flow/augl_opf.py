@@ -69,9 +69,9 @@ class AugLOPF(PFmethod):
         try:
             assert(net.num_vars == (2*net.num_buses-net.get_num_slack_buses() +
                                     net.get_num_gens_not_on_outage() + 
-                                    net.get_num_reg_gens()))
+                                    net.get_num_reg_gens())*net.num_periods)
             assert(net.num_bounded == (net.get_num_gens_not_on_outage() + 
-                                       net.get_num_reg_gens()))
+                                       net.get_num_reg_gens())*net.num_periods)
         except AssertionError:
             raise PFmethodError_BadProblem(self)
                                     
@@ -100,11 +100,11 @@ class AugLOPF(PFmethod):
                 print('{0:^6}'.format('gQvio'), end=' ')
                 print('{0:^6}'.format('gPvio'))
             else:
-                print('{0:^5.2f}'.format(net.bus_v_max), end=' ')
-                print('{0:^5.2f}'.format(net.bus_v_min), end=' ')
-                print('{0:^6.0e}'.format(net.bus_v_vio), end=' ')
-                print('{0:^6.0e}'.format(net.gen_Q_vio), end=' ')
-                print('{0:^6.0e}'.format(net.gen_P_vio))
+                print('{0:^5.2f}'.format(np.average(net.bus_v_max)), end=' ')
+                print('{0:^5.2f}'.format(np.average(net.bus_v_min)), end=' ')
+                print('{0:^6.0e}'.format(np.average(net.bus_v_vio)), end=' ')
+                print('{0:^6.0e}'.format(np.average(net.gen_Q_vio)), end=' ')
+                print('{0:^6.0e}'.format(np.average(net.gen_P_vio)))
         return info_printer
             
     def solve(self,net):
@@ -120,7 +120,7 @@ class AugLOPF(PFmethod):
 
         # Termination
         def t1(s):
-            if s.problem.network.bus_v_min < vmin_thresh:
+            if np.min(s.problem.network.bus_v_min) < vmin_thresh:
                 return True
             else:
                 return False
@@ -178,3 +178,4 @@ class AugLOPF(PFmethod):
         # Network sensitivities
         net.clear_sensitivities()
         problem.store_sensitivities(lam,nu,mu,pi)
+        
