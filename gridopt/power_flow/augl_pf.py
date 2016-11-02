@@ -20,7 +20,7 @@ class AugLPF(PFmethod):
     """
 
     name = 'AugLPF'
-        
+
     parameters = {'weight_vmag':1e0,     # for reg voltage magnitude penalty
                   'weight_vang':1e-3,    # for angle difference penalty
                   'weight_pq':1e-3,      # for gen powers
@@ -28,8 +28,9 @@ class AugLPF(PFmethod):
                   'weight_b':1e-4,       # for shunt susceptances
                   'lock_taps':True,      # flag for locking transformer tap ratios
                   'lock_shunts':True,    # flag for locking swtiched shunts
-                  'vmin_thresh':0.1}     # threshold for vmin
-                  
+                  'vmin_thresh':0.1,     # threshold for vmin
+                  'limit_gens':True}     # flag for limiting generator reactive power (PV-PQ switching)
+
     def __init__(self):
 
         PFmethod.__init__(self)
@@ -47,13 +48,14 @@ class AugLPF(PFmethod):
         weight_b = params['weight_b']
         lock_taps = params['lock_taps']
         lock_shunts = params['lock_shunts']
-        
+        limit_gens = params['limit_gens']
+
         # Clear flags
         net.clear_flags()
 
         # Adjust gens
         net.adjust_generators()
-        
+
         # Set up variables
         net.set_flags(pfnet.OBJ_BUS,
                       pfnet.FLAG_VARS,
@@ -71,14 +73,14 @@ class AugLPF(PFmethod):
                       pfnet.FLAG_VARS,
                       pfnet.GEN_PROP_REG,
                       pfnet.GEN_VAR_Q)
-        
+
         # Tap ratios
         if not lock_taps:
             net.set_flags(pfnet.OBJ_BUS,
                           pfnet.FLAG_VARS,
                           pfnet.BUS_PROP_REG_BY_TRAN,
                           pfnet.BUS_VAR_VVIO)
-            net.set_flags(pfnet.OBJ_BRANCH, 
+            net.set_flags(pfnet.OBJ_BRANCH,
                           pfnet.FLAG_VARS,
                           pfnet.BRANCH_PROP_TAP_CHANGER_V,
                           pfnet.BRANCH_VAR_RATIO|pfnet.BRANCH_VAR_RATIO_DEV)
@@ -89,7 +91,7 @@ class AugLPF(PFmethod):
                           pfnet.FLAG_VARS,
                           pfnet.BUS_PROP_REG_BY_SHUNT,
                           pfnet.BUS_VAR_VVIO)
-            net.set_flags(pfnet.OBJ_SHUNT, 
+            net.set_flags(pfnet.OBJ_SHUNT,
                           pfnet.FLAG_VARS,
                           pfnet.SHUNT_PROP_SWITCHED_V,
                           pfnet.SHUNT_VAR_SUSC|pfnet.SHUNT_VAR_SUSC_DEV)
@@ -106,20 +108,21 @@ class AugLPF(PFmethod):
                 num_vars += (2*net.get_num_buses_reg_by_shunt() +
                              3*net.get_num_switched_shunts())
             if not lock_shunts and not lock_taps:
-                num_vars -= 2*len([b for b in net.buses 
+                num_vars -= 2*len([b for b in net.buses
                                    if (b.is_regulated_by_tran() and
-                                       b.is_regulated_by_shunt())])                                   
+                                       b.is_regulated_by_shunt())])
             assert(net.num_vars == num_vars)
         except AssertionError:
-            raise PFmethodError_BadProblem(self)  
-        
+            raise PFmethodError_BadProblem(self)
+
         # Set up problem
         problem = pfnet.Problem()
         problem.set_network(net)
         problem.add_constraint(pfnet.CONSTR_TYPE_PF)
         problem.add_constraint(pfnet.CONSTR_TYPE_PAR_GEN_P)
         problem.add_constraint(pfnet.CONSTR_TYPE_PAR_GEN_Q)
-        problem.add_constraint(pfnet.CONSTR_TYPE_REG_GEN)
+        if limit_gens:
+            problem.add_constraint(pfnet.CONSTR_TYPE_REG_GEN)
         if not lock_taps:
             problem.add_constraint(pfnet.CONSTR_TYPE_REG_TRAN)
         if not lock_shunts:
@@ -132,7 +135,7 @@ class AugLPF(PFmethod):
         if not lock_shunts:
             problem.add_function(pfnet.FUNC_TYPE_REG_SUSC,weight_b)
         problem.analyze()
-        
+
         # Return
         return problem
 
@@ -155,9 +158,9 @@ class AugLPF(PFmethod):
                 print('{0:^8.1e}'.format(net.tran_v_vio), end=' ')
                 print('{0:^8.1e}'.format(net.shunt_v_vio))
         return info_printer
-            
+
     def solve(self,net):
-        
+
         # Parameters
         params = self.parameters
         vmin_thresh = params['vmin_thresh']
@@ -173,23 +176,23 @@ class AugLPF(PFmethod):
                 return True
             else:
                 return False
-        
+
         # Info printer
         info_printer = self.get_info_printer()
-            
+
         # Set up solver
         solver = OptSolverAugL()
         solver.set_parameters(params)
         solver.add_termination(OptTermination(t1,'low voltage'))
         solver.set_info_printer(info_printer)
-        
+
         # Solve
         try:
             solver.solve(problem)
         except OptSolverError as e:
             raise PFmethodError_SolverError(self,e)
         finally:
-            
+
             # Get results
             self.set_status(solver.get_status())
             self.set_error_msg(solver.get_error_msg())
@@ -198,18 +201,18 @@ class AugLPF(PFmethod):
             self.set_dual_variables(solver.get_dual_variables())
             self.set_net_properties(net.get_properties())
             self.set_problem(problem)
-            
+
     def update_network(self,net):
-        
+
         # Get data
         problem = self.results['problem']
         x = self.results['primal_variables']
         lam,nu,mu,pi = self.results['dual_variables']
-       
+
         # No problem
         if problem is None:
             raise PFmethodError_NoProblem(self)
- 
+
         # Checks
         assert(problem.x.shape == x.shape)
         assert(net.num_vars == x.size)
@@ -223,7 +226,7 @@ class AugLPF(PFmethod):
 
         # Network properties
         net.update_properties()
-        
+
         # Network sensitivities
         net.clear_sensitivities()
         problem.store_sensitivities(lam,nu,mu,pi)
