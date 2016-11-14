@@ -4,6 +4,7 @@ Targets
 
 Unreleased
 ----------
+* Compatibility with multiperiod pfnet (dc_opf, nr_pf, augL_pf and augL_opf)
 
 Version 1.2
 -----------
