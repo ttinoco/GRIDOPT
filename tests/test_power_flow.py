@@ -183,16 +183,16 @@ class TestPowerFlow(unittest.TestCase):
                 for bus in net.buses:
                     if not bus.is_slack():
                         self.assertEqual(bus.v_ang[t],xx[bus.index_v_ang[t]])
-                        self.assertEqual(bus.sens_v_ang_u_bound[t],mu0[bus.index_v_ang[t]]*net.base_power)
-                        self.assertEqual(bus.sens_v_ang_l_bound[t],pi0[bus.index_v_ang[t]]*net.base_power)
+                        self.assertEqual(bus.sens_v_ang_u_bound[t],mu0[bus.index_v_ang[t]])
+                        self.assertEqual(bus.sens_v_ang_l_bound[t],pi0[bus.index_v_ang[t]])
                 for gen in net.generators:
                     if gen.is_P_adjustable():
                         self.assertEqual(gen.P[t],xx[gen.index_P[t]])
-                        self.assertEqual(gen.sens_P_u_bound[t],mu0[gen.index_P[t]]*net.base_power)
-                        self.assertEqual(gen.sens_P_l_bound[t],pi0[gen.index_P[t]]*net.base_power)
+                        self.assertEqual(gen.sens_P_u_bound[t],mu0[gen.index_P[t]])
+                        self.assertEqual(gen.sens_P_l_bound[t],pi0[gen.index_P[t]])
                 for branch in net.branches:
-                    self.assertEqual(branch.sens_P_u_bound[t],mu0[net.num_vars+branch.index+t*net.num_branches]*net.base_power)
-                    self.assertEqual(branch.sens_P_l_bound[t],pi0[net.num_vars+branch.index+t*net.num_branches]*net.base_power)
+                    self.assertEqual(branch.sens_P_u_bound[t],mu0[net.num_vars+branch.index+t*net.num_branches])
+                    self.assertEqual(branch.sens_P_l_bound[t],pi0[net.num_vars+branch.index+t*net.num_branches])
 
             # gen outage 
             if net.get_num_P_adjust_gens() > 1:
@@ -218,8 +218,8 @@ class TestPowerFlow(unittest.TestCase):
             if ((norm(mu0[net.num_vars:],np.inf) > 1e-3 or 
                  norm(pi0[net.num_vars:],np.inf) > 1e-3) and case != INFCASE):
                 self.assertTrue(np.all(gen_P_cost1 <= gen_P_cost0))
-            self.assertLess(norm(mu1[net.num_vars:],np.inf),1e-8)
-            self.assertLess(norm(pi1[net.num_vars:],np.inf),1e-8)
+            self.assertLess(norm(mu1[net.num_vars:],np.inf),1e-6)
+            self.assertLess(norm(pi1[net.num_vars:],np.inf),1e-6)
            
             # elastic loads
             for load in net.loads:
@@ -256,21 +256,21 @@ class TestPowerFlow(unittest.TestCase):
                 for bus in net.buses:
                     if not bus.is_slack():
                         self.assertEqual(bus.v_ang[t],xx[bus.index_v_ang[t]])
-                        self.assertEqual(bus.sens_v_ang_u_bound[t],mu2[bus.index_v_ang[t]]*net.base_power)
-                        self.assertEqual(bus.sens_v_ang_l_bound[t],pi2[bus.index_v_ang[t]]*net.base_power)
+                        self.assertEqual(bus.sens_v_ang_u_bound[t],mu2[bus.index_v_ang[t]])
+                        self.assertEqual(bus.sens_v_ang_l_bound[t],pi2[bus.index_v_ang[t]])
                 for gen in net.generators:
                     if gen.is_P_adjustable():
                         self.assertEqual(gen.P[t],xx[gen.index_P[t]])
-                        self.assertEqual(gen.sens_P_u_bound[t],mu2[gen.index_P[t]]*net.base_power)
-                        self.assertEqual(gen.sens_P_l_bound[t],pi2[gen.index_P[t]]*net.base_power)
+                        self.assertEqual(gen.sens_P_u_bound[t],mu2[gen.index_P[t]])
+                        self.assertEqual(gen.sens_P_l_bound[t],pi2[gen.index_P[t]])
                 for load in net.loads:
                     if load.is_P_adjustable():
                         self.assertEqual(load.P[t],xx[load.index_P[t]])
-                        self.assertEqual(load.sens_P_u_bound[t],mu2[load.index_P[t]]*net.base_power)
-                        self.assertEqual(load.sens_P_l_bound[t],pi2[load.index_P[t]]*net.base_power)
+                        self.assertEqual(load.sens_P_u_bound[t],mu2[load.index_P[t]])
+                        self.assertEqual(load.sens_P_l_bound[t],pi2[load.index_P[t]])
                 for branch in net.branches:
-                    self.assertEqual(branch.sens_P_u_bound[t],mu2[net.num_vars+branch.index+t*net.num_branches]*net.base_power)
-                    self.assertEqual(branch.sens_P_l_bound[t],pi2[net.num_vars+branch.index+t*net.num_branches]*net.base_power)
+                    self.assertEqual(branch.sens_P_u_bound[t],mu2[net.num_vars+branch.index+t*net.num_branches])
+                    self.assertEqual(branch.sens_P_l_bound[t],pi2[net.num_vars+branch.index+t*net.num_branches])
  
     @unittest.skip("")
     def test_DCOPF_prev(self):

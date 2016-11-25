@@ -139,8 +139,8 @@ class DCOPF(PFmethod):
         Oz = coo_matrix((nz,nz))
         oz = np.zeros(nz)
         
-        H = bmat([[Hx,None],[None,Oz]],format='coo')/net.base_power # scaled
-        g = np.hstack((gx,oz))/net.base_power                       # scaled
+        H = bmat([[Hx,None],[None,Oz]],format='coo')
+        g = np.hstack((gx,oz))
 
         A = bmat([[Ax,None],[Gz,-Iz]],format='coo')
         b = np.hstack((bx,oz))
@@ -167,7 +167,7 @@ class DCOPF(PFmethod):
             assert(l.shape == (n,))
             assert(u.shape == (n,))
             assert(np.all(l < u))
-            assert(norm(np.hstack((problem.gphi,oz))-net.base_power*(H*y+g)) < 1e-10*(1.+norm(problem.gphi)))
+            assert(norm(np.hstack((problem.gphi,oz))-(H*y+g)) < 1e-10*(1.+norm(problem.gphi)))
             assert(H.shape == (n,n))
             assert(A.shape == (net.num_buses*net.num_periods+nz,n))
         except AssertionError:
@@ -230,7 +230,7 @@ class DCOPF(PFmethod):
         
         # Network sensitivities
         net.clear_sensitivities()
-        problem.store_sensitivities(lam[:net.num_buses*net.num_periods]*net.base_power,
+        problem.store_sensitivities(lam[:net.num_buses*net.num_periods],
                                     nu,
-                                    mu*net.base_power,
-                                    pi*net.base_power)
+                                    mu,
+                                    pi)
