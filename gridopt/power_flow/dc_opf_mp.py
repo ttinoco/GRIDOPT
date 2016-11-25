@@ -174,7 +174,6 @@ class DCOPF_MP(PFmethod):
                 assert(l.shape == (n,))
                 assert(u.shape == (n,))
                 assert(np.all(l < u))
-                assert(np.abs(problem.phi-net.base_power*(0.5*np.dot(y,H*y)+np.dot(g,y))) < 1e-7)
                 assert(H.shape == (n,n))
                 assert(A.shape == (net.num_buses+nz,n))
             except AssertionError:
