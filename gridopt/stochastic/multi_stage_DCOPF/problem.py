@@ -1022,32 +1022,32 @@ class MS_DCOPF_Problem(StochProblemMS):
             # Vargen forecast
             plt.subplot(2,2,1)
             plt.plot([100.*r/load_max for r in vargen_for])
-            plt.xlabel('stage')
-            plt.ylabel('vargen forecast (% of max load)')
+            plt.xlabel(r'stage')
+            plt.ylabel(r'vargen forecast (\% of max load)')
             plt.axis([0,self.T-1,0.,100.])
             plt.grid()
 
             # Vargen uncertainty
             plt.subplot(2,2,2)
             plt.plot([100.*u/vargen_cap for u in vargen_unc])
-            plt.xlabel('stage')
-            plt.ylabel('vargen uncertainty (% of local cap)')
+            plt.xlabel(r'stage')
+            plt.ylabel(r'vargen uncertainty (\% of local cap)')
             plt.axis([0,self.T-1,0.,100.])
             plt.grid()
             
             # Vargen profile
             plt.subplot(2,2,3)
             plt.plot([r/max(vargen_for) for r in vargen_for])
-            plt.xlabel('stage')
-            plt.ylabel('vargen profile')
+            plt.xlabel(r'stage')
+            plt.ylabel(r'vargen profile')
             plt.axis([0,self.T-1,0.,1.])
             plt.grid()
             
             # Load profile
             plt.subplot(2,2,4)
             plt.plot([l/max(load_for) for l in load_for])
-            plt.xlabel('stage')
-            plt.ylabel('load profile')
+            plt.xlabel(r'stage')
+            plt.ylabel(r'load profile')
             plt.axis([0,self.T-1,0.,1.])
             plt.grid()
             
@@ -1080,12 +1080,12 @@ class MS_DCOPF_Problem(StochProblemMS):
                     plt.plot([100.*r/load_max for r in R],color=colors[i])
                 R = [np.sum(w) for w in self.predict_W(self.T-1)]
                 plt.plot([100.*r/load_max for r in R],color='black',linewidth=3.)
-                plt.xlabel('stage',fontsize=22)
-                plt.ylabel('% of max load',fontsize=22)
+                plt.xlabel(r'stage',fontsize=22)
+                plt.ylabel(r'\% of max load',fontsize=22)
                 plt.axis([0,self.T-1,0.,100.])
                 plt.tick_params(axis='both',which='major',labelsize=20)
                 plt.tick_params(axis='both',which='minor',labelsize=20)
-                plt.title('Total Renewable Powers (Scenerio Tree)')
+                plt.title(r'Total Renewable Powers (Scenerio Tree)')
                 plt.grid()
 
             # Vargen closests branch from scenario tree
@@ -1098,12 +1098,12 @@ class MS_DCOPF_Problem(StochProblemMS):
                     R2 = [np.sum(n.get_w()) for n in scenario_tree.get_closest_branch(W)]
                     plt.plot([100.*r/load_max for r in R1],color=colors[i],linestyle='-')
                     plt.plot([100.*r/load_max for r in R2],color=colors[i],linestyle='--')
-                    plt.xlabel('stage',fontsize=22)
-                    plt.ylabel('% of max load',fontsize=22)
+                    plt.xlabel(r'stage',fontsize=22)
+                    plt.ylabel(r'\% of max load',fontsize=22)
                     plt.axis([0,self.T-1,0.,100.])
                     plt.tick_params(axis='both',which='major',labelsize=20)
                     plt.tick_params(axis='both',which='minor',labelsize=20)
-                    plt.title('Closest Branch from Scenerio Tree')
+                    plt.title(r'Closest Branch from Scenerio Tree')
                     plt.grid()
             plt.show()
 

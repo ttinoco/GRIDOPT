@@ -15,8 +15,7 @@ class MS_DCOPF_SDDP(MS_DCOPF_Method):
     Stochastic dual dynamic programming method for multi-stage DC OPF problem.
     """
     
-    parameters = {'branching_factor': 2,
-                  'branching_type': 'decreasing',
+    parameters = {'branching_factors': None,
                   'cluster': False,
                   'num_samples': 1000,
                   'quiet': False}
@@ -39,8 +38,7 @@ class MS_DCOPF_SDDP(MS_DCOPF_Method):
         
         # Parameters
         quiet = params['quiet']
-        bfactor = params['branching_factor']
-        btype = params['branching_type']
+        bfactors = params['branching_factors']
         cluster = params['cluster']
         num_samples = params['num_samples']
 
@@ -49,8 +47,7 @@ class MS_DCOPF_SDDP(MS_DCOPF_Method):
 
         # Scenario tree
         self.tree = StochProblemMS_Tree(self.problem,
-                                        bfactor,
-                                        btype,
+                                        bfactors,
                                         cluster=cluster,
                                         num_samples=num_samples)
 
