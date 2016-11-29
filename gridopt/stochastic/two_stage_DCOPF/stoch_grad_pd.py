@@ -18,6 +18,8 @@ class TS_DCOPF_PDSG(TS_DCOPF_Method):
     """
     
     parameters = {'quiet': False}
+
+    name = 'Primal-Dual Stochatic Gradient'
     
     def __init__(self):
         
@@ -26,6 +28,9 @@ class TS_DCOPF_PDSG(TS_DCOPF_Method):
         self.parameters.update(TS_DCOPF_Problem.parameters)
         self.parameters.update(TS_DCOPF_RA_Problem.parameters)
         self.parameters.update(StochGradientPD.parameters)
+
+        self.problem = None
+        self.results = None
 
     def create_problem(self,net,parameters):
         
@@ -40,16 +45,16 @@ class TS_DCOPF_PDSG(TS_DCOPF_Method):
         quiet = params['quiet']
         
         # Problem
-        problem = self.create_problem(net,params)
+        self.problem = self.create_problem(net,params)
         if not quiet:
-            problem.show()
+            self.problem.show()
             
         # Solver
         solver = StochGradientPD()
         solver.set_parameters(params)
         
         # Solve
-        solver.solve(problem)
+        solver.solve(self.problem)
 
         # Results
-        return solver.get_results()
+        self.results = solver.get_results()
