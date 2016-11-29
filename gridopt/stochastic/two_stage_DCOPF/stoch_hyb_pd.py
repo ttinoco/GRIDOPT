@@ -50,5 +50,3 @@ class TS_DCOPF_PDSH(TS_DCOPF_Method):
         
         # Solve
         solver.solve(problem)
-
-        # Results

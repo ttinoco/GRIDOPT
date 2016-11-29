@@ -265,6 +265,12 @@ class TS_DCOPF_RA_Problem(StochProblemC):
 
         return self.num_p + 1
 
+    def get_init_x(self):
+
+        x0,results = self.solve_Lrelaxed_approx(np.zeros(self.get_size_lam()),quiet=True)
+        x0[-1] = self.parameters['t_min']*self.Qref
+        return x0
+
     def get_size_lam(self):
 
         return 1
