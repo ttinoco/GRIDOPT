@@ -38,11 +38,12 @@ class TS_DCOPF_Problem(StochProblem):
 
     # Parameters
     parameters = {'cost_factor' : 1e2,   # factor for determining gen adjustment cost
-                  'infinity' : 1e3,      # infinity
+                  'infinity' : 1e4,      # infinity
                   'flow_factor' : 1.,    # factor for relaxing thermal limits
-                  'num_samples' : 2000}  # number of samples
+                  'num_samples' : 1000,  # number of samples
+                  'tol': 1e-4}           # evaluation tolerance
 
-    def __init__(self,net):
+    def __init__(self,net,parameters={}):
         """
         Class constructor.
         
@@ -53,6 +54,7 @@ class TS_DCOPF_Problem(StochProblem):
 
         # Parameters
         self.parameters = TS_DCOPF_Problem.parameters.copy()
+        self.set_parameters(parameters)
 
         # Save info
         self.total_load = sum([l.P for l in net.loads])
@@ -60,12 +62,6 @@ class TS_DCOPF_Problem(StochProblem):
         self.corr_value = net.vargen_corr_value    # correlation value  ([0,1])
         self.corr_radius = net.vargen_corr_radius  # correlation radius (# of branches)
                 
-        # Generator limits
-        for gen in net.generators:
-            gen.P_min = 0.
-            gen.P_max = np.maximum(gen.P_max,0.)
-            assert(gen.P_min <= gen.P_max)
-
         # Branch flow limits
         for br in net.branches:
             if br.ratingA == 0.:
@@ -76,7 +72,7 @@ class TS_DCOPF_Problem(StochProblem):
         # Counters
         num_w = net.num_buses-net.get_num_slack_buses() # voltage angles
         num_p = net.get_num_P_adjust_gens()             # adjustable generators
-        num_r = net.num_vargens                         # renewable generators
+        num_r = net.num_var_generators                  # renewable generators
         num_bus = net.num_buses                         # buses
         num_br = net.num_branches                       # branches
 
@@ -187,7 +183,7 @@ class TS_DCOPF_Problem(StochProblem):
 
         # Average renewables
         self.Er = 0
-        for i in range(self.parameters['num_samples']):
+        for i in range(2000):
             self.Er += (self.sample_w()-self.Er)/(i+1)
         
         # Checks
@@ -199,7 +195,20 @@ class TS_DCOPF_Problem(StochProblem):
         assert(np.all(cost.Hphi.data > 0))
         assert(norm(self.A.T*np.ones(self.num_bus)) < (1e-10)*np.sqrt(self.num_bus*1.))
         
-    def eval_EQ(self,p,samples=500,seed=None,tol=1e-4,quiet=True):
+    def set_parameters(self,params):
+        """
+        Sets problem parameters.
+        
+        Parameters
+        ----------
+        params : dict
+        """
+        
+        for key,value in list(params.items()):
+            if key in self.parameters:
+                self.parameters[key] = value
+        
+    def eval_EQ_sequential(self,p,num_samples=500,seed=None,quiet=True):
         """
         Evaluates E[Q(p,r)] and its gradient. 
 
@@ -208,7 +217,6 @@ class TS_DCOPF_Problem(StochProblem):
         p : generator powers
         samples : number of samples
         seed : integer
-        tol : evaluation tolerance
         quiet : flag
         """
         
@@ -226,13 +234,13 @@ class TS_DCOPF_Problem(StochProblem):
         problem = self.get_problem_for_Q(p,np.ones(self.num_r))
         
         # Sampling loop
-        for i in range(samples):
+        for i in range(num_samples):
             
             r = self.sample_w()
-
+            
             problem.u[self.num_p+self.num_w:self.num_p+self.num_w+self.num_r] = r # Important (update bound)
             
-            q,gq = self.eval_Q(p,r,tol=tol,problem=problem)
+            q,gq = self.eval_Q(p,r,problem=problem)
 
             # Show progress
             if not quiet and i > 0:
@@ -248,29 +256,28 @@ class TS_DCOPF_Problem(StochProblem):
                             
         return Q,gQ
 
-    def eval_EQ_parallel(self,p,samples=500,num_procs=None,tol=1e-4,quiet=True):
+    def eval_EQ(self,p,num_procs=None,quiet=True):
         """
         Evaluates E[Q(p,r)] and its gradient in parallel. 
 
         Parameters
         ----------
         p : generator powers
-        samples : number of samples
         num_procs : number of parallel processes
-        tol : evaluation tolerance
         quiet : flag
         """
-    
+        
         if not num_procs:
             num_procs = cpu_count()
+        num_samples = self.parameters['num_samples']
         pool = Pool(num_procs)
-        num = int(np.ceil(float(samples)/float(num_procs)))
-        results = list(zip(*pool.map(ApplyFunc,[(self,'eval_EQ',p,num,i,tol,quiet) for i in range(num_procs)],chunksize=1)))
+        num = int(np.ceil(float(num_samples)/float(num_procs)))
+        results = list(zip(*pool.map(ApplyFunc,[(self,'eval_EQ_sequential',p,num,i,quiet) for i in range(num_procs)],chunksize=1)))
         pool.terminate()
         pool.join()
-        return [sum([val/float(num_procs) for val in vals]) for vals in results]
+        return [sum([val for val in vals])/float(num_procs) for vals in results]
         
-    def eval_Q(self,p,r,quiet=True,check=False,tol=1e-4,problem=None,return_data=False):
+    def eval_Q(self,p,r,quiet=True,check=False,problem=None,return_data=False):
         """
         Evaluates Q(p,r) and its gradient.
 
@@ -280,7 +287,6 @@ class TS_DCOPF_Problem(StochProblem):
         r : renewable powers
         quiet : flag
         check : flag
-        tol : evaluation tolerance 
         problem : QuadProblem
         return_data : flag
 
@@ -308,8 +314,8 @@ class TS_DCOPF_Problem(StochProblem):
 
             # Solver
             solver = OptSolverIQP()
-            solver.set_parameters({'quiet':quiet,
-                                   'tol':tol})
+            solver.set_parameters({'quiet': quiet,
+                                   'tol': self.parameters['tol']})
             
             # Solve
             solver.solve(problem)
@@ -465,7 +471,7 @@ class TS_DCOPF_Problem(StochProblem):
         # Return
         return QuadProblem(H,g,A,b,l,u)
 
-    def eval_F(self,x,w,tol=1e-4):
+    def eval_F(self,x,w):
         """
         Evaluates objective function for a given
         realization of uncertainty.
@@ -483,11 +489,11 @@ class TS_DCOPF_Problem(StochProblem):
         
         phi = 0.5*np.dot(x,self.H0*x)+np.dot(self.g0,x)
         gphi = self.H0*x + self.g0
-        Q,gQ = self.eval_Q(x,w,tol=tol)
+        Q,gQ = self.eval_Q(x,w)
 
         return (phi+Q,gphi+gQ)
 
-    def eval_F_approx(self,x,tol=1e-4):
+    def eval_F_approx(self,x):
         """
         Evaluates certainty equivalent
         version of objective function.
@@ -502,16 +508,15 @@ class TS_DCOPF_Problem(StochProblem):
         gF : vector
         """
 
-        return self.eval_F(x,self.Er,tol=tol)
+        return self.eval_F(x,self.Er)
 
-    def eval_EF(self,x,samples=500,tol=1e-4):
+    def eval_EF(self,x):
         """
         Evaluates expected objective function.
 
         Parameters
         ----------
         x : generator powers
-        samples : number of samples
         
         Returns
         -------
@@ -520,7 +525,7 @@ class TS_DCOPF_Problem(StochProblem):
         
         phi = 0.5*np.dot(x,self.H0*x)+np.dot(self.g0,x)
         gphi = self.H0*x + self.g0
-        Q,gQ = self.eval_EQ_parallel(x,samples=samples,tol=tol)
+        Q,gQ = self.eval_EQ(x)
 
         return (phi+Q,gphi+gQ)
 
@@ -586,16 +591,17 @@ class TS_DCOPF_Problem(StochProblem):
         
         print('Stochastic Two-Stage DCOPF')
         print('--------------------------')
-        print(('buses            : %d' %self.num_bus))
-        print(('gens             : %d' %self.num_p))
-        print(('vargens          : %d' %self.num_r))
-        print(('penetration cap  : %.2f (%% of load)' %(100.*Ctot/self.total_load)))
-        print(('penetration base : %.2f (%% of load)' %(100.*Btot/self.total_load)))
-        print(('penetration std  : %.2f (%% of local cap)' %self.uncertainty))
-        print(('correlation rad  : %d (edges)' %(self.corr_radius)))
-        print(('correlation val  : %.2f (unitless)' %(self.corr_value)))
+        print('buses            : %d' %self.num_bus)
+        print('gens             : %d' %self.num_p)
+        print('vargens          : %d' %self.num_r)
+        print('penetration cap  : %.2f (%% of load)' %(100.*Ctot/self.total_load))
+        print('penetration base : %.2f (%% of load)' %(100.*Btot/self.total_load))
+        print('penetration std  : %.2f (%% of local cap)' %self.uncertainty)
+        print('correlation rad  : %d (edges)' %self.corr_radius)
+        print('correlation val  : %.2f (unitless)' %self.corr_value)
+        print('num samples      : %d' %self.parameters['num_samples'])
 
-    def solve_approx(self,g_corr=None,tol=1e-4,quiet=False,samples=500,init_data=None):
+    def solve_approx(self,g_corr=None,quiet=False,init_data=None):
         """
         Solves certainty equivalent problem
         with slope correction.
@@ -603,7 +609,6 @@ class TS_DCOPF_Problem(StochProblem):
         Parameters
         ----------
         g_corr : slope correction
-        tol : optimality tolerance
         quiet : flag
         samples : number of samples
 
@@ -666,8 +671,8 @@ class TS_DCOPF_Problem(StochProblem):
         
         # Solve
         solver = OptSolverIQP()
-        solver.set_parameters({'quiet':quiet,
-                               'tol':tol})
+        solver.set_parameters({'quiet': quiet,
+                               'tol': self.parameters['tol']})
         solver.solve(problem)
         results = solver.get_results()
         x = results['x']

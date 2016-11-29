@@ -7,6 +7,7 @@
 #*****************************************************#
 
 from .method import TS_DCOPF_Method
+from .problem_risk import TS_DCOPF_Problem
 from .problem_risk import TS_DCOPF_RA_Problem
 from optalg.stoch_solver import StochHybridPD
 
@@ -22,12 +23,32 @@ class TS_DCOPF_PDSH(TS_DCOPF_Method):
 
         TS_DCOPF_Method.__init__(self)
         self.parameters = TS_DCOPF_PDSH.parameters.copy()
-
-    def create_problem(self,net):
+        self.parameters.update(TS_DCOPF_Problem.parameters)
+        self.parameters.update(TS_DCOPF_RA_Problem.parameters)
+        self.parameters.update(StochHybridPD.parameters)
         
-        return TS_DCOPF_RA_Problem(net)
+    def create_problem(self,net,parameters):
+        
+        return TS_DCOPF_RA_Problem(net,parameters)
         
     def solve(self,net):
         
-        pass
+        # Local variables
+        params = self.parameters
+        
+        # Parameters
+        quiet = params['quiet']
+        
+        # Problem
+        problem = self.create_problem(net,params)
+        if not quiet:
+            problem.show()
+            
+        # Solver
+        solver = StochHybridPD()
+        solver.set_parameters(params)
+        
+        # Solve
+        solver.solve(problem)
 
+        # Results

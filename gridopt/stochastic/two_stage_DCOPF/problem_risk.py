@@ -36,36 +36,38 @@ class TS_DCOPF_RA_Problem(StochProblemC):
     # Parameters
     parameters = {'lam_max' : 1e2,   # max Lagrange multiplier
                   'smax_param': 1e2, # softmax parameter
-                  't_reg': 1e-3,
+                  't_reg': 1e-8,
                   't_min': -0.1,
-                  't_max': 0.}
+                  't_max': 0.,
+                  'Qfac': 0.8,       # factor for setting Qmax
+                  'gamma': 0.95,     # parameter for CVaR (e.g. 0.95)
+                  'num_samples' : 1000,
+                  'tol': 1e-4}
     
-    def __init__(self,net,Qfac,gamma,samples):
+    def __init__(self,net,parameters={}):
         """
         Class constructor.
         
         Parameters
         ----------
         net : Network
-        Qfac : float (> 1)
-        gamma : float
-        samples : int
+        parameters : dict
         """
 
         # Parameters
         self.parameters = TS_DCOPF_RA_Problem.parameters.copy()
-        
-        # Save args
-        self.Qfac = Qfac    # factor for setting Qmax
-        self.gamma = gamma  # parameter for CVaR (e.g. 0.95)
-        
+        self.set_parameters(parameters)
+        self.Qfac = self.parameters['Qfac']
+        self.gamma = self.parameters['gamma']
+        self.num_samples = self.parameters['num_samples']
+ 
         # Regular problem
-        self.ts_dcopf = TS_DCOPF_Problem(net)
+        self.ts_dcopf = TS_DCOPF_Problem(net,self.parameters)
 
-        # Qnorm and Qmax
+        # Qref and Qmax
         p_ce,results = self.ts_dcopf.solve_approx(quiet=True)
-        self.Qnorm = self.ts_dcopf.eval_EQ_parallel(p_ce,samples=samples)[0]
-        self.Qmax = Qfac*self.Qnorm
+        self.Qref = self.ts_dcopf.eval_EQ(p_ce)[0]
+        self.Qmax = self.Qfac*self.Qref
 
         # Constants
         self.num_p = self.ts_dcopf.num_p
@@ -74,7 +76,7 @@ class TS_DCOPF_RA_Problem(StochProblemC):
         self.num_bus = self.ts_dcopf.num_bus
         self.num_br = self.ts_dcopf.num_br
         self.temp_x = np.zeros(self.num_p+1) 
-        self.JG_const = csr_matrix(np.hstack((np.zeros(self.num_p),1.-gamma)),shape=(1,self.temp_x.size))
+        self.JG_const = csr_matrix(np.hstack((np.zeros(self.num_p),1.-self.gamma)),shape=(1,self.temp_x.size))
         self.op = np.zeros(self.num_p)
         self.ow = np.zeros(self.num_w)
         self.os = np.zeros(self.num_r)
@@ -89,48 +91,21 @@ class TS_DCOPF_RA_Problem(StochProblemC):
         self.Oz = coo_matrix((self.num_br,self.num_br))
         self.ones_r = np.ones(self.num_r)
         self.ones_w = np.ones(self.num_w)
-        
-    def eval_VaR(self,p,t=0,iters=1000,tol=1e-4):
-        """
-        Evaluates (approximately) CVaR(Q(p,r)-Qmax,gamma).
 
+    def set_parameters(self,params):
+        """
+        Sets problem parameters.
+        
         Parameters
         ----------
-        p : vector
-        t : float (initial estimate)
-
-        Returns
-        -------
-        var : float
+        params : dict
         """
-
-        num_p = self.num_p
-        num_w = self.num_w
-        num_r = self.num_r
-
-        problem = self.ts_dcopf.get_problem_for_Q(p,self.ones_r)
         
-        print('var')
-        print('k     t')
-        for k in range(iters):
-          
-            print(('%5d    %.5e' %(k,t)))   
-            
-            r = self.sample_w()
-            
-            problem.u[num_p+num_w:num_p+num_w+num_r] = r # Important (update bound)
-            
-            Q,gQ = self.ts_dcopf.eval_Q(p,r,problem=problem,tol=tol)
-           
-            if Q-self.Qmax-t >= 0.:
-                g = 1. - 1./(1.-self.gamma)
-            else:
-                g = 1.
-
-            t -= g/(k+1.)
-        return t
-
-    def eval_FG(self,x,w,problem=None,tol=1e-4,info=False):
+        for key,value in list(params.items()):
+            if key in self.parameters:
+                self.parameters[key] = value
+        
+    def eval_FG(self,x,w,problem=None,info=False):
         """
         Evaluates F, G and their subgradients at x
         for the given w.
@@ -162,7 +137,7 @@ class TS_DCOPF_RA_Problem(StochProblemC):
         
         phi0 = 0.5*np.dot(p,H0*p)+np.dot(g0,p)
         gphi0 = H0*p + g0
-        Q,gQ = self.ts_dcopf.eval_Q(p,w,problem=problem,tol=tol)
+        Q,gQ = self.ts_dcopf.eval_Q(p,w,problem=problem)
 
         F =  phi0+Q+0.5*t_reg*(t**2.)
         gF = np.hstack((gphi0+gQ,t_reg*t))
@@ -184,7 +159,7 @@ class TS_DCOPF_RA_Problem(StochProblemC):
         else:
             return F,gF,G,JG,ind
 
-    def eval_FG_approx(self,x,tol=1e-4):
+    def eval_FG_approx(self,x):
         """
         Evaluates certainty-equivalent approximations
         of F and G and their derivaties.
@@ -213,30 +188,30 @@ class TS_DCOPF_RA_Problem(StochProblemC):
         
         phi0 = 0.5*np.dot(p,H0*p)+np.dot(g0,p)
         gphi0 = H0*p + g0
-        Q,gQ = self.ts_dcopf.eval_Q(p,Er,tol=tol)
+        Q,gQ = self.ts_dcopf.eval_Q(p,Er)
 
         F =  phi0+Q+0.5*t_reg*(t**2.)
         gF = np.hstack((gphi0+gQ,t_reg*t))
 
-        sigma = smax_param*(Q-self.Qmax-t)/self.Qnorm
+        sigma = smax_param*(Q-self.Qmax-t)/self.Qref
         a = np.maximum(sigma,0.)
         C = np.exp(sigma-a)/(np.exp(-a)+np.exp(sigma-a))
         log_term = a + np.log(np.exp(-a) + np.exp(sigma-a))
 
-        G = np.array([self.Qnorm*log_term/smax_param + (1.-gamma)*t])
+        G = np.array([self.Qref*log_term/smax_param + (1.-gamma)*t])
         JG = csr_matrix(np.hstack((C*gQ,-C + 1.-gamma)),shape=(1,x.size))
 
         return F,gF,G,JG
 
-    def eval_EFG_sequential(self,x,samples=500,seed=None,tol=1e-4,info=False):
-
+    def eval_EFG_sequential(self,x,num_samples=500,seed=None,info=False):
+        
         # Local vars
         p = x[:-1]
         t = x[-1]
         num_p = self.num_p
         num_w = self.num_w
         num_r = self.num_r
-
+ 
         # Seed
         if seed is None:
             np.random.seed()
@@ -254,13 +229,13 @@ class TS_DCOPF_RA_Problem(StochProblemC):
         problem = self.ts_dcopf.get_problem_for_Q(p,self.ones_r)
         
         # Sampling loop
-        for i in range(samples):
+        for i in range(num_samples):
             
             r = self.sample_w()
             
             problem.u[num_p+num_w:num_p+num_w+num_r] = r # Important (update bound)
             
-            F1,gF1,G1,JG1,ind1 = self.eval_FG(x,r,problem=problem,tol=tol,info=True)
+            F1,gF1,G1,JG1,ind1 = self.eval_FG(x,r,problem=problem,info=True)
 
             # Update
             ind += (ind1-ind)/(i+1.)
@@ -274,16 +249,17 @@ class TS_DCOPF_RA_Problem(StochProblemC):
         else:
             return F,gF,G,JG,ind
         
-    def eval_EFG(self,x,samples=500,num_procs=None,tol=1e-4,info=False):
+    def eval_EFG(self,x,num_procs=None,info=False):
 
         if not num_procs:
             num_procs = cpu_count()
+        num_samples = self.parameters['num_samples']
         pool = Pool(num_procs)
-        num = int(np.ceil(float(samples)/float(num_procs)))
-        results = list(zip(*pool.map(ApplyFunc,[(self,'eval_EFG_sequential',x,num,i,tol,info) for i in range(num_procs)],chunksize=1)))
+        num = int(np.ceil(float(num_samples)/float(num_procs)))
+        results = list(zip(*pool.map(ApplyFunc,[(self,'eval_EFG_sequential',x,num,i,info) for i in range(num_procs)],chunksize=1)))
         pool.terminate()
         pool.join()
-        return [sum([val/float(num_procs) for val in vals]) for vals in results]
+        return [sum([val for val in vals])/float(num_procs) for vals in results]
         
     def get_size_x(self):
 
@@ -298,14 +274,14 @@ class TS_DCOPF_RA_Problem(StochProblemC):
         p = x[:-1]
         t = x[-1]
         
-        return t#self.ts_dcopf.get_prop_x(p)
+        return t #self.ts_dcopf.get_prop_x(p)
         
     def project_x(self,x):
         
         p = x[:-1]
         t = x[-1]
-        t_max = self.parameters['t_max']*self.Qnorm
-        t_min = self.parameters['t_min']*self.Qnorm
+        t_max = self.parameters['t_max']*self.Qref
+        t_min = self.parameters['t_min']*self.Qref
 
         return np.hstack((self.ts_dcopf.project_x(p),
                           np.maximum(np.minimum(t,t_max),t_min)))
@@ -326,17 +302,19 @@ class TS_DCOPF_RA_Problem(StochProblemC):
     def show(self):
 
         self.ts_dcopf.show()
-        print(('Qnorm      : %.5e' %self.Qnorm))
-        print(('Qmax       : %.5e' %self.Qmax))
-        print(('Qfac       : %.2f' %self.Qfac))
-        print(('gamma      : %.2f' %self.gamma))
-        print(('smax param : %.2e' %self.parameters['smax_param']))
-        print(('lmax       : %.2e' %self.parameters['lam_max']))
-        print(('t_reg      : %.2e' %self.parameters['t_reg']))
-        print(('t_min      : %.2e' %self.parameters['t_min']))
-        print(('t_max      : %.2e' %self.parameters['t_max']))
 
-    def solve_Lrelaxed_approx(self,lam,g_corr=None,J_corr=None,tol=1e-4,quiet=False,init_data=None):
+        print('Qref        : %.5e' %self.Qref)
+        print('Qmax        : %.5e' %self.Qmax)
+        print('Qfac        : %.2f' %self.Qfac)
+        print('gamma       : %.2f' %self.gamma)
+        print('smax param  : %.2e' %self.parameters['smax_param'])
+        print('lmax        : %.2e' %self.parameters['lam_max'])
+        print('t_reg       : %.2e' %self.parameters['t_reg'])
+        print('t_min       : %.2e' %self.parameters['t_min'])
+        print('t_max       : %.2e' %self.parameters['t_max'])
+        print('num_samples : %d' %self.parameters['num_samples'])
+
+    def solve_Lrelaxed_approx(self,lam,g_corr=None,J_corr=None,quiet=False,init_data=None):
         """
         Solves
         
@@ -361,7 +339,7 @@ class TS_DCOPF_RA_Problem(StochProblemC):
         # Solve problem
         solver = OptSolverLCCP()
         solver.set_parameters({'quiet': quiet,
-                               'tol': tol})
+                               'tol': self.parameters['tol']})
         try:
             solver.solve(problem)
         except Exception:
@@ -392,18 +370,18 @@ class TS_DCOPF_RA_Problem(StochProblemC):
 
         # Return
         return x[:self.ts_dcopf.num_p+1],results
-
+        
     def construct_Lrelaxed_approx_problem(self,lam,g_corr=None,J_corr=None):
 
         # Local variables
         Qmax = self.Qmax
-        Qnorm = self.Qnorm
+        Qref = self.Qref
         prob = self.ts_dcopf
         inf = prob.parameters['infinity']
         smax_param = self.parameters['smax_param']
         t_reg = self.parameters['t_reg']
-        t_max = self.parameters['t_max']*Qnorm
-        t_min = self.parameters['t_min']*Qnorm
+        t_max = self.parameters['t_max']*Qref
+        t_min = self.parameters['t_min']*Qref
         gamma = self.gamma
         lam = float(lam)
         
@@ -497,20 +475,20 @@ class TS_DCOPF_RA_Problem(StochProblemC):
             phi1 = 0.5*np.dot(q,H1*q)+np.dot(g1,q)
             gphi1 = H1*q + g1
             
-            beta = smax_param*(phi1-Qmax-t)/Qnorm
+            beta = smax_param*(phi1-Qmax-t)/Qref
             a = np.maximum(beta,0.)
             ebma = np.exp(beta-a)
             ebm2a = np.exp(beta-2*a)
             ema = np.exp(-a)
             C1 = ebma/(ema+ebma)
-            C2 = smax_param*ebm2a/(Qnorm*(ema*ema+2*ebm2a+ebma*ebma))
+            C2 = smax_param*ebm2a/(Qref*(ema*ema+2*ebm2a+ebma*ebma))
             log_term = a + np.log(ema+ebma)
             
             # Value
             cls.phi = (phi0 + 
                        phi1 +
                        0.5*t_reg*(t**2.)+
-                       lam*Qnorm*log_term/smax_param + lam*(1-gamma)*t + 
+                       lam*Qref*log_term/smax_param + lam*(1-gamma)*t + 
                        np.dot(eta_p+lam*nu_p,p) + 
                        (eta_t+lam*nu_t)*t)
             
