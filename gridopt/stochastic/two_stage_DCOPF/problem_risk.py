@@ -42,7 +42,8 @@ class TS_DCOPF_RA_Problem(StochProblemC):
                   'Qfac': 0.8,       # factor for setting Qmax
                   'gamma': 0.95,     # parameter for CVaR (e.g. 0.95)
                   'num_samples' : 1000,
-                  'tol': 1e-4}
+                  'tol': 1e-4,
+                  'debug': False}
     
     def __init__(self,net,parameters={}):
         """
@@ -57,9 +58,10 @@ class TS_DCOPF_RA_Problem(StochProblemC):
         # Parameters
         self.parameters = TS_DCOPF_RA_Problem.parameters.copy()
         self.set_parameters(parameters)
-        self.Qfac = self.parameters['Qfac']
-        self.gamma = self.parameters['gamma']
-        self.num_samples = self.parameters['num_samples']
+
+        # Local vars
+        Qfac = self.parameters['Qfac']
+        gamma = self.parameters['gamma']
  
         # Regular problem
         self.ts_dcopf = TS_DCOPF_Problem(net,self.parameters)
@@ -67,7 +69,7 @@ class TS_DCOPF_RA_Problem(StochProblemC):
         # Qref and Qmax
         p_ce,gF_ce,results = self.ts_dcopf.solve_approx(quiet=True)
         self.Qref = self.ts_dcopf.eval_EQ(p_ce)[0]
-        self.Qmax = self.Qfac*self.Qref
+        self.Qmax = Qfac*self.Qref
 
         # Constants
         self.num_p = self.ts_dcopf.num_p
@@ -76,7 +78,7 @@ class TS_DCOPF_RA_Problem(StochProblemC):
         self.num_bus = self.ts_dcopf.num_bus
         self.num_br = self.ts_dcopf.num_br
         self.temp_x = np.zeros(self.num_p+1) 
-        self.JG_const = csr_matrix(np.hstack((np.zeros(self.num_p),1.-self.gamma)),shape=(1,self.temp_x.size))
+        self.JG_const = csr_matrix(np.hstack((np.zeros(self.num_p),1.-gamma)),shape=(1,self.temp_x.size))
         self.op = np.zeros(self.num_p)
         self.ow = np.zeros(self.num_w)
         self.os = np.zeros(self.num_r)
@@ -91,6 +93,9 @@ class TS_DCOPF_RA_Problem(StochProblemC):
         self.Oz = coo_matrix((self.num_br,self.num_br))
         self.ones_r = np.ones(self.num_r)
         self.ones_w = np.ones(self.num_w)
+
+        # Problem
+        self.Lrelaxed_approx_problem = None
 
     def set_parameters(self,params):
         """
@@ -126,7 +131,7 @@ class TS_DCOPF_RA_Problem(StochProblemC):
         p = x[:-1]
         t = x[-1]
 
-        gamma = self.gamma
+        gamma = self.parameters['gamma']
         t_reg = self.parameters['t_reg']
         num_p = self.num_p
         num_x = num_p+1
@@ -181,7 +186,7 @@ class TS_DCOPF_RA_Problem(StochProblemC):
         Er = self.ts_dcopf.Er
         smax_param = self.parameters['smax_param']
         t_reg = self.parameters['t_reg']
-        gamma = self.gamma
+        gamma = self.parameters['gamma']
         
         H0 = self.ts_dcopf.H0
         g0 = self.ts_dcopf.g0
@@ -267,7 +272,7 @@ class TS_DCOPF_RA_Problem(StochProblemC):
 
     def get_init_x(self):
 
-        x0,results = self.solve_Lrelaxed_approx(np.zeros(self.get_size_lam()),quiet=True)
+        x0,gF_approx,JG_approx,results = self.solve_Lrelaxed_approx(np.zeros(self.get_size_lam()),quiet=True)
         x0[-1] = self.parameters['t_min']*self.Qref
         return x0
 
@@ -311,8 +316,8 @@ class TS_DCOPF_RA_Problem(StochProblemC):
 
         print('Qref        : %.5e' %self.Qref)
         print('Qmax        : %.5e' %self.Qmax)
-        print('Qfac        : %.2f' %self.Qfac)
-        print('gamma       : %.2f' %self.gamma)
+        print('Qfac        : %.2f' %self.parameters['Qfac'])
+        print('gamma       : %.2f' %self.parameters['gamma'])
         print('smax param  : %.2e' %self.parameters['smax_param'])
         print('lmax        : %.2e' %self.parameters['lam_max'])
         print('t_reg       : %.2e' %self.parameters['t_reg'])
@@ -335,7 +340,7 @@ class TS_DCOPF_RA_Problem(StochProblemC):
         # Local vars
         t_reg = self.parameters['t_reg']
         smax_param = self.parameters['smax_param']
-        gamma = self.gamma
+        gamma = self.parameters['gamma']
         prob = self.ts_dcopf
         
         # Construct problem
@@ -367,18 +372,19 @@ class TS_DCOPF_RA_Problem(StochProblemC):
         pi = results['pi']
         
         # Check
-        A = problem.A
-        b = problem.b
-        l = problem.l
-        u = problem.u
-        problem.eval(x)
-        gphi = problem.gphi
-        assert(norm(gphi-A.T*lam+mu-pi) < (1e-4)*(norm(gphi)+norm(lam)+norm(mu)+norm(pi)))
-        assert(norm(mu*(u-x)) < (1e-4)*(norm(mu)+norm(u-x)))
-        assert(norm(pi*(x-l)) < (1e-4)*(norm(pi)+norm(x-l)))
-        assert(np.all(x < u + 1e-4))
-        assert(np.all(x > l - 1e-4))
-        assert(norm(A*x-b) < (1e-4)*norm(b))
+        if self.parameters['debug']:
+            A = problem.A
+            b = problem.b
+            l = problem.l
+            u = problem.u
+            problem.eval(x)
+            gphi = problem.gphi
+            assert(norm(gphi-A.T*lam+mu-pi) < (1e-4)*(norm(gphi)+norm(lam)+norm(mu)+norm(pi)))
+            assert(norm(mu*(u-x)) < (1e-4)*(norm(mu)+norm(u-x)))
+            assert(norm(pi*(x-l)) < (1e-4)*(norm(pi)+norm(x-l)))
+            assert(np.all(x < u + 1e-4))
+            assert(np.all(x > l - 1e-4))
+            assert(norm(A*x-b) < (1e-4)*norm(b))
 
         # Return
         p = x[:prob.num_p]
@@ -395,18 +401,20 @@ class TS_DCOPF_RA_Problem(StochProblemC):
         
     def construct_Lrelaxed_approx_problem(self,lam,g_corr=None,J_corr=None):
 
-        # Local variables
+        # Local vars
+        lam = float(lam)
         Qmax = self.Qmax
         Qref = self.Qref
-        prob = self.ts_dcopf
-        inf = prob.parameters['infinity']
+
         smax_param = self.parameters['smax_param']
         t_reg = self.parameters['t_reg']
         t_max = self.parameters['t_max']*Qref
         t_min = self.parameters['t_min']*Qref
-        gamma = self.gamma
-        lam = float(lam)
-        
+        gamma = self.parameters['gamma']
+
+        prob = self.ts_dcopf
+        inf = prob.parameters['infinity']
+
         num_p = self.num_p
         num_w = self.num_w
         num_r = self.num_r
@@ -433,6 +441,38 @@ class TS_DCOPF_RA_Problem(StochProblemC):
         Op = self.Op
         Oz = self.Oz
 
+        # Problem
+        if self.Lrelaxed_approx_problem is not None:
+            problem = self.Lrelaxed_approx_problem
+        else:
+                        
+            # Problem construction
+            A = bmat([[prob.G,Ont,prob.G,-prob.A,prob.R,None,None],
+                      [Ip,None,Ip,None,None,-Ip,None],
+                      [None,None,None,prob.J,None,None,-Iz]],format='coo')
+            b = np.hstack((prob.b,op,oz))
+            l = np.hstack((prob.p_min,           # p
+                           t_min,                # t
+                           -prob.p_max+prob.p_min, # q
+                           -inf*self.ones_w,     # theta
+                           self.os,              # s
+                           prob.p_min,           # y
+                           prob.z_min))          # z
+            u = np.hstack((prob.p_max,           # p
+                           t_max,                # t
+                           prob.p_max-prob.p_min,  # q
+                           inf*self.ones_w,      # theta
+                           prob.Er,              # s
+                           prob.p_max,           # y
+                           prob.z_max))          # z
+            
+            problem = OptProblem()
+            problem.A = A
+            problem.b = b
+            problem.u = u
+            problem.l = l
+            self.Lrelaxed_approx_problem = problem
+
         # Corrections
         if g_corr is None:
             g_corr = np.zeros(num_p+1)
@@ -444,26 +484,6 @@ class TS_DCOPF_RA_Problem(StochProblemC):
         eta_t = g_corr[-1]
         nu_p = J_corr[:-1]
         nu_t = J_corr[-1]        
-        
-        # Problem construction
-        A = bmat([[prob.G,Ont,prob.G,-prob.A,prob.R,None,None],
-                  [Ip,None,Ip,None,None,-Ip,None],
-                  [None,None,None,prob.J,None,None,-Iz]],format='coo')
-        b = np.hstack((prob.b,op,oz))
-        l = np.hstack((prob.p_min,           # p
-                       t_min,                # t
-                       -prob.p_max+prob.p_min, # q
-                       -inf*self.ones_w,     # theta
-                       self.os,              # s
-                       prob.p_min,           # y
-                       prob.z_min))          # z
-        u = np.hstack((prob.p_max,           # p
-                       t_max,                # t
-                       prob.p_max-prob.p_min,  # q
-                       inf*self.ones_w,      # theta
-                       prob.Er,              # s
-                       prob.p_max,           # y
-                       prob.z_max))          # z
                 
         def eval(cls,x):
             
@@ -535,11 +555,6 @@ class TS_DCOPF_RA_Problem(StochProblemC):
                              [None,None,None,None,None,None,Oz]],        # z
                             format='coo')
             
-        problem = OptProblem()
-        problem.A = A
-        problem.b = b
-        problem.u = u
-        problem.l = l
         problem.eval = MethodType(eval,problem)
         
         return problem
