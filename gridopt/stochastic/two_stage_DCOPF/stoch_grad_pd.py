@@ -51,3 +51,5 @@ class TS_DCOPF_PDSG(TS_DCOPF_Method):
         # Solve
         solver.solve(problem)
 
+        # Results
+        return solver.get_results()
