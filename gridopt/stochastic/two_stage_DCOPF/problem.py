@@ -614,7 +614,8 @@ class TS_DCOPF_Problem(StochProblem):
 
         Returns
         -------
-        p : generator powers
+        x : vector
+        gF_approx : gradient
         """
         
         # Constants
@@ -691,7 +692,10 @@ class TS_DCOPF_Problem(StochProblem):
         assert(norm(A*x-b) < (1e-6)*norm(b))
 
         # Return
-        return x[:num_p],results
+        p = x[:num_p]
+        q = x[num_p:2*num_p]-p
+        gF_approx = (self.H0*p+self.g0)-(self.H1*q+self.g1)
+        return p,gF_approx,results
 
     def get_sol_sensitivity(self,problem,x,lam,mu,pi):
         """

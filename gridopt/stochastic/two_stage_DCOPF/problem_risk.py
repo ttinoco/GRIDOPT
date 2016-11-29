@@ -65,7 +65,7 @@ class TS_DCOPF_RA_Problem(StochProblemC):
         self.ts_dcopf = TS_DCOPF_Problem(net,self.parameters)
 
         # Qref and Qmax
-        p_ce,results = self.ts_dcopf.solve_approx(quiet=True)
+        p_ce,gF_ce,results = self.ts_dcopf.solve_approx(quiet=True)
         self.Qref = self.ts_dcopf.eval_EQ(p_ce)[0]
         self.Qmax = self.Qfac*self.Qref
 
@@ -331,6 +331,12 @@ class TS_DCOPF_RA_Problem(StochProblemC):
         -------
         x : vector
         """
+
+        # Local vars
+        t_reg = self.parameters['t_reg']
+        smax_param = self.parameters['smax_param']
+        gamma = self.gamma
+        prob = self.ts_dcopf
         
         # Construct problem
         problem = self.construct_Lrelaxed_approx_problem(lam,g_corr=g_corr,J_corr=J_corr)
@@ -375,7 +381,17 @@ class TS_DCOPF_RA_Problem(StochProblemC):
         assert(norm(A*x-b) < (1e-4)*norm(b))
 
         # Return
-        return x[:self.ts_dcopf.num_p+1],results
+        p = x[:prob.num_p]
+        t = x[prob.num_p]
+        q = x[prob.num_p+1:2*prob.num_p+1]
+        Q = 0.5*np.dot(q,prob.H1*q)+np.dot(prob.g1,q)
+        gQ = -(prob.H1*q+prob.g1)
+        sigma = smax_param*(Q-self.Qmax-t)/self.Qref
+        a = np.maximum(sigma,0.)
+        C = np.exp(sigma-a)/(np.exp(-a)+np.exp(sigma-a))
+        gF_approx = np.hstack((prob.H0*p+prob.g0+gQ,t_reg*t))
+        JG_approx = csr_matrix(np.hstack((C*gQ,-C + 1.-gamma)),shape=(1,p.size+1))
+        return x[:prob.num_p+1],gF_approx,JG_approx,results
         
     def construct_Lrelaxed_approx_problem(self,lam,g_corr=None,J_corr=None):
 
