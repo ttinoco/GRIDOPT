@@ -11,7 +11,7 @@ from .utils import ApplyFunc
 from types import MethodType
 from numpy.linalg import norm
 from .problem import TS_DCOPF_Problem
-from multiprocessing import Pool,cpu_count
+from multiprocess import Pool,cpu_count
 from optalg.stoch_solver import StochProblemC
 from optalg.opt_solver import OptProblem,OptSolverLCCP
 from scipy.sparse import csr_matrix,eye,bmat,coo_matrix,tril
@@ -69,6 +69,7 @@ class TS_DCOPF_RA_Problem(StochProblemC):
         # Qref and Qmax
         p_ce,gF_ce,results = self.ts_dcopf.solve_approx(quiet=True)
         self.Qref = self.ts_dcopf.eval_EQ(p_ce)[0]
+        self.Fref = 0.5*np.dot(p_ce,self.ts_dcopf.H0*p_ce)+np.dot(self.ts_dcopf.g0,p_ce)+self.Qref
         self.Qmax = Qfac*self.Qref
 
         # Constants
