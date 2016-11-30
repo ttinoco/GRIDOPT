@@ -11,7 +11,6 @@ import pfnet as pf
 import numpy as np
 from .utils import ApplyFunc
 from numpy.linalg import norm
-from multiprocessing import Pool,cpu_count
 from optalg.lin_solver import new_linsolver
 from scipy.sparse.linalg import LinearOperator
 from optalg.opt_solver.opt_solver_error import *
@@ -266,7 +265,9 @@ class TS_DCOPF_Problem(StochProblem):
         num_procs : number of parallel processes
         quiet : flag
         """
-        
+       
+        from multiprocess import Pool,cpu_count
+ 
         if not num_procs:
             num_procs = cpu_count()
         num_samples = self.parameters['num_samples']

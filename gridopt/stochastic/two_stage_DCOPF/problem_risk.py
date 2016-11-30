@@ -11,7 +11,6 @@ from .utils import ApplyFunc
 from types import MethodType
 from numpy.linalg import norm
 from .problem import TS_DCOPF_Problem
-from multiprocess import Pool,cpu_count
 from optalg.stoch_solver import StochProblemC
 from optalg.opt_solver import OptProblem,OptSolverLCCP
 from scipy.sparse import csr_matrix,eye,bmat,coo_matrix,tril
@@ -256,6 +255,8 @@ class TS_DCOPF_RA_Problem(StochProblemC):
             return F,gF,G,JG,ind
         
     def eval_EFG(self,x,num_procs=None,info=False):
+
+        from multiprocess import Pool,cpu_count
 
         if not num_procs:
             num_procs = cpu_count()
