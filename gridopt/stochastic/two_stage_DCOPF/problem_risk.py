@@ -132,7 +132,6 @@ class TS_DCOPF_RA_Problem(StochProblemC):
         t = x[-1]
 
         gamma = self.parameters['gamma']
-        t_reg = self.parameters['t_reg']
         num_p = self.num_p
         num_x = num_p+1
         temp_x = self.temp_x
@@ -144,8 +143,8 @@ class TS_DCOPF_RA_Problem(StochProblemC):
         gphi0 = H0*p + g0
         Q,gQ = self.ts_dcopf.eval_Q(p,w,problem=problem)
 
-        F =  phi0+Q+0.5*t_reg*(t**2.)
-        gF = np.hstack((gphi0+gQ,t_reg*t))
+        F =  phi0+Q
+        gF = np.hstack((gphi0+gQ,0.))
         
         ind = 1. if Q <= self.Qmax else 0.
 
