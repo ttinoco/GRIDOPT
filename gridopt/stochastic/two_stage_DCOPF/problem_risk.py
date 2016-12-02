@@ -7,7 +7,6 @@
 #*****************************************************#
 
 import numpy as np
-from .utils import ApplyFunc
 from types import MethodType
 from numpy.linalg import norm
 from .problem import TS_DCOPF_Problem
@@ -262,10 +261,10 @@ class TS_DCOPF_RA_Problem(StochProblemC):
         num_samples = self.parameters['num_samples']
         pool = Pool(num_procs)
         num = int(np.ceil(float(num_samples)/float(num_procs)))
-        results = list(zip(*pool.map(ApplyFunc,[(self,'eval_EFG_sequential',x,num,i,info) for i in range(num_procs)],chunksize=1)))
+        results = list(zip(*pool.map(lambda i: self.eval_EFG_sequential(x,num,i,info),range(num_procs),chunksize=1)))
         pool.terminate()
         pool.join()
-        return [sum([val for val in vals])/float(num_procs) for vals in results]
+        return [sum(vals)/float(num_procs) for vals in results]
         
     def get_size_x(self):
 
@@ -315,6 +314,7 @@ class TS_DCOPF_RA_Problem(StochProblemC):
 
         self.ts_dcopf.show()
 
+        print('Fref        : %.5e' %self.Fref)
         print('Qref        : %.5e' %self.Qref)
         print('Qmax        : %.5e' %self.Qmax)
         print('Qfac        : %.2f' %self.parameters['Qfac'])

@@ -9,7 +9,6 @@
 import csv
 import pfnet as pf
 import numpy as np
-from .utils import ApplyFunc
 from numpy.linalg import norm
 from optalg.lin_solver import new_linsolver
 from scipy.sparse.linalg import LinearOperator
@@ -49,6 +48,7 @@ class TS_DCOPF_Problem(StochProblem):
         Parameters
         ----------
         net : PFNET Network
+        parameters : dict
         """
 
         # Parameters
@@ -124,6 +124,7 @@ class TS_DCOPF_Problem(StochProblem):
         cost.eval(x)
         H = (cost.Hphi + cost.Hphi.T - triu(cost.Hphi))/net.base_power # symmetric
         g = cost.gphi/net.base_power - H*x
+        assert(norm((H-H.T).data) < 1e-12*norm(H.data))
         
         # Bounds
         l = net.get_var_values(pf.LOWER_LIMITS)
@@ -181,7 +182,7 @@ class TS_DCOPF_Problem(StochProblem):
             assert(norm(self.r_cov*z-self.L*self.L.T*z) < 1e-10)
 
         # Average renewables
-        self.Er = 0
+        self.Er = np.zeros(self.num_r)
         for i in range(2000):
             self.Er += (self.sample_w()-self.Er)/(i+1)
         
@@ -229,8 +230,8 @@ class TS_DCOPF_Problem(StochProblem):
         else:
             np.random.seed(seed)
         
-        # Problem
-        problem = self.get_problem_for_Q(p,np.ones(self.num_r))
+        # Problem (base)
+        problem = self.get_problem_for_Q(p,self.Er)
         
         # Sampling loop
         for i in range(num_samples):
@@ -273,10 +274,12 @@ class TS_DCOPF_Problem(StochProblem):
         num_samples = self.parameters['num_samples']
         pool = Pool(num_procs)
         num = int(np.ceil(float(num_samples)/float(num_procs)))
-        results = list(zip(*pool.map(ApplyFunc,[(self,'eval_EQ_sequential',p,num,i,quiet) for i in range(num_procs)],chunksize=1)))
+        results = list(zip(*pool.map(lambda i: self.eval_EQ_sequential(p,num,i,quiet),range(num_procs),chunksize=1)))
         pool.terminate()
         pool.join()
-        return [sum([val for val in vals])/float(num_procs) for vals in results]
+        assert(len(results) == 2)
+        assert(all([len(vals) == num_procs for vals in results]))
+        return [sum(vals)/float(num_procs) for vals in results]
         
     def eval_Q(self,p,r,quiet=True,check=False,problem=None,return_data=False):
         """
@@ -320,6 +323,7 @@ class TS_DCOPF_Problem(StochProblem):
             
             # Solve
             solver.solve(problem)
+            assert(solver.get_status() == 'solved')
 
             # Info
             x = solver.get_primal_variables()
@@ -345,7 +349,7 @@ class TS_DCOPF_Problem(StochProblem):
             Q = 0.5*np.dot(q,self.H1*q)+np.dot(self.g1,q)
             
             # Gradient
-            gQ = -(self.H1*q+self.g1)
+            gQ = -(self.H1*q+self.g1) # See ECC paper
 
             # Return
             if not return_data:
@@ -365,7 +369,7 @@ class TS_DCOPF_Problem(StochProblem):
             return np.inf,None
         except OptSolverError_LineSearch:
             return np.inf,None
-        except Exception as e:
+        except Exception:
             raise
 
     def get_size_x(self):
@@ -492,7 +496,7 @@ class TS_DCOPF_Problem(StochProblem):
         gphi = self.H0*x + self.g0
         Q,gQ = self.eval_Q(x,w)
 
-        return (phi+Q,gphi+gQ)
+        return phi+Q,gphi+gQ
 
     def eval_F_approx(self,x):
         """
@@ -528,7 +532,7 @@ class TS_DCOPF_Problem(StochProblem):
         gphi = self.H0*x + self.g0
         Q,gQ = self.eval_EQ(x)
 
-        return (phi+Q,gphi+gQ)
+        return phi+Q,gphi+gQ
 
     def project_x(self,x):
         """
@@ -611,7 +615,7 @@ class TS_DCOPF_Problem(StochProblem):
         ----------
         g_corr : slope correction
         quiet : flag
-        samples : number of samples
+        init_data : dict
 
         Returns
         -------
@@ -676,6 +680,7 @@ class TS_DCOPF_Problem(StochProblem):
         solver.set_parameters({'quiet': quiet,
                                'tol': self.parameters['tol']})
         solver.solve(problem)
+        assert(solver.get_status() == 'solved')
         results = solver.get_results()
         x = results['x']
         lam = results['lam']
