@@ -111,9 +111,12 @@ class TS_DCOPF_SAA_Risk(TS_DCOPF_Method):
             H = bmat([[H0,coo_matrix((num_p,4+2*num_y))],
                       [coo_matrix((4+2*num_y,num_p)),None]],format='coo')
             g = np.hstack((g0,0.,1.,np.zeros(2+2*num_y)))
-            A = bmat([[A0,None,None],
-                      [A1,-eye(num_y),None],
-                      [A2,None,-eye(num_y)]],format='coo')
+            if num_y > 0:
+                A = bmat([[A0,None,None],
+                          [A1,-eye(num_y),None],
+                          [A2,None,-eye(num_y)]],format='coo')
+            else:
+                A = bmat([[A0]],format='coo')
             b = np.hstack((b0,b1,b2))
             l = np.hstack((p_min,  # p
                            t_min,  # t
