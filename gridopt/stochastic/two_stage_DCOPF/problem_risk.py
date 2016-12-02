@@ -229,7 +229,7 @@ class TS_DCOPF_RA_Problem(StochProblemC):
         JG = csr_matrix((1,x.size))
         
         # Second stage problem
-        problem = self.ts_dcopf.get_problem_for_Q(p,self.ones_r)
+        problem = self.ts_dcopf.get_problem_for_Q(p,self.ts_dcopf.Er)
         
         # Sampling loop
         for i in range(num_samples):
@@ -264,6 +264,11 @@ class TS_DCOPF_RA_Problem(StochProblemC):
         results = list(zip(*pool.map(lambda i: self.eval_EFG_sequential(x,num,i,info),range(num_procs),chunksize=1)))
         pool.terminate()
         pool.join()
+        if not info:
+            assert(len(results) == 4)
+        else:
+            assert(len(results) == 5)
+        assert(all([len(vals) == num_procs for vals in results]))
         return [sum(vals)/float(num_procs) for vals in results]
         
     def get_size_x(self):
@@ -360,6 +365,7 @@ class TS_DCOPF_RA_Problem(StochProblemC):
                                'tol': self.parameters['tol']})
         try:
             solver.solve(problem)
+            assert(solver.get_status() == 'solved')
         except Exception:
             raise
         finally:
@@ -392,7 +398,7 @@ class TS_DCOPF_RA_Problem(StochProblemC):
         t = x[prob.num_p]
         q = x[prob.num_p+1:2*prob.num_p+1]
         Q = 0.5*np.dot(q,prob.H1*q)+np.dot(prob.g1,q)
-        gQ = -(prob.H1*q+prob.g1)
+        gQ = -(prob.H1*q+prob.g1)                     # See ECC paper
         sigma = smax_param*(Q-self.Qmax-t)/self.Qref
         a = np.maximum(sigma,0.)
         C = np.exp(sigma-a)/(np.exp(-a)+np.exp(sigma-a))
@@ -547,14 +553,15 @@ class TS_DCOPF_RA_Problem(StochProblemC):
             # Hessian (lower triangular)
             H = (1.+lam*C1)*H1 + tril(lam*C2*np.outer(gphi1,gphi1))
             g = gphi1.reshape((q.size,1))
-            cls.Hphi = bmat([[H0,None,None,None,None,None,None],             # p
-                             [None,t_reg+lam*C2,-lam*C2*g.T,None,None,None,None],  # t
-                             [None,-lam*C2*g,H,None,None,None,None],         # q
+            cls.Hphi = bmat([[H0,None,None,None,None,None,None],           # p
+                             [None,t_reg+lam*C2,None,None,None,None,None], # t
+                             [None,-lam*C2*g,H,None,None,None,None],       # q
                              [None,None,None,Ow,None,None,None],         # theta
                              [None,None,None,None,Os,None,None],         # s
                              [None,None,None,None,None,Op,None],         # y
                              [None,None,None,None,None,None,Oz]],        # z
                             format='coo')
+            assert(np.all(cls.Hphi.row >= cls.Hphi.col))
             
         problem.eval = MethodType(eval,problem)
         
