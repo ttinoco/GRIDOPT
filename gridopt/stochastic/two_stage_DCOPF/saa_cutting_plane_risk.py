@@ -55,6 +55,7 @@ class TS_DCOPF_SAA_Risk(TS_DCOPF_Method):
         z_inf = params['z_inf']
         y_inf = params['y_inf']
         quiet = params['quiet']
+        gamma = params['gamma']
 
         # Problem
         problemRA = self.create_problem(net,params)
@@ -66,7 +67,6 @@ class TS_DCOPF_SAA_Risk(TS_DCOPF_Method):
 
         # Constants
         num_p = problem.num_p
-        gamma = params['gamma']
         H0 = problem.H0
         g0 = problem.g0
         p_min = problem.p_min
@@ -97,7 +97,7 @@ class TS_DCOPF_SAA_Risk(TS_DCOPF_Method):
             print('{0:^12s}'.format('GL'), end= ' ')
             print('{0:^12s}'.format('saved'))
 
-            # Init
+        # Init
         k = 0
         t1 = 0
         num_y = 0
@@ -169,23 +169,23 @@ class TS_DCOPF_SAA_Risk(TS_DCOPF_Method):
             S_list = []
             gS_list = []
             for i in range(num_sce):
-                qq = Q-problemRA.Qmax-t
+                qq = Q_list[i]-problemRA.Qmax-t
                 S_list.append(np.maximum(qq,0.))
                 if qq >= 0.:
-                    gS_list.append(np.hstack((gQ,-1.)))
+                    gS_list.append(np.hstack((gQ_list[i],-1.)))
                 else:
                     gS_list.append(np.hstack((op,0.)))
             S = sum(S_list)/float(num_sce)
             gS = sum(gS_list)/float(num_sce)
 
             # Obj cut
-            a = np.hstack((gQ,0.,-1.,0.,0.))
-            A1 = np.vstack((A1,a))
+            a1 = np.hstack((gQ,0.,-1.,0.,0.))
+            A1 = np.vstack((A1,a1))
             b1 = np.hstack((b1,-Q+np.dot(gQ,p)))
 
             # Constraint cut
-            a = np.hstack((gS,0.,-1.,0.))
-            A2 = np.vstack((A2,a))
+            a2 = np.hstack((gS,0.,-1.,0.))
+            A2 = np.vstack((A2,a2))
             b2 = np.hstack((b2,-S+np.dot(gS,self.x)))
 
             # Output
