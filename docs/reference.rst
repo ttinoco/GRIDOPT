@@ -18,15 +18,6 @@ Power Flow Method
 
 .. autoclass:: gridopt.power_flow.dc_opf.DCOPF
 
-.. autoclass:: gridopt.power_flow.dc_opf_mp.DCOPF_MP
-   :members: solve, update_network
-
-.. autoclass:: gridopt.power_flow.dc_opf_corr.DCOPF_Corr
-   :members: solve
-
-.. autoclass:: gridopt.power_flow.dc_opf_prev.DCOPF_Prev
-   :members: solve
-
 .. autoclass:: gridopt.power_flow.nr_pf.NRPF
 
 .. autoclass:: gridopt.power_flow.augl_pf.AugLPF
@@ -63,6 +54,3 @@ References
 ==========
 
 .. [TTR2015] T\. Tinoco De Rubira, *Numerical Optimization and Modeling Techniques for Power System Operations and Planning*. PhD thesis, Stanford University, March 2015.
-
-
-
