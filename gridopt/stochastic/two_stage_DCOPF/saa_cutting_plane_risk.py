@@ -15,12 +15,13 @@ from .problem_risk import TS_DCOPF_RA_Problem
 from scipy.sparse import eye,coo_matrix,bmat
 from optalg.opt_solver import OptSolverIQP, QuadProblem
 
-class TS_DCOPF_SAA_Risk(TS_DCOPF_Method):
+class TS_DCOPF_SAA_CP_Risk(TS_DCOPF_Method):
     """
     SAA cutting-plane method for solving two-stage DCOPF problems with risk constraint.
     """
     
     parameters = {'scenarios': 100,
+                  'num_procs': 1,
                   'maxiters': 100,
                   'maxtime': 600,
                   'period': 60,
@@ -31,7 +32,7 @@ class TS_DCOPF_SAA_Risk(TS_DCOPF_Method):
     def __init__(self):
 
         TS_DCOPF_Method.__init__(self)
-        self.parameters = TS_DCOPF_SAA_Risk.parameters.copy()
+        self.parameters = TS_DCOPF_SAA_CP_Risk.parameters.copy()
         self.parameters.update(TS_DCOPF_Problem.parameters)
         self.parameters.update(TS_DCOPF_RA_Problem.parameters)
 
@@ -48,9 +49,13 @@ class TS_DCOPF_SAA_Risk(TS_DCOPF_Method):
 
     def solve(self,net):
 
+        # Imports
+        from multiprocess import Pool
+
         # Parameters
         params = self.parameters
         num_sce = params['scenarios']
+        num_procs = params['num_procs']
         maxiters = params['maxiters']
         maxtime = params['maxtime']
         period = params['period']
@@ -68,6 +73,9 @@ class TS_DCOPF_SAA_Risk(TS_DCOPF_Method):
 
         # Scenarios
         scenarios = [problem.sample_w() for i in range(num_sce)]
+
+        # Pool
+        pool = Pool(num_procs)
 
         # Constants
         num_p = problem.num_p
@@ -165,7 +173,7 @@ class TS_DCOPF_SAA_Risk(TS_DCOPF_Method):
                 break
             
             # Obj saa
-            Q_list,gQ_list = zip(*[problem.eval_Q(p,w) for w in scenarios])
+            Q_list,gQ_list = zip(*pool.map(lambda w: problem.eval_Q(p,w),scenarios))
             Q = sum(Q_list)/float(num_sce)
             gQ = sum(gQ_list)/float(num_sce)
 

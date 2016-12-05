@@ -11,6 +11,7 @@ from .stoch_hyb_pd import TS_DCOPF_PDSH
 from .stoch_grad import TS_DCOPF_SG
 from .stoch_grad_pd import TS_DCOPF_PDSG
 
-from .saa_cutting_plane_risk import TS_DCOPF_SAA_Risk
+from .saa_risk import TS_DCOPF_SAA_Risk
+from .saa_cutting_plane_risk import TS_DCOPF_SAA_CP_Risk
 
 
