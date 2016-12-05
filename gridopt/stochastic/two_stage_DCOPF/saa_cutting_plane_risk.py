@@ -27,9 +27,7 @@ class TS_DCOPF_SAA_Risk(TS_DCOPF_Method):
                   'z_inf': 1e6,
                   'y_inf': 1e6,
                   'quiet': False}
-   
-    name = 'SAA Cutting-Plane'
- 
+    
     def __init__(self):
 
         TS_DCOPF_Method.__init__(self)
@@ -39,6 +37,10 @@ class TS_DCOPF_SAA_Risk(TS_DCOPF_Method):
 
         self.problem = None
         self.results = None
+
+    def get_name(self):
+
+        return 'SAA Cutting-Plane %d' %self.parameters['scenarios']
 
     def create_problem(self,net,parameters):
 
@@ -61,6 +63,8 @@ class TS_DCOPF_SAA_Risk(TS_DCOPF_Method):
         problemRA = self.create_problem(net,params)
         problem = problemRA.ts_dcopf
         self.problem = problemRA
+        if not quiet:
+            problemRA.show()
 
         # Scenarios
         scenarios = [problem.sample_w() for i in range(num_sce)]

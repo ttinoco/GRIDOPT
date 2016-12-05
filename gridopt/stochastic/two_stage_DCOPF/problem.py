@@ -39,6 +39,7 @@ class TS_DCOPF_Problem(StochProblem):
                   'infinity' : 1e4,      # infinity
                   'flow_factor' : 1.,    # factor for relaxing thermal limits
                   'num_samples' : 1000,  # number of samples
+                  'num_procs': 10,
                   'tol': 1e-4}           # evaluation tolerance
 
     def __init__(self,net,parameters={}):
@@ -256,21 +257,19 @@ class TS_DCOPF_Problem(StochProblem):
                             
         return Q,gQ
 
-    def eval_EQ(self,p,num_procs=None,quiet=True):
+    def eval_EQ(self,p,quiet=True):
         """
         Evaluates E[Q(p,r)] and its gradient in parallel. 
 
         Parameters
         ----------
         p : generator powers
-        num_procs : number of parallel processes
         quiet : flag
         """
        
-        from multiprocess import Pool,cpu_count
+        from multiprocess import Pool
  
-        if not num_procs:
-            num_procs = cpu_count()
+        num_procs = self.parameters['num_procs']
         num_samples = self.parameters['num_samples']
         pool = Pool(num_procs)
         num = int(np.ceil(float(num_samples)/float(num_procs)))
@@ -605,6 +604,7 @@ class TS_DCOPF_Problem(StochProblem):
         print('correlation rad  : %d (edges)' %self.corr_radius)
         print('correlation val  : %.2f (unitless)' %self.corr_value)
         print('num samples      : %d' %self.parameters['num_samples'])
+        print('num procs        : %d' %self.parameters['num_procs'])
 
     def solve_approx(self,g_corr=None,quiet=False,init_data=None):
         """

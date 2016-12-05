@@ -61,6 +61,17 @@ class TS_DCOPF_Method:
         
         return self.problem
 
+    def get_name(self):
+        """
+        Gets method name.
+
+        Returns
+        -------
+        name : string
+        """
+
+        return ''
+
     def get_results(self):
         """
         Gets dictionary with results.

@@ -40,6 +40,7 @@ class TS_DCOPF_RA_Problem(StochProblemC):
                   'Qfac': 0.8,       # factor for setting Qmax
                   'gamma': 0.95,     # parameter for CVaR (e.g. 0.95)
                   'num_samples' : 1000,
+                  'num_procs': 10,
                   'tol': 1e-4,
                   'debug': False}
     
@@ -252,12 +253,11 @@ class TS_DCOPF_RA_Problem(StochProblemC):
         else:
             return F,gF,G,JG,ind
         
-    def eval_EFG(self,x,num_procs=None,info=False):
+    def eval_EFG(self,x,info=False):
 
-        from multiprocess import Pool,cpu_count
+        from multiprocess import Pool
 
-        if not num_procs:
-            num_procs = cpu_count()
+        num_procs = self.parameters['num_procs']
         num_samples = self.parameters['num_samples']
         pool = Pool(num_procs)
         num = int(np.ceil(float(num_samples)/float(num_procs)))
@@ -330,6 +330,7 @@ class TS_DCOPF_RA_Problem(StochProblemC):
         print('t_min       : %.2e' %self.parameters['t_min'])
         print('t_max       : %.2e' %self.parameters['t_max'])
         print('num_samples : %d' %self.parameters['num_samples'])
+        print('num procs   : %d' %self.parameters['num_procs'])
 
     def solve_Lrelaxed_approx(self,lam,g_corr=None,J_corr=None,quiet=False,init_data=None):
         """

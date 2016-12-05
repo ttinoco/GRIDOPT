@@ -19,8 +19,6 @@ class TS_DCOPF_PDSH(TS_DCOPF_Method):
     
     parameters = {'quiet': False}
 
-    name = 'Primal-Dual Stochatic Hybrid Approximation'
-
     def __init__(self):
 
         TS_DCOPF_Method.__init__(self)
@@ -31,7 +29,15 @@ class TS_DCOPF_PDSH(TS_DCOPF_Method):
 
         self.problem = None
         self.results = None
+
+    def get_name(self):
         
+        name = 'Primal-Dual Stochatic Hybrid Approximation'
+        if not self.parameters['no_G']:
+            return name
+        else:
+            return name + ' - No G'
+ 
     def create_problem(self,net,parameters):
         
         return TS_DCOPF_RA_Problem(net,parameters)

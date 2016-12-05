@@ -18,8 +18,6 @@ class TS_DCOPF_PDSG(TS_DCOPF_Method):
     """
     
     parameters = {'quiet': False}
-
-    name = 'Primal-Dual Stochatic Gradient'
     
     def __init__(self):
         
@@ -31,6 +29,10 @@ class TS_DCOPF_PDSG(TS_DCOPF_Method):
 
         self.problem = None
         self.results = None
+
+    def get_name(self):
+
+        return 'Primal-Dual Stochatic Gradient'
 
     def create_problem(self,net,parameters):
         
