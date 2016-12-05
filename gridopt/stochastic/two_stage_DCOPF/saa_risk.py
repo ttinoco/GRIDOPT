@@ -65,8 +65,6 @@ class TS_DCOPF_SAA_Risk(TS_DCOPF_Method):
         num_p = problem.num_p
         num_w = problem.num_w
         num_r = problem.num_r
-        num_bus = problem.num_bus
-        num_br = problem.num_br
 
         H0 = problem.H0
         g0 = problem.g0
