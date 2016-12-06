@@ -12,7 +12,6 @@ import numpy as np
 from .method import TS_DCOPF_Method
 from .problem import TS_DCOPF_Problem
 from .problem_risk import TS_DCOPF_RA_Problem
-from scipy.sparse import eye,coo_matrix,bmat
 
 class TS_DCOPF_SAA_Risk(TS_DCOPF_Method):
     """

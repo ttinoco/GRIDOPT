@@ -12,8 +12,6 @@ import numpy as np
 from .method import TS_DCOPF_Method
 from .problem import TS_DCOPF_Problem
 from .problem_risk import TS_DCOPF_RA_Problem
-from scipy.sparse import eye,coo_matrix,bmat
-from optalg.opt_solver import OptSolverIQP, QuadProblem
 
 class TS_DCOPF_SAA_CP_Risk(TS_DCOPF_Method):
     """
@@ -26,7 +24,6 @@ class TS_DCOPF_SAA_CP_Risk(TS_DCOPF_Method):
                   'maxtime': 600,
                   'period': 60,
                   'z_inf': 1e6,
-                  'y_inf': 1e6,
                   'quiet': False}
     
     def __init__(self):
@@ -40,7 +37,7 @@ class TS_DCOPF_SAA_CP_Risk(TS_DCOPF_Method):
         self.results = None
 
     def get_name(self):
-
+        
         return 'SAA Cutting-Plane %d' %self.parameters['scenarios']
 
     def create_problem(self,net,parameters):
@@ -50,6 +47,7 @@ class TS_DCOPF_SAA_CP_Risk(TS_DCOPF_Method):
     def solve(self,net):
 
         # Imports
+        import cvxpy as cpy
         from multiprocess import Pool
 
         # Parameters
@@ -60,7 +58,6 @@ class TS_DCOPF_SAA_CP_Risk(TS_DCOPF_Method):
         maxtime = params['maxtime']
         period = params['period']
         z_inf = params['z_inf']
-        y_inf = params['y_inf']
         quiet = params['quiet']
         gamma = params['gamma']
 
@@ -85,19 +82,7 @@ class TS_DCOPF_SAA_CP_Risk(TS_DCOPF_Method):
         p_max = problem.p_max
         t_min = params['t_min']*problemRA.Qref
         t_max = params['t_max']*problemRA.Qref
-        op = np.zeros(num_p)        
-
-        # For base eq
-        A0 = bmat([[op,1.-gamma,0,1.,-1.]]) # p t z1 z2 z3
-        b0 = np.zeros(1)
-
-        # For obj cuts eq
-        A1 = np.zeros((0,num_p+4))
-        b1 = np.zeros(0)
-
-        # For constr cuts eq
-        A2 = np.zeros((0,num_p+4))
-        b2 = np.zeros(0)
+        op = np.zeros(num_p)
 
         # Header
         if not quiet:
@@ -109,56 +94,39 @@ class TS_DCOPF_SAA_CP_Risk(TS_DCOPF_Method):
             print('{0:^12s}'.format('GL'), end= ' ')
             print('{0:^12s}'.format('saved'))
 
+        # Base problem
+        p = cpy.Variable(num_p)
+        t = cpy.Variable(1)
+        z1 = cpy.Variable(1)
+        z2 = cpy.Variable(1)
+        obj = 0.5*cpy.quad_form(p,cpy.Constant(H0)) + p.T*cpy.Constant(g0) + z1
+        constr = [p_min <= p, 
+                  p <= p_max, 
+                  t_min <= t, 
+                  t <= t_max, 
+                  -z_inf <= z1, 
+                  -z_inf <= z2,
+                  (1.-gamma)*t + z2 <= 0]
+
         # Init
         k = 0
         t1 = 0
-        num_y = 0
         t0 = time.time()
         self.results = []
 
         # Loop
         while True:
-
-            # Construct master
-            H = bmat([[H0,coo_matrix((num_p,4+2*num_y))],
-                      [coo_matrix((4+2*num_y,num_p)),None]],format='coo')
-            g = np.hstack((g0,0.,1.,np.zeros(2+2*num_y)))
-            if num_y > 0:
-                A = bmat([[A0,None,None],
-                          [A1,-eye(num_y),None],
-                          [A2,None,-eye(num_y)]],format='coo')
-            else:
-                A = bmat([[A0]],format='coo')
-            b = np.hstack((b0,b1,b2))
-            l = np.hstack((p_min,  # p
-                           t_min,  # t
-                           -z_inf, # z1
-                           -z_inf, # z2
-                           -z_inf, # z3
-                           -y_inf*np.ones(num_y),  # y1
-                           -y_inf*np.ones(num_y))) # y2
-            u = np.hstack((p_max,  # p
-                           t_max,  # t
-                           z_inf,  # z1
-                           z_inf,  # z2
-                           0,      # z3
-                           np.zeros(num_y),  # y1
-                           np.zeros(num_y))) # y2
-            qp = QuadProblem(H,g,A,b,l,u)
-
-            # Solve problem
-            solver = OptSolverIQP()
-            solver.set_parameters({'quiet': True,
-                                   'tol': self.parameters['tol']})
-            solver.solve(qp)
-            assert(solver.get_status() == 'solved')
-            x_full = solver.get_primal_variables()
-            p = x_full[:num_p]
-            t = x_full[num_p]
-            z1 = x_full[num_p+1]
-            z2 = x_full[num_p+2]
-            self.x = x_full[:num_p+1]
-
+            
+            # Problem
+            opt_prog = cpy.Problem(cpy.Minimize(obj),constr)
+            
+            # Solve
+            opt_prog.solve(solver=cpy.ECOS,verbose=False,max_iters=1000)
+                       
+            # Results
+            self.x = np.hstack((np.array(p.value).flatten(),t.value))
+            assert(self.x.shape == (num_p+1,))
+ 
             # Save
             if time.time()-t0 > t1:
                 self.results.append((k,time.time()-t0,self.x,np.nan))
@@ -173,7 +141,7 @@ class TS_DCOPF_SAA_CP_Risk(TS_DCOPF_Method):
                 break
             
             # Obj saa
-            Q_list,gQ_list = zip(*pool.map(lambda w: problem.eval_Q(p,w),scenarios))
+            Q_list,gQ_list = zip(*pool.map(lambda w: problem.eval_Q(self.x[:num_p],w),scenarios))
             Q = sum(Q_list)/float(num_sce)
             gQ = sum(gQ_list)/float(num_sce)
 
@@ -181,7 +149,7 @@ class TS_DCOPF_SAA_CP_Risk(TS_DCOPF_Method):
             S_list = []
             gS_list = []
             for i in range(num_sce):
-                qq = Q_list[i]-problemRA.Qmax-t
+                qq = Q_list[i]-problemRA.Qmax-self.x[-1]
                 S_list.append(np.maximum(qq,0.))
                 if qq >= 0.:
                     gS_list.append(np.hstack((gQ_list[i],-1.)))
@@ -191,25 +159,21 @@ class TS_DCOPF_SAA_CP_Risk(TS_DCOPF_Method):
             gS = sum(gS_list)/float(num_sce)
 
             # Obj cut
-            a1 = np.hstack((gQ,0.,-1.,0.,0.))
-            A1 = np.vstack((A1,a1))
-            b1 = np.hstack((b1,-Q+np.dot(gQ,p)))
+            constr.append(Q + (p-p.value).T*cpy.Constant(gQ) <= z1)
 
             # Constraint cut
-            a2 = np.hstack((gS,0.,-1.,0.))
-            A2 = np.vstack((A2,a2))
-            b2 = np.hstack((b2,-S+np.dot(gS,self.x)))
+            constr.append(S + cpy.vstack(p-p.value,t-t.value).T*cpy.Constant(gS) <= z2)
 
             # Output
             if not quiet:
                 print('{0:^8d}'.format(k), end=' ')
                 print('{0:^10.2f}'.format(time.time()-t0), end=' ')
-                print('{0:^12.5e}'.format(0.5*np.dot(p,H0*p)+np.dot(g0,p)+z1), end=' ')
-                print('{0:^12.5e}'.format((1.-gamma)*t+z2), end=' ')
+                print('{0:^12.5e}'.format(0.5*np.dot(self.x[:num_p],H0*self.x[:num_p])+
+                                          np.dot(g0,self.x[:num_p])+z1.value), end=' ')
+                print('{0:^12.5e}'.format((1.-gamma)*self.x[-1]+z2.value), end=' ')
                 print('{0:^12d}'.format(len(self.results)))
             
             # Update
-            num_y += 1
             k += 1
             
             
