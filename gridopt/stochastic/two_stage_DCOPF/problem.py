@@ -253,11 +253,12 @@ class TS_DCOPF_Problem(StochProblem):
        
         from multiprocess import Pool
  
+        self.clear()
         num_procs = self.parameters['num_procs']
         num_samples = self.parameters['num_samples']
         pool = Pool(num_procs)
         num = int(np.ceil(float(num_samples)/float(num_procs)))
-        results = list(zip(*map(lambda i: self.eval_EQ_sequential(p,num,i),range(num_procs))))
+        results = list(zip(*pool.map(lambda i: self.eval_EQ_sequential(p,num,i),range(num_procs))))
         pool.terminate()
         pool.join()
         assert(len(results) == 2)

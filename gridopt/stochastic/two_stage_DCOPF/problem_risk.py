@@ -187,11 +187,12 @@ class TS_DCOPF_RA_Problem(StochProblemC):
 
         from multiprocess import Pool
 
+        self.clear()
         num_procs = self.parameters['num_procs']
         num_samples = self.parameters['num_samples']
         pool = Pool(num_procs)
         num = int(np.ceil(float(num_samples)/float(num_procs)))
-        results = list(zip(*map(lambda i: self.eval_EFG_sequential(x,num,i,info),range(num_procs))))
+        results = list(zip(*pool.map(lambda i: self.eval_EFG_sequential(x,num,i,info),range(num_procs))))
         pool.terminate()
         pool.join()
         if not info:
