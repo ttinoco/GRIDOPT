@@ -113,7 +113,7 @@ class TS_DCOPF_SAA_Risk(TS_DCOPF_Method):
                           cpy.Constant(A)*w_list[i] == b)
             
         prob = cpy.Problem(cpy.Minimize(obj),constr)
-        prob.solve(solver=cpy.ECOS,verbose=True)
+        prob.solve(solver=cpy.ECOS,verbose=True,max_iters=1000)
         self.results = [(0,0.,np.hstack((np.array(p.value).flatten(),np.array(t.value).flatten())),np.nan)]
         
         
