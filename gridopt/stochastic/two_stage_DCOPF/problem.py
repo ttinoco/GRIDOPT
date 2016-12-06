@@ -289,8 +289,12 @@ class TS_DCOPF_Problem(StochProblem):
         opt_progQ_data['r'].value = r
                            
         # Solve
-        opt_progQ.solve()
-        
+        try: 
+            opt_progQ.solve(max_iters=1000)
+        except Exception:
+            import cvxpy as cpy
+            opt_progQ.solve(solver=cpy.CVXOPT,max_iters=1000)
+
         # Results
         q = np.array(opt_progQ_data['q'].value).flatten()
         
