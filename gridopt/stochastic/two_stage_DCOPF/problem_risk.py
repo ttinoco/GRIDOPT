@@ -55,13 +55,14 @@ class TS_DCOPF_RA_Problem(StochProblemC):
         # Local vars
         Qfac = self.parameters['Qfac']
         gamma = self.parameters['gamma']
+        num_samples = self.parameters['num_samples']
  
         # Regular problem
         self.ts_dcopf = TS_DCOPF_Problem(net,self.parameters)
 
         # Qref and Qmax
         p_ce,gF_ce = self.ts_dcopf.solve_approx()
-        self.Qref = self.ts_dcopf.eval_EQ(p_ce)[0]
+        self.Qref = self.ts_dcopf.eval_EQ_sequential(p_ce,num_samples,0)[0]
         self.Fref = 0.5*np.dot(p_ce,self.ts_dcopf.H0*p_ce)+np.dot(self.ts_dcopf.g0,p_ce)+self.Qref
         self.Qmax = Qfac*self.Qref
 
