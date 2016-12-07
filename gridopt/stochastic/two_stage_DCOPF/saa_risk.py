@@ -59,7 +59,7 @@ class TS_DCOPF_SAA_Risk(TS_DCOPF_Method):
 
         # Scenarios
         scenarios = [problem.sample_w() for i in range(num_sce)]
-
+        
         # Constants
         num_p = problem.num_p
         num_w = problem.num_w

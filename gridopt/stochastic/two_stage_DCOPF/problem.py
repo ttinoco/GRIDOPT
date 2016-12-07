@@ -170,10 +170,12 @@ class TS_DCOPF_Problem(StochProblem):
             z = np.random.randn(self.num_r)
             assert(norm(self.r_cov*z-self.L*self.L.T*z) < 1e-10)
 
+        # Samples
+        num_samples = self.parameters['num_samples']
+        self.eval_samples = [self.sample_w() for i in range(num_samples)]
+
         # Average renewables
-        self.Er = np.zeros(self.num_r)
-        for i in range(self.parameters['num_samples']):
-            self.Er += (self.sample_w()-self.Er)/(i+1)
+        self.Er = sum(self.eval_samples)/float(num_samples)
         
         # Checks
         assert(np.all(self.p_min == 0))
@@ -207,40 +209,6 @@ class TS_DCOPF_Problem(StochProblem):
         for key,value in list(params.items()):
             if key in self.parameters:
                 self.parameters[key] = value
-        
-    def eval_EQ_sequential(self,p,num_samples=500,seed=None):
-        """
-        Evaluates E[Q(p,r)] and its gradient. 
-
-        Parameters
-        ----------
-        p : generator powers
-        samples : number of samples
-        seed : integer
-        """
-        
-        # Local vars
-        Q = 0.
-        gQ = np.zeros(self.num_p)
-
-        # Seed
-        if seed is None:
-            np.random.seed()
-        else:
-            np.random.seed(seed)
-                
-        # Sampling loop
-        for i in range(num_samples):
-            
-            r = self.sample_w()
-            
-            q,gq = self.eval_Q(p,r)
-
-            # Update
-            Q += (q-Q)/(i+1.)
-            gQ += (gq-gQ)/(i+1.)
-                            
-        return Q,gQ
 
     def eval_EQ(self,p):
         """
@@ -257,13 +225,13 @@ class TS_DCOPF_Problem(StochProblem):
         num_procs = self.parameters['num_procs']
         num_samples = self.parameters['num_samples']
         pool = Pool(num_procs)
-        num = int(np.ceil(float(num_samples)/float(num_procs)))
-        results = list(zip(*pool.map(lambda i: self.eval_EQ_sequential(p,num,i),range(num_procs))))
+        chunk = int(np.ceil(float(num_samples)/float(num_procs)))
+        results = list(zip(*pool.map(lambda w: self.eval_Q(p,w),self.eval_samples,chunksize=chunk)))
         pool.terminate()
         pool.join()
         assert(len(results) == 2)
-        assert(all([len(vals) == num_procs for vals in results]))
-        return [sum(vals)/float(num_procs) for vals in results]
+        assert(all([len(vals) == num_samples for vals in results]))
+        return [sum(vals)/float(num_samples) for vals in results]
         
     def eval_Q(self,p,r):
         """

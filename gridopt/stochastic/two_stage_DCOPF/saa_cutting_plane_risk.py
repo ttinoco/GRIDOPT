@@ -141,7 +141,8 @@ class TS_DCOPF_SAA_CP_Risk(TS_DCOPF_Method):
                 break
             
             # Obj saa
-            Q_list,gQ_list = zip(*pool.map(lambda w: problem.eval_Q(self.x[:num_p],w),scenarios))
+            chunk = int(np.ceil(float(num_sce)/float(num_procs)))
+            Q_list,gQ_list = zip(*pool.map(lambda w: problem.eval_Q(self.x[:num_p],w),scenarios,chunksize=chunk))
             Q = sum(Q_list)/float(num_sce)
             gQ = sum(gQ_list)/float(num_sce)
 

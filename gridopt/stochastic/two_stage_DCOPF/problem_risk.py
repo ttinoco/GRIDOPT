@@ -60,9 +60,12 @@ class TS_DCOPF_RA_Problem(StochProblemC):
         # Regular problem
         self.ts_dcopf = TS_DCOPF_Problem(net,self.parameters)
 
+        # Eval samples
+        self.eval_samples = self.ts_dcopf.eval_samples
+
         # Qref and Qmax
         p_ce,gF_ce = self.ts_dcopf.solve_approx()
-        self.Qref = self.ts_dcopf.eval_EQ_sequential(p_ce,num_samples,0)[0]
+        self.Qref = self.ts_dcopf.eval_EQ(p_ce)[0]
         self.Fref = 0.5*np.dot(p_ce,self.ts_dcopf.H0*p_ce)+np.dot(self.ts_dcopf.g0,p_ce)+self.Qref
         self.Qmax = Qfac*self.Qref
 
@@ -146,62 +149,24 @@ class TS_DCOPF_RA_Problem(StochProblemC):
         else:
             return F,gF,G,JG,ind
         
-    def eval_EFG_sequential(self,x,num_samples=500,seed=None,info=False):
-        
-        # Local vars
-        p = x[:-1]
-        t = x[-1]
- 
-        # Seed
-        if seed is None:
-            np.random.seed()
-        else:
-            np.random.seed(seed)
-
-        # Init
-        ind = 0.
-        F = 0.
-        gF = np.zeros(x.size)
-        G = np.zeros(1)
-        JG = csr_matrix((1,x.size))
-                
-        # Sampling loop
-        for i in range(num_samples):
-            
-            r = self.sample_w()
-                        
-            F1,gF1,G1,JG1,ind1 = self.eval_FG(x,r,info=True)
-
-            # Update
-            ind += (ind1-ind)/(i+1.)
-            F += (F1-F)/(i+1.)
-            gF += (gF1-gF)/(i+1.)
-            G += (G1-G)/(i+1.)
-            JG = JG + (JG1-JG)/(i+1.)
-                 
-        if not info:
-            return F,gF,G,JG
-        else:
-            return F,gF,G,JG,ind
-        
     def eval_EFG(self,x,info=False):
 
         from multiprocess import Pool
-
+        
         self.clear()
         num_procs = self.parameters['num_procs']
         num_samples = self.parameters['num_samples']
         pool = Pool(num_procs)
-        num = int(np.ceil(float(num_samples)/float(num_procs)))
-        results = list(zip(*pool.map(lambda i: self.eval_EFG_sequential(x,num,i,info),range(num_procs))))
+        chunk = int(np.ceil(float(num_samples)/float(num_procs)))
+        results = list(zip(*pool.map(lambda w: self.eval_FG(x,w,info),self.eval_samples,chunksize=chunk)))
         pool.terminate()
         pool.join()
         if not info:
             assert(len(results) == 4)
         else:
             assert(len(results) == 5)
-        assert(all([len(vals) == num_procs for vals in results]))
-        return [sum(vals)/float(num_procs) for vals in results]
+        assert(all([len(vals) == num_samples for vals in results]))
+        return [sum(vals)/float(num_samples) for vals in results]
         
     def get_size_x(self):
 
