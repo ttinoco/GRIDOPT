@@ -42,23 +42,23 @@ class DCOPF(PFmethod):
         net.clear_flags()
         
         # Set flags
-        net.set_flags(pfnet.OBJ_BUS,
-                      pfnet.FLAG_VARS,
-                      pfnet.BUS_PROP_NOT_SLACK,
-                      pfnet.BUS_VAR_VANG)
-        net.set_flags(pfnet.OBJ_GEN,
-                      pfnet.FLAG_VARS|pfnet.FLAG_BOUNDED,
-                      pfnet.GEN_PROP_P_ADJUST|pfnet.GEN_PROP_NOT_OUT,
-                      pfnet.GEN_VAR_P)
-        net.set_flags(pfnet.OBJ_LOAD,
-                      pfnet.FLAG_VARS|pfnet.FLAG_BOUNDED,
-                      pfnet.LOAD_PROP_P_ADJUST,
-                      pfnet.LOAD_VAR_P)
+        net.set_flags('bus',
+                      'variable',
+                      'not slack',
+                      'voltage angle')
+        net.set_flags('generator',
+                      ['variable','bounded'],
+                      ['adjustable active power','not on outage'],
+                      'active power')
+        net.set_flags('load',
+                      ['variable','bounded'],
+                      'adjustable active power',
+                      'active power')
         if params['vargen_curtailment']:
-            net.set_flags(pfnet.OBJ_VARGEN,
-                          pfnet.FLAG_VARS|pfnet.FLAG_BOUNDED,
-                          pfnet.VARGEN_PROP_ANY,
-                          pfnet.VARGEN_VAR_P)
+            net.set_flags('variable generator',
+                          ['variable','bounded'],
+                          'any',
+                          'active power')
 
         try:
             num_gvar =  len([g for g in net.generators if 
@@ -74,11 +74,11 @@ class DCOPF(PFmethod):
         # Set up problem
         problem = pfnet.Problem()
         problem.set_network(net)
-        problem.add_constraint(pfnet.CONSTR_TYPE_LBOUND)
-        problem.add_constraint(pfnet.CONSTR_TYPE_DCPF)
-        problem.add_constraint(pfnet.CONSTR_TYPE_DC_FLOW_LIM)
-        problem.add_function(pfnet.FUNC_TYPE_GEN_COST,1.)
-        problem.add_function(pfnet.FUNC_TYPE_LOAD_UTIL,-1.)
+        problem.add_constraint('variable bounds')
+        problem.add_constraint('DC power balance')
+        problem.add_constraint('DC branch flow limits')
+        problem.add_function('generation cost',1.)
+        problem.add_function('consumption utility',-1.)
         problem.analyze()
         
         # Return
@@ -100,13 +100,13 @@ class DCOPF(PFmethod):
         problem = self.create_problem(net)
 
         # Renewables
-        Pr = net.get_var_projection(pfnet.OBJ_VARGEN,pfnet.VARGEN_VAR_P)
+        Pr = net.get_var_projection('variable generator','active power')
        
         # Construct QP
         x = problem.get_init_point()
         problem.eval(x)
-        c_flows = problem.find_constraint(pfnet.CONSTR_TYPE_DC_FLOW_LIM)
-        c_bounds = problem.find_constraint(pfnet.CONSTR_TYPE_LBOUND)
+        c_flows = problem.find_constraint('DC branch flow limits')
+        c_bounds = problem.find_constraint('variable bounds')
         
         Hx = problem.Hphi + problem.Hphi.T - triu(problem.Hphi)
         gx = problem.gphi - Hx*x

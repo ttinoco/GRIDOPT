@@ -226,12 +226,12 @@ class TestPowerFlow(unittest.TestCase):
                 load.P_max = load.P[0]+1.
                 load.P_min = load.P[0]-1.
             for load in net.loads:
-                self.assertFalse(load.has_flags(pf.FLAG_VARS,pf.LOAD_VAR_P))
-                self.assertFalse(load.has_flags(pf.FLAG_BOUNDED,pf.LOAD_VAR_P))
+                self.assertFalse(load.has_flags('variable','active power'))
+                self.assertFalse(load.has_flags('bounded','active power'))
             method.solve(net)
             for load in net.loads:
-                self.assertTrue(load.has_flags(pf.FLAG_VARS,pf.LOAD_VAR_P))
-                self.assertTrue(load.has_flags(pf.FLAG_BOUNDED,pf.LOAD_VAR_P))
+                self.assertTrue(load.has_flags('variable','active power'))
+                self.assertTrue(load.has_flags('bounded','active power'))
                 self.assertEqual(method.results['status'],'solved')
             results = method.get_results()
             method.update_network(net)

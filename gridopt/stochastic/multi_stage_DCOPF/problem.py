@@ -91,45 +91,45 @@ class MS_DCOPF_Problem(StochProblemMS):
         
         # Variables
         net.clear_flags()
-        net.set_flags(pf.OBJ_BUS,
-                      pf.FLAG_VARS,
-                      pf.BUS_PROP_NOT_SLACK,
-                      pf.BUS_VAR_VANG)
-        net.set_flags(pf.OBJ_GEN,
-                      pf.FLAG_VARS,
-                      pf.GEN_PROP_P_ADJUST,
-                      pf.GEN_VAR_P)
-        net.set_flags(pf.OBJ_LOAD,
-                      pf.FLAG_VARS,
-                      pf.LOAD_PROP_ANY,
-                      pf.LOAD_VAR_P)
-        net.set_flags(pf.OBJ_VARGEN,
-                      pf.FLAG_VARS,
-                      pf.VARGEN_PROP_ANY,
-                      pf.VARGEN_VAR_P)
+        net.set_flags('bus',
+                      'variable',
+                      'not slack',
+                      'voltage angle')
+        net.set_flags('generator',
+                      'variable',
+                      'adjustable active power',
+                      'active power')
+        net.set_flags('load',
+                      'variable',
+                      'any',
+                      'active power')
+        net.set_flags('variable generator',
+                      'variable',
+                      'any',
+                      'active power')
 
         # Current values
         x = net.get_var_values()
         
         # Projections
-        Pw = net.get_var_projection(pf.OBJ_BUS,pf.BUS_VAR_VANG)
-        Pp = net.get_var_projection(pf.OBJ_GEN,pf.GEN_VAR_P)
-        Pl = net.get_var_projection(pf.OBJ_LOAD,pf.LOAD_VAR_P)
-        Pr = net.get_var_projection(pf.OBJ_VARGEN,pf.VARGEN_VAR_P)
+        Pw = net.get_var_projection('bus','voltage angle')
+        Pp = net.get_var_projection('generator','active power')
+        Pl = net.get_var_projection('load','active power')
+        Pr = net.get_var_projection('variable generator','active power')
         assert(Pw.shape == (num_w,net.num_vars))
         assert(Pp.shape == (num_p,net.num_vars))
         assert(Pl.shape == (num_l,net.num_vars))
         assert(Pr.shape == (num_r,net.num_vars))
 
         # Power flow equations
-        pf_eq = pf.Constraint(pf.CONSTR_TYPE_DCPF,net)
+        pf_eq = pf.Constraint('DC power balance',net)
         pf_eq.analyze()
         pf_eq.eval(x)
         A = pf_eq.A.copy()
         b = pf_eq.b.copy()
 
         # Branch flow limits
-        fl_lim = pf.Constraint(pf.CONSTR_TYPE_DC_FLOW_LIM,net)
+        fl_lim = pf.Constraint('DC branch flow limits',net)
         fl_lim.analyze()
         fl_lim.eval(x)
         G = fl_lim.G.copy()
@@ -138,15 +138,15 @@ class MS_DCOPF_Problem(StochProblemMS):
         assert(np.all(hl < hu))
         
         # Generation cost
-        cost = pf.Function(pf.FUNC_TYPE_GEN_COST,1.,net)
+        cost = pf.Function('generation cost',1.,net)
         cost.analyze()
         cost.eval(x)
         H = (cost.Hphi + cost.Hphi.T - triu(cost.Hphi))/net.base_power # symmetric, scaled
         g = cost.gphi/net.base_power - H*x                             # scaled
 
         # Bounds
-        l = net.get_var_values(pf.LOWER_LIMITS)
-        u = net.get_var_values(pf.UPPER_LIMITS)
+        l = net.get_var_values('lower limits')
+        u = net.get_var_values('upper limits')
         assert(np.all(Pw*l < Pw*u))
         assert(np.all(Pp*l < Pp*u))
         assert(np.all(Pl*l <= Pl*u))

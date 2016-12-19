@@ -43,28 +43,28 @@ class AugLOPF(PFmethod):
         net.clear_flags()
         
         # Voltage magnitudes
-        net.set_flags(pfnet.OBJ_BUS,
-                      pfnet.FLAG_VARS,
-                      pfnet.BUS_PROP_ANY,
-                      pfnet.BUS_VAR_VMAG)
+        net.set_flags('bus',
+                      'variable',
+                      'any',
+                      'voltage magnitude')
         
         # Voltage angles
-        net.set_flags(pfnet.OBJ_BUS,
-                      pfnet.FLAG_VARS,
-                      pfnet.BUS_PROP_NOT_SLACK,
-                      pfnet.BUS_VAR_VANG)
+        net.set_flags('bus',
+                      'variable',
+                      'not slack',
+                      'voltage angle')
 
         # Generator active power
-        net.set_flags(pfnet.OBJ_GEN,
-                      pfnet.FLAG_VARS|pfnet.FLAG_BOUNDED,
-                      pfnet.GEN_PROP_NOT_OUT,
-                      pfnet.GEN_VAR_P)
+        net.set_flags('generator',
+                      ['variable','bounded'],
+                      'not on outage',
+                      'active power')
 
         # Generator reactive power
-        net.set_flags(pfnet.OBJ_GEN,
-                      pfnet.FLAG_VARS|pfnet.FLAG_BOUNDED,
-                      pfnet.GEN_PROP_REG,
-                      pfnet.GEN_VAR_Q)
+        net.set_flags('generator',
+                      ['variable','bounded'],
+                      'regulator',
+                      'reactive power')
 
         try:
             assert(net.num_vars == (2*net.num_buses-net.get_num_slack_buses() +
@@ -78,12 +78,12 @@ class AugLOPF(PFmethod):
         # Set up problem
         problem = pfnet.Problem()
         problem.set_network(net)
-        problem.add_constraint(pfnet.CONSTR_TYPE_PF)
-        problem.add_constraint(pfnet.CONSTR_TYPE_BOUND) 
-        problem.add_function(pfnet.FUNC_TYPE_GEN_COST,wc)
-        problem.add_function(pfnet.FUNC_TYPE_SLIM_VMAG,wl)
-        problem.add_function(pfnet.FUNC_TYPE_REG_VANG,wr)
-        problem.add_function(pfnet.FUNC_TYPE_REG_PQ,wr)
+        problem.add_constraint('AC power balance')
+        problem.add_constraint('variable nonlinear bounds') 
+        problem.add_function('generation cost',wc)
+        problem.add_function('soft voltage magnitude limits',wl)
+        problem.add_function('voltage angle regularization',wr)
+        problem.add_function('generator powers regularization',wr)
         problem.analyze()
         
         # Return

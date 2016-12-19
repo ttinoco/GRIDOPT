@@ -47,7 +47,7 @@ class NRPF(PFmethod):
         eps = 1e-8
 
         # Fix constraints
-        c = p.find_constraint(pfnet.CONSTR_TYPE_FIX)
+        c = p.find_constraint('variable fixing')
         A = c.A        
         b = c.b
         
@@ -57,7 +57,7 @@ class NRPF(PFmethod):
         # Offset
         offset = 0
         for c in p.constraints:
-            if c.type == pfnet.CONSTR_TYPE_FIX:
+            if c.type == 'variable fixing':
                 break
             else:
                 offset += c.A.shape[0]
@@ -69,7 +69,7 @@ class NRPF(PFmethod):
 
             if bus.is_regulated_by_shunt() and not bus.is_slack():
                 
-                assert(bus.has_flags(pfnet.FLAG_VARS,pfnet.BUS_VAR_VMAG))
+                assert(bus.has_flags('variable','voltage magnitude'))
 
                 for t in range(net.num_periods):
 
@@ -85,7 +85,7 @@ class NRPF(PFmethod):
 
                         for reg_shunt in bus.reg_shunts:
                     
-                            assert(reg_shunt.has_flags(pfnet.FLAG_VARS,pfnet.SHUNT_VAR_SUSC))
+                            assert(reg_shunt.has_flags('variable','susceptance'))
                         
                             s = x[reg_shunt.index_b[t]]
                             smax = reg_shunt.b_max
@@ -130,7 +130,7 @@ class NRPF(PFmethod):
         eps = 1e-8
 
         # Fix constraints
-        c = p.find_constraint(pfnet.CONSTR_TYPE_FIX)
+        c = p.find_constraint('variable fixing')
         A = c.A        
         b = c.b
 
@@ -140,7 +140,7 @@ class NRPF(PFmethod):
         # Offset
         offset = 0
         for c in p.constraints:
-            if c.type == pfnet.CONSTR_TYPE_FIX:
+            if c.type == 'variable fixing':
                 break
             else:
                 offset += c.A.shape[0]
@@ -152,7 +152,7 @@ class NRPF(PFmethod):
 
             if bus.is_regulated_by_tran() and not bus.is_slack():
                 
-                assert(bus.has_flags(pfnet.FLAG_VARS,pfnet.BUS_VAR_VMAG))
+                assert(bus.has_flags('variable','voltage magnitude'))
 
                 for tau in range(net.num_periods):
                     
@@ -168,7 +168,7 @@ class NRPF(PFmethod):
                         
                         for reg_tran in bus.reg_trans:
                     
-                            assert(reg_tran.has_flags(pfnet.FLAG_VARS,pfnet.BRANCH_VAR_RATIO))
+                            assert(reg_tran.has_flags('variable','tap ratio'))
                                 
                             t = x[reg_tran.index_ratio[tau]]
                             tmax = reg_tran.ratio_max
@@ -215,38 +215,38 @@ class NRPF(PFmethod):
         net.adjust_generators()
         
         # Voltages
-        net.set_flags(pfnet.OBJ_BUS,
-                      pfnet.FLAG_VARS,
-                      pfnet.BUS_PROP_NOT_SLACK,
-                      pfnet.BUS_VAR_VMAG|pfnet.BUS_VAR_VANG)
-        net.set_flags(pfnet.OBJ_BUS,
-                      pfnet.FLAG_FIXED,
-                      pfnet.BUS_PROP_REG_BY_GEN,
-                      pfnet.BUS_VAR_VMAG)
+        net.set_flags('bus',
+                      'variable',
+                      'not slack',
+                      ['voltage magnitude','voltage angle'])
+        net.set_flags('bus',
+                      'fixed',
+                      'regulated by generator',
+                      'voltage magnitude')
 
         # Gen active powers
-        net.set_flags(pfnet.OBJ_GEN,
-                      pfnet.FLAG_VARS,
-                      pfnet.GEN_PROP_SLACK,
-                      pfnet.GEN_VAR_P)
+        net.set_flags('generator',
+                      'variable',
+                      'slack',
+                      'active power')
 
         # Gen reactive powers
-        net.set_flags(pfnet.OBJ_GEN,
-                      pfnet.FLAG_VARS,
-                      pfnet.GEN_PROP_REG,
-                      pfnet.GEN_VAR_Q)
+        net.set_flags('generator',
+                      'variable',
+                      'regulator',
+                      'reactive power')
 
         # Tap ratios
-        net.set_flags(pfnet.OBJ_BRANCH,
-                      pfnet.FLAG_VARS|pfnet.FLAG_FIXED,
-                      pfnet.BRANCH_PROP_TAP_CHANGER_V,
-                      pfnet.BRANCH_VAR_RATIO)
+        net.set_flags('branch',
+                      ['variable','fixed'],
+                      'tap changer - v',
+                      'tap ratio')
 
         # Shunt susceptances
-        net.set_flags(pfnet.OBJ_SHUNT,
-                      pfnet.FLAG_VARS|pfnet.FLAG_FIXED,
-                      pfnet.SHUNT_PROP_SWITCHED_V,
-                      pfnet.SHUNT_VAR_SUSC)
+        net.set_flags('shunt',
+                      ['variable','fixed'],
+                      'switching - v',
+                      'susceptance')
 
         try:
             assert(net.num_vars == (2*(net.num_buses-net.get_num_slack_buses()) +
@@ -263,10 +263,10 @@ class NRPF(PFmethod):
         # Set up problem
         problem = pfnet.Problem()
         problem.set_network(net)
-        problem.add_constraint(pfnet.CONSTR_TYPE_PF)
-        problem.add_constraint(pfnet.CONSTR_TYPE_PAR_GEN_P)
-        problem.add_constraint(pfnet.CONSTR_TYPE_PAR_GEN_Q)
-        problem.add_constraint(pfnet.CONSTR_TYPE_FIX)
+        problem.add_constraint('AC power balance')
+        problem.add_constraint('generator active power participation')
+        problem.add_constraint('generator reactive power participation')
+        problem.add_constraint('variable fixing')
         if limit_gens:
             problem.add_heuristic(pfnet.HEUR_TYPE_PVPQ)
         problem.analyze()

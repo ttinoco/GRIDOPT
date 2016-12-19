@@ -4,6 +4,7 @@ Targets
 
 Unreleased
 ----------
+* Compatibility with PFNET 1.2.5
 
 Version 1.3
 -----------

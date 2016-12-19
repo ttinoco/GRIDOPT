@@ -35,16 +35,16 @@ class DCPF(PFmethod):
         net.clear_flags()
 
         # Voltages angles (not slack)
-        net.set_flags(pfnet.OBJ_BUS,
-                      pfnet.FLAG_VARS,
-                      pfnet.BUS_PROP_NOT_SLACK,
-                      pfnet.BUS_VAR_VANG)
+        net.set_flags('bus',
+                      'variable',
+                      'not slack',
+                      'voltage angle')
 
         # Gen active powers (slack)
-        net.set_flags(pfnet.OBJ_GEN,
-                      pfnet.FLAG_VARS,
-                      pfnet.GEN_PROP_SLACK,
-                      pfnet.GEN_VAR_P)
+        net.set_flags('generator',
+                      'variable',
+                      'slack',
+                      'active power')
 
         # Check
         try:
@@ -55,8 +55,8 @@ class DCPF(PFmethod):
         # Set up problem
         problem = pfnet.Problem()
         problem.set_network(net)
-        problem.add_constraint(pfnet.CONSTR_TYPE_DCPF)
-        problem.add_constraint(pfnet.CONSTR_TYPE_PAR_GEN_P)
+        problem.add_constraint('DC power balance')
+        problem.add_constraint('generator active power participation')
         problem.analyze()
 
         # Return

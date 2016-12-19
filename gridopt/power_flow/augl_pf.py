@@ -54,44 +54,44 @@ class AugLPF(PFmethod):
         net.adjust_generators()
         
         # Set up variables
-        net.set_flags(pfnet.OBJ_BUS,
-                      pfnet.FLAG_VARS,
-                      pfnet.BUS_PROP_NOT_SLACK,
-                      pfnet.BUS_VAR_VMAG|pfnet.BUS_VAR_VANG)
-        net.set_flags(pfnet.OBJ_BUS,
-                      pfnet.FLAG_VARS,
-                      pfnet.BUS_PROP_NOT_SLACK|pfnet.BUS_PROP_REG_BY_GEN,
-                      pfnet.BUS_VAR_VDEV)
-        net.set_flags(pfnet.OBJ_GEN,
-                      pfnet.FLAG_VARS,
-                      pfnet.GEN_PROP_SLACK,
-                      pfnet.GEN_VAR_P)
-        net.set_flags(pfnet.OBJ_GEN,
-                      pfnet.FLAG_VARS,
-                      pfnet.GEN_PROP_REG,
-                      pfnet.GEN_VAR_Q)
+        net.set_flags('bus',
+                      'variable',
+                      'not slack',
+                      ['voltage magnitude','voltage angle'])
+        net.set_flags('bus',
+                      'variable',
+                      ['not slack','regulated by generator'],
+                      'voltage magnitude deviation')
+        net.set_flags('generator',
+                      'variable',
+                      'slack',
+                      'active power')
+        net.set_flags('generator',
+                      'variable',
+                      'regulator',
+                      'reactive power')
         
         # Tap ratios
         if not lock_taps:
-            net.set_flags(pfnet.OBJ_BUS,
-                          pfnet.FLAG_VARS,
-                          pfnet.BUS_PROP_REG_BY_TRAN,
-                          pfnet.BUS_VAR_VVIO)
-            net.set_flags(pfnet.OBJ_BRANCH, 
-                          pfnet.FLAG_VARS,
-                          pfnet.BRANCH_PROP_TAP_CHANGER_V,
-                          pfnet.BRANCH_VAR_RATIO|pfnet.BRANCH_VAR_RATIO_DEV)
+            net.set_flags('bus',
+                          'variable',
+                          'regulated by transformer',
+                          'voltage magnitude violation')
+            net.set_flags('branch', 
+                          'variable',
+                          'tap changer - v',
+                          ['tap ratio','tap ratio deviation'])
 
         # Shunt voltage control
         if not lock_shunts:
-            net.set_flags(pfnet.OBJ_BUS,
-                          pfnet.FLAG_VARS,
-                          pfnet.BUS_PROP_REG_BY_SHUNT,
-                          pfnet.BUS_VAR_VVIO)
-            net.set_flags(pfnet.OBJ_SHUNT, 
-                          pfnet.FLAG_VARS,
-                          pfnet.SHUNT_PROP_SWITCHED_V,
-                          pfnet.SHUNT_VAR_SUSC|pfnet.SHUNT_VAR_SUSC_DEV)
+            net.set_flags('bus',
+                          'variable',
+                          'regulated by shunt',
+                          'voltage magnitude violation')
+            net.set_flags('shunt', 
+                          'variable',
+                          'switching - v',
+                          ['susceptance','susceptance deviation'])
 
         try:
             num_vars = (2*(net.num_buses-net.get_num_slack_buses()) +
@@ -115,21 +115,21 @@ class AugLPF(PFmethod):
         # Set up problem
         problem = pfnet.Problem()
         problem.set_network(net)
-        problem.add_constraint(pfnet.CONSTR_TYPE_PF)
-        problem.add_constraint(pfnet.CONSTR_TYPE_PAR_GEN_P)
-        problem.add_constraint(pfnet.CONSTR_TYPE_PAR_GEN_Q)
-        problem.add_constraint(pfnet.CONSTR_TYPE_REG_GEN)
+        problem.add_constraint('AC power balance')
+        problem.add_constraint('generator active power participation')
+        problem.add_constraint('generator reactive power participation')
+        problem.add_constraint('voltage regulation by generators')
         if not lock_taps:
-            problem.add_constraint(pfnet.CONSTR_TYPE_REG_TRAN)
+            problem.add_constraint('voltage regulation by transformers')
         if not lock_shunts:
-            problem.add_constraint(pfnet.CONSTR_TYPE_REG_SHUNT)
-        problem.add_function(pfnet.FUNC_TYPE_REG_VMAG,weight_vmag)
-        problem.add_function(pfnet.FUNC_TYPE_REG_VANG,weight_vang)
-        problem.add_function(pfnet.FUNC_TYPE_REG_PQ,weight_pq)
+            problem.add_constraint('voltage regulation by shunts')
+        problem.add_function('voltage magnitude regularization',weight_vmag)
+        problem.add_function('voltage angle regularization',weight_vang)
+        problem.add_function('generator powers regularization',weight_pq)
         if not lock_taps:
-            problem.add_function(pfnet.FUNC_TYPE_REG_RATIO,weight_t)
+            problem.add_function('tap ratio regularization',weight_t)
         if not lock_shunts:
-            problem.add_function(pfnet.FUNC_TYPE_REG_SUSC,weight_b)
+            problem.add_function('susceptance regularization',weight_b)
         problem.analyze()
         
         # Return
