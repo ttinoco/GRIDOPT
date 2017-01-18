@@ -6,18 +6,11 @@
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
 
-import csv
 import pfnet as pf
 import numpy as np
-from .utils import ApplyFunc
 from numpy.linalg import norm
-from multiprocessing import Pool,cpu_count
-from optalg.lin_solver import new_linsolver
-from scipy.sparse.linalg import LinearOperator
-from optalg.opt_solver.opt_solver_error import *
+from scipy.sparse import triu,coo_matrix
 from optalg.stoch_solver import StochProblem
-from optalg.opt_solver import OptSolverIQP,QuadProblem
-from scipy.sparse import triu,bmat,coo_matrix,eye,spdiags
             
 class TS_DCOPF_Problem(StochProblem):
     """"
@@ -38,34 +31,31 @@ class TS_DCOPF_Problem(StochProblem):
 
     # Parameters
     parameters = {'cost_factor' : 1e2,   # factor for determining gen adjustment cost
-                  'infinity' : 1e3,      # infinity
+                  'infinity' : 1e4,      # infinity
                   'flow_factor' : 1.,    # factor for relaxing thermal limits
-                  'num_samples' : 2000}  # number of samples
+                  'num_samples' : 1000,  # number of samples
+                  'num_procs': 1}
 
-    def __init__(self,net):
+    def __init__(self,net,parameters={}):
         """
         Class constructor.
         
         Parameters
         ----------
         net : PFNET Network
+        parameters : dict
         """
 
         # Parameters
         self.parameters = TS_DCOPF_Problem.parameters.copy()
-
+        self.set_parameters(parameters)
+        
         # Save info
         self.total_load = sum([l.P for l in net.loads])
         self.uncertainty = 100.*sum([g.P_std for g in net.var_generators])/sum([g.P_max for g in net.var_generators]) # % of capacity
         self.corr_value = net.vargen_corr_value    # correlation value  ([0,1])
         self.corr_radius = net.vargen_corr_radius  # correlation radius (# of branches)
                 
-        # Generator limits
-        for gen in net.generators:
-            gen.P_min = 0.
-            gen.P_max = np.maximum(gen.P_max,0.)
-            assert(gen.P_min <= gen.P_max)
-
         # Branch flow limits
         for br in net.branches:
             if br.ratingA == 0.:
@@ -76,46 +66,44 @@ class TS_DCOPF_Problem(StochProblem):
         # Counters
         num_w = net.num_buses-net.get_num_slack_buses() # voltage angles
         num_p = net.get_num_P_adjust_gens()             # adjustable generators
-        num_r = net.num_vargens                         # renewable generators
-        num_bus = net.num_buses                         # buses
-        num_br = net.num_branches                       # branches
+        num_r = net.num_var_generators                  # renewable generators
 
         # Variables
         net.clear_flags()
-        net.set_flags(pf.OBJ_BUS,
-                      pf.FLAG_VARS,
-                      pf.BUS_PROP_NOT_SLACK,
-                      pf.BUS_VAR_VANG)
-        net.set_flags(pf.OBJ_GEN,
-                      pf.FLAG_VARS,
-                      pf.GEN_PROP_P_ADJUST,
-                      pf.GEN_VAR_P)
-        net.set_flags(pf.OBJ_VARGEN,
-                      pf.FLAG_VARS,
-                      pf.VARGEN_PROP_ANY,
-                      pf.VARGEN_VAR_P)
+        net.set_flags('bus',
+                      'variable',
+                      'not slack',
+                      'voltage angle')
+        net.set_flags('generator',
+                      'variable',
+                      'adjustable active power',
+                      'active power')
+        net.set_flags('variable generator',
+                      'variable',
+                      'any',
+                      'active power')
         assert(net.num_vars == num_w+num_p+num_r)
-
+        
         # Values
         x = net.get_var_values()
 
         # Projections
-        Pw = net.get_var_projection(pf.OBJ_BUS,pf.BUS_VAR_VANG)
-        Pp = net.get_var_projection(pf.OBJ_GEN,pf.GEN_VAR_P)
-        Pr = net.get_var_projection(pf.OBJ_VARGEN,pf.VARGEN_VAR_P)
+        Pw = net.get_var_projection('bus','voltage angle')
+        Pp = net.get_var_projection('generator','active power')
+        Pr = net.get_var_projection('variable generator','active power')
         assert(Pw.shape == (num_w,net.num_vars))
         assert(Pp.shape == (num_p,net.num_vars))
         assert(Pr.shape == (num_r,net.num_vars))
 
         # Power flow equations
-        pf_eq = pf.Constraint(pf.CONSTR_TYPE_DCPF,net)
+        pf_eq = pf.Constraint('DC power balance',net)
         pf_eq.analyze()
         pf_eq.eval(x)
         A = pf_eq.A.copy()
         b = pf_eq.b.copy()
 
         # Branch flow limits
-        fl_lim = pf.Constraint(pf.CONSTR_TYPE_DC_FLOW_LIM,net)
+        fl_lim = pf.Constraint('DC branch flow limits',net)
         fl_lim.analyze()
         fl_lim.eval(x)
         G = fl_lim.G.copy()
@@ -124,15 +112,16 @@ class TS_DCOPF_Problem(StochProblem):
         assert(np.all(hl < hu))
         
         # Generation cost
-        cost = pf.Function(pf.FUNC_TYPE_GEN_COST,1.,net)
+        cost = pf.Function('generation cost',1.,net)
         cost.analyze()
         cost.eval(x)
         H = (cost.Hphi + cost.Hphi.T - triu(cost.Hphi))/net.base_power # symmetric
         g = cost.gphi/net.base_power - H*x
+        assert(norm((H-H.T).data) < 1e-12*norm(H.data))
         
         # Bounds
-        l = net.get_var_values(pf.LOWER_LIMITS)
-        u = net.get_var_values(pf.UPPER_LIMITS)
+        l = net.get_var_values('lower limits')
+        u = net.get_var_values('upper limits')
         assert(np.all(Pw*l < Pw*u))
         assert(np.all(Pp*l < Pp*u))
         assert(np.all(Pr*l < Pr*u))
@@ -141,12 +130,8 @@ class TS_DCOPF_Problem(StochProblem):
         self.num_w = num_w
         self.num_p = num_p
         self.num_r = num_r
-        self.num_bus = num_bus
-        self.num_br = num_br
         self.p_max = Pp*u
         self.p_min = Pp*l
-        self.w_max = self.parameters['infinity']*np.ones(self.num_w)
-        self.w_min = -self.parameters['infinity']*np.ones(self.num_w)
         self.r_max = Pr*u
         self.r_base = Pr*x
         self.z_max = hu
@@ -185,10 +170,12 @@ class TS_DCOPF_Problem(StochProblem):
             z = np.random.randn(self.num_r)
             assert(norm(self.r_cov*z-self.L*self.L.T*z) < 1e-10)
 
+        # Samples
+        num_samples = self.parameters['num_samples']
+        self.eval_samples = [self.sample_w() for i in range(num_samples)]
+
         # Average renewables
-        self.Er = 0
-        for i in range(self.parameters['num_samples']):
-            self.Er += (self.sample_w()-self.Er)/(i+1)
+        self.Er = sum(self.eval_samples)/float(num_samples)
         
         # Checks
         assert(np.all(self.p_min == 0))
@@ -197,80 +184,56 @@ class TS_DCOPF_Problem(StochProblem):
         assert(np.all(self.p_min < self.p_max))
         assert(np.all(cost.Hphi.row == cost.Hphi.col))
         assert(np.all(cost.Hphi.data > 0))
-        assert(norm(self.A.T*np.ones(self.num_bus)) < (1e-10)*np.sqrt(self.num_bus*1.))
-        
-    def eval_EQ(self,p,samples=500,seed=None,tol=1e-4,quiet=True):
-        """
-        Evaluates E[Q(p,r)] and its gradient. 
+        assert(norm(self.A.T*np.ones(net.num_buses)) < (1e-10)*np.sqrt(float(net.num_buses)))
 
+        # Opt prog
+        self.clear()
+        
+    def clear(self):
+
+        self.opt_progQ = None
+        self.opt_progQ_data = None
+
+        self.opt_progF = None
+        self.opt_progF_data = None
+        
+    def set_parameters(self,params):
+        """
+        Sets problem parameters.
+        
         Parameters
         ----------
-        p : generator powers
-        samples : number of samples
-        seed : integer
-        tol : evaluation tolerance
-        quiet : flag
+        params : dict
         """
         
-        # Local vars
-        Q = 0.
-        gQ = np.zeros(self.num_p)
+        for key,value in list(params.items()):
+            if key in self.parameters:
+                self.parameters[key] = value
 
-        # Seed
-        if seed is None:
-            np.random.seed()
-        else:
-            np.random.seed(seed)
-        
-        # Problem
-        problem = self.get_problem_for_Q(p,np.ones(self.num_r))
-        
-        # Sampling loop
-        for i in range(samples):
-            
-            r = self.sample_w()
-
-            problem.u[self.num_p+self.num_w:self.num_p+self.num_w+self.num_r] = r # Important (update bound)
-            
-            q,gq = self.eval_Q(p,r,tol=tol,problem=problem)
-
-            # Show progress
-            if not quiet and i > 0:
-                print('%d\t%.5e' %(i,Q))
-
-            # Infinity
-            if not q < np.inf:
-                return np.inf,None
-
-            # Update
-            Q += (q-Q)/(i+1.)
-            gQ += (gq-gQ)/(i+1.)
-                            
-        return Q,gQ
-
-    def eval_EQ_parallel(self,p,samples=500,num_procs=None,tol=1e-4,quiet=True):
+    def eval_EQ(self,p):
         """
         Evaluates E[Q(p,r)] and its gradient in parallel. 
 
         Parameters
         ----------
         p : generator powers
-        samples : number of samples
-        num_procs : number of parallel processes
-        tol : evaluation tolerance
-        quiet : flag
         """
-    
-        if not num_procs:
-            num_procs = cpu_count()
+       
+        from multiprocess import Pool
+ 
+        self.clear()
+        num_procs = self.parameters['num_procs']
+        num_samples = self.parameters['num_samples']
         pool = Pool(num_procs)
-        num = int(np.ceil(float(samples)/float(num_procs)))
-        results = list(zip(*pool.map(ApplyFunc,[(self,'eval_EQ',p,num,i,tol,quiet) for i in range(num_procs)],chunksize=1)))
+        chunk = int(np.ceil(float(num_samples)/float(num_procs)))
+        results = list(zip(*pool.map(lambda w: self.eval_Q(p,w),self.eval_samples,chunksize=chunk)))
         pool.terminate()
         pool.join()
-        return [sum([val/float(num_procs) for val in vals]) for vals in results]
+        assert(len(results) == 2)
+        assert(all([len(vals) == num_samples for vals in results]))
+        return [sum(vals)/float(num_samples) for vals in results]
         
-    def eval_Q(self,p,r,quiet=True,check=False,tol=1e-4,problem=None,return_data=False):
+    def eval_Q(self,p,r):
         """
         Evaluates Q(p,r) and its gradient.
 
@@ -278,88 +241,39 @@ class TS_DCOPF_Problem(StochProblem):
         ----------
         p : generator powers
         r : renewable powers
-        quiet : flag
-        check : flag
-        tol : evaluation tolerance 
-        problem : QuadProblem
-        return_data : flag
 
         Returns
         -------
         Q : value
         gQ : gradient
         """
-
-        # Local vars
-        num_p = self.num_p
-        num_w = self.num_w
-        num_r = self.num_r
-        num_bus = self.num_bus
-        num_br = self.num_br
         
         # Check
         assert(np.all(r > 0))
         
-        # Problem
-        if not problem:
-            problem = self.get_problem_for_Q(p,r)
-               
-        try:
+        # Program
+        opt_progQ,opt_progQ_data = self.get_Q_program()
+        opt_progQ_data['p'].value = p
+        opt_progQ_data['r'].value = r
+                           
+        # Solve
+        try: 
+            opt_progQ.solve(max_iters=1000)
+        except Exception:
+            import cvxpy as cpy
+            opt_progQ.solve(solver=cpy.CVXOPT,max_iters=1000)
 
-            # Solver
-            solver = OptSolverIQP()
-            solver.set_parameters({'quiet':quiet,
-                                   'tol':tol})
-            
-            # Solve
-            solver.solve(problem)
-
-            # Info
-            x = solver.get_primal_variables()
-            lam,nu,mu,pi = solver.get_dual_variables()
-            k = solver.get_iterations()
-            q = x[:num_p]
-            
-            # Check
-            if check:
-                w = x[num_p:num_p+num_w]
-                s = x[num_p+num_w:num_p+num_w+num_r]
-                z = x[num_p+num_w+num_r:]
-                assert(norm(self.G*(p+q)+self.R*s-self.A*w-self.b) < (1e-6)*norm(self.b))
-                assert(norm(self.J*w-z) < (1e-6)*norm(z))
-                assert(np.all(self.p_min <= p+q))
-                assert(np.all(p+q <= self.p_max))
-                assert(np.all(0 <= s))
-                assert(np.all(s <= r))
-                assert(np.all(self.z_min <= z))
-                assert(np.all(self.z_max >= z))
-
-            # Objective
-            Q = 0.5*np.dot(q,self.H1*q)+np.dot(self.g1,q)
-            
-            # Gradient
-            gQ = -(self.H1*q+self.g1)
-
-            # Return
-            if not return_data:
-                return Q,gQ
-            else:
-
-                # Sensitivity (as linear operator)
-                dqdpT = self.get_sol_sensitivity(problem,x,lam,mu,pi) # NEED TO GENERALIZE THIS TO dxdpT
-                
-                data = {'q': q,
-                        'dqdpT': dqdpT}
-
-                return Q,gQ,data
-
-        # Errors
-        except OptSolverError_MaxIters:
-            return np.inf,None
-        except OptSolverError_LineSearch:
-            return np.inf,None
-        except Exception as e:
-            raise
+        # Results
+        q = np.array(opt_progQ_data['q'].value).flatten()
+        
+        # Objective
+        Q = 0.5*np.dot(q,self.H1*q)+np.dot(self.g1,q)
+        
+        # Gradient
+        gQ = -(self.H1*q+self.g1) # See ECC paper
+        
+        # Return
+        return Q,gQ
 
     def get_size_x(self):
         """
@@ -387,24 +301,8 @@ class TS_DCOPF_Problem(StochProblem):
         """
         
         return np.average(x/self.p_max)
-
-    def get_strong_convexity_constant(self):
-        """
-        Gets strong convexity constant, which for
-        this case is lambda_min(H0)/2.
-
-        Returns
-        -------
-        c : float
-        """
-
-        H0 = self.H0.tocoo()
-        assert(np.all(H0.row == H0.col))
-        lmin = np.min(H0.data)
-        assert(lmin > 0)
-        return lmin/2.
-
-    def get_problem_for_Q(self,p,r):
+        
+    def get_Q_program(self):
         """
         Constructs second-stage quadratic problem
         in the form
@@ -415,57 +313,44 @@ class TS_DCOPF_Problem(StochProblem):
 
         where x = (q,w,s,z).
 
-        Parameters
-        ----------
-        p : generator powers
-        r : renewable powers
-
         Returns
         -------
-        problem : QuadProblem
+        opt_progQ
+        opt_progQ_data
         """
-
-        # Constatns
-        num_p = self.num_p
-        num_w = self.num_w
-        num_r = self.num_r
-        num_bus = self.num_bus
-        num_br = self.num_br
-        Ow = coo_matrix((num_w,num_w))
-        Os = coo_matrix((num_r,num_r))
-        Oz = coo_matrix((num_br,num_br))
-        Iz = eye(num_br,format='coo')
-        ow = np.zeros(num_w)
-        os = np.zeros(num_r)
-        oz = np.zeros(num_br)
-        cost_factor = self.parameters['cost_factor']
-
-        H1 = self.H1/cost_factor
-        g1 = self.g1/cost_factor
+                
+        # Construction
+        if self.opt_progQ is None:
         
-        # Form QP problem
-        H = bmat([[H1,None,None,None],  # q: gen power adjustments
-                  [None,Ow,None,None],  # w: bus voltage angles
-                  [None,None,Os,None],  # s: curtailed renewable powers
-                  [None,None,None,Oz]], # z: slack variables for thermal limits
-                 format='coo')
-        g = np.hstack((g1,ow,os,oz))
-        A = bmat([[self.G,-self.A,self.R,None],
-                  [None,self.J,None,-Iz]],format='coo')
-        b = np.hstack((self.b-self.G*p,oz))
-        l = np.hstack((self.p_min-p,
-                       self.w_min,
-                       os,
-                       self.z_min))
-        u = np.hstack((self.p_max-p,
-                       self.w_max,
-                       r,
-                       self.z_max))
+            # Import
+            import cvxpy as cpy
+    
+            # Opt prog
+            q = cpy.Variable(self.num_p)
+            w = cpy.Variable(self.num_w)
+            s = cpy.Variable(self.num_r)
+            ppar = cpy.Parameter(self.num_p)
+            rpar = cpy.Parameter(self.num_r)
+            
+            obj = 0.5*cpy.quad_form(q,cpy.Constant(self.H1)) + q.T*cpy.Constant(self.g1)
+            
+            constr = [self.p_min <= ppar + q,
+                      ppar + q <= self.p_max,
+                      0 <= s,
+                      s <= rpar,
+                      self.z_min <= cpy.Constant(self.J)*w,
+                      cpy.Constant(self.J)*w <= self.z_max,
+                      cpy.Constant(self.G)*(ppar+q) + cpy.Constant(self.R)*s - cpy.Constant(self.A)*w == self.b]
+            
+            self.opt_progQ = cpy.Problem(cpy.Minimize(obj),constr)
+            self.opt_progQ_data = {'q': q,
+                                   'p': ppar,
+                                   'r': rpar}
         
         # Return
-        return QuadProblem(H,g,A,b,l,u)
-
-    def eval_F(self,x,w,tol=1e-4):
+        return self.opt_progQ,self.opt_progQ_data
+        
+    def eval_F(self,x,w):
         """
         Evaluates objective function for a given
         realization of uncertainty.
@@ -483,35 +368,17 @@ class TS_DCOPF_Problem(StochProblem):
         
         phi = 0.5*np.dot(x,self.H0*x)+np.dot(self.g0,x)
         gphi = self.H0*x + self.g0
-        Q,gQ = self.eval_Q(x,w,tol=tol)
+        Q,gQ = self.eval_Q(x,w)
 
-        return (phi+Q,gphi+gQ)
+        return phi+Q,gphi+gQ
 
-    def eval_F_approx(self,x,tol=1e-4):
-        """
-        Evaluates certainty equivalent
-        version of objective function.
-
-        Parameters
-        ----------
-        x : generator powers
-
-        Returns
-        -------
-        F : float
-        gF : vector
-        """
-
-        return self.eval_F(x,self.Er,tol=tol)
-
-    def eval_EF(self,x,samples=500,tol=1e-4):
+    def eval_EF(self,x):
         """
         Evaluates expected objective function.
 
         Parameters
         ----------
         x : generator powers
-        samples : number of samples
         
         Returns
         -------
@@ -520,9 +387,9 @@ class TS_DCOPF_Problem(StochProblem):
         
         phi = 0.5*np.dot(x,self.H0*x)+np.dot(self.g0,x)
         gphi = self.H0*x + self.g0
-        Q,gQ = self.eval_EQ_parallel(x,samples=samples,tol=tol)
+        Q,gQ = self.eval_EQ(x)
 
-        return (phi+Q,gphi+gQ)
+        return phi+Q,gphi+gQ
 
     def project_x(self,x):
         """
@@ -551,31 +418,6 @@ class TS_DCOPF_Problem(StochProblem):
 
         return np.minimum(np.maximum(self.r_base+self.L*np.random.randn(self.num_r),1e-3),self.r_max)
 
-    def save_x_info(self,x,filename):
-
-        # Local variables
-        num_p = self.num_p
-        H0 = self.H0*np.ones(num_p)
-        
-        # Check
-        assert(x.size == num_p)
-
-        # Writer
-        f = open(filename,'w')
-        writer = csv.writer(f)
-        
-        # Write
-        writer.writerow(['p','pmin','pmax','H0','g0'])
-        for i in range(num_p):
-            writer.writerow([x[i],
-                             self.p_min[i],
-                             self.p_max[i],
-                             H0[i],
-                             self.g0[i]])
-
-        # Close
-        f.close()
-
     def show(self):
         """
         Shows problem information.
@@ -586,16 +428,55 @@ class TS_DCOPF_Problem(StochProblem):
         
         print('Stochastic Two-Stage DCOPF')
         print('--------------------------')
-        print('buses            : %d' %self.num_bus)
         print('gens             : %d' %self.num_p)
+        print('angles           : %d' %self.num_w)
         print('vargens          : %d' %self.num_r)
         print('penetration cap  : %.2f (%% of load)' %(100.*Ctot/self.total_load))
         print('penetration base : %.2f (%% of load)' %(100.*Btot/self.total_load))
         print('penetration std  : %.2f (%% of local cap)' %self.uncertainty)
-        print('correlation rad  : %d (edges)' %(self.corr_radius))
-        print('correlation val  : %.2f (unitless)' %(self.corr_value))
+        print('correlation rad  : %d (edges)' %self.corr_radius)
+        print('correlation val  : %.2f (unitless)' %self.corr_value)
+        print('num samples      : %d' %self.parameters['num_samples'])
+        print('num procs        : %d' %self.parameters['num_procs'])
 
-    def solve_approx(self,g_corr=None,tol=1e-4,quiet=False,samples=500,init_data=None):
+    def get_F_program(self):
+        
+        # Construction
+        if self.opt_progF is None:
+
+            # Import
+            import cvxpy as cpy
+            
+            # Opt prog
+            p = cpy.Variable(self.num_p)
+            q = cpy.Variable(self.num_p)
+            w = cpy.Variable(self.num_w)
+            s = cpy.Variable(self.num_r)
+            gpar = cpy.Parameter(self.num_p)
+            
+            obj = (0.5*cpy.quad_form(p,cpy.Constant(self.H0)) + p.T*cpy.Constant(self.g0) +
+                   p.T*gpar + 
+                   0.5*cpy.quad_form(q,cpy.Constant(self.H1)) + q.T*cpy.Constant(self.g1))                   
+            
+            constr = [self.p_min <= p,
+                      p <= self.p_max,
+                      self.p_min <= p + q,
+                      p + q <= self.p_max,
+                      0 <= s,
+                      s <= self.Er,
+                      self.z_min <= cpy.Constant(self.J)*w,
+                      cpy.Constant(self.J)*w <= self.z_max,
+                      cpy.Constant(self.G)*(p+q) + cpy.Constant(self.R)*s - cpy.Constant(self.A)*w == self.b]
+            
+            self.opt_progF = cpy.Problem(cpy.Minimize(obj),constr)
+            self.opt_progF_data = {'p': p,
+                                   'q': q,
+                                   'g': gpar}
+        
+        # Return
+        return self.opt_progF,self.opt_progF_data
+
+    def solve_approx(self,g_corr=None):
         """
         Solves certainty equivalent problem
         with slope correction.
@@ -603,155 +484,30 @@ class TS_DCOPF_Problem(StochProblem):
         Parameters
         ----------
         g_corr : slope correction
-        tol : optimality tolerance
-        quiet : flag
-        samples : number of samples
-
+        
         Returns
         -------
-        p : generator powers
+        x : vector
+        gF_approx : gradient
         """
-        
-        # Constants
-        num_p = self.num_p
-        num_w = self.num_w
-        num_r = self.num_r
-        num_bus = self.num_bus
-        num_br = self.num_br
-        Ow = coo_matrix((num_w,num_w))
-        Os = coo_matrix((num_r,num_r))
-        Oz = coo_matrix((num_br,num_br))
-        Onp = coo_matrix((num_bus,num_p))
-        Onz = coo_matrix((num_bus,num_br))
-        ow = np.zeros(num_w)
-        os = np.zeros(num_r)
-        oz = np.zeros(num_br)
-        Iz = eye(num_br,format='coo')
-        
+                
         # Slope correction
         if g_corr is None:
-            g_corr = np.zeros(num_p)
-
-        # Problem construction
-        H = bmat([[self.H0+self.H1,-self.H1,None,None,None], # p
-                  [-self.H1,self.H1,None,None,None],         # y = p + q
-                  [None,None,Ow,None,None],                  # w
-                  [None,None,None,Os,None],                  # s
-                  [None,None,None,None,Oz]],                 # z
-                 format='coo')
-        g = np.hstack((self.g0-self.g1+g_corr,self.g1,ow,os,oz))
-        A = bmat([[Onp,self.G,-self.A,self.R,Onz],
-                  [None,None,self.J,None,-Iz]],format='coo')
-        b = np.hstack((self.b,oz))
-        l = np.hstack((self.p_min,  # p
-                       self.p_min,  # y
-                       self.w_min,  # w
-                       os,          # s
-                       self.z_min)) # z
-        u = np.hstack((self.p_max,
-                       self.p_max,
-                       self.w_max,
-                       self.Er,
-                       self.z_max))
-
-        # Problem
-        if init_data is None:
-            problem = QuadProblem(H,g,A,b,l,u)
-        else:
-            problem = QuadProblem(H,g,A,b,l,u,
-                                  x=init_data['x'],
-                                  lam=init_data['lam'],
-                                  mu=init_data['mu'],
-                                  pi=init_data['pi'])
-        
+            g_corr = np.zeros(self.num_p)
+            
+        # Program
+        opt_progF,opt_progF_data = self.get_F_program()
+        opt_progF_data['g'].value = g_corr
+                           
         # Solve
-        solver = OptSolverIQP()
-        solver.set_parameters({'quiet':quiet,
-                               'tol':tol})
-        solver.solve(problem)
-        results = solver.get_results()
-        x = results['x']
-        lam = results['lam']
-        mu = results['mu']
-        pi = results['pi']
-
-        # Check
-        problem.eval(x)
-        gphi = problem.gphi
-        assert(norm(gphi-A.T*lam+mu-pi) < (1e-6)*(norm(gphi)+norm(lam)+norm(mu)+norm(pi)))
-        assert(norm(mu*(u-x)) < (1e-6)*(norm(mu)+norm(u-x)))
-        assert(norm(pi*(x-l)) < (1e-6)*(norm(pi)+norm(x-l)))
-        assert(np.all(x < u))
-        assert(np.all(x > l))
-        assert(norm(A*x-b) < (1e-6)*norm(b))
-
-        # Return
-        return x[:num_p],results
-
-    def get_sol_sensitivity(self,problem,x,lam,mu,pi):
-        """
-        Computes sensitivity of optimal q with respect to p
-        as a linear operator.
-
-        NEED TO EXTEND TO ALL x
+        opt_progF.solve()
         
-        Parameters
-        ----------
-        problem : QuadProblem
-        x : primal
-        lam : dual var (eq constraints)
-        mu : dual var (upper bounds)
-        pi : dual var (lower bounds)
+        # Results
+        p = np.array(opt_progF_data['p'].value).flatten()
+        q = np.array(opt_progF_data['q'].value).flatten()
+                
+        # Gradient
+        gF_approx = (self.H0*p+self.g0)-(self.H1*q+self.g1)
         
-        Returns
-        -------
-        dqdpT : Linear Operator
-        """
-
-        H = problem.H
-        g = problem.g
-        A = problem.A
-        b = problem.b
-        u = problem.u
-        l = problem.l
-
-        n = A.shape[1]
-        m = A.shape[0]
-
-        Dmu = spdiags(mu,0,n,n)
-        Dpi = spdiags(pi,0,n,n)
-        Dux = spdiags(u-x,0,n,n)
-        Dxl = spdiags(x-l,0,n,n)
-
-        In = eye(n)
-        
-        K = bmat([[H,-A.T,In,-In],
-                  [A,None,None,None],
-                  [-Dmu,None,Dux,None],
-                  [Dpi,None,None,Dxl]],
-                 format='coo')
-        KT = K.T
-        
-        Ibar = eye(self.num_p,K.shape[0])
-        
-        Onp = coo_matrix((n,self.num_p))
-        bp = bmat([[-self.G],
-                   [coo_matrix((self.num_br,self.num_p))]],
-                  format='coo')
-        up = -eye(n,self.num_p)
-        lp = -eye(n,self.num_p)
-
-        eta_p = bmat([[Onp],
-                      [bp],
-                      [-Dmu*up],
-                      [Dpi*lp]],
-                     format='coo')
-
-        linsolver = new_linsolver('mumps','unsymmetric')
-        linsolver.analyze(KT)
-        linsolver.factorize(KT)
-        
-        dqdpT = LinearOperator((self.num_p,self.num_p),
-                               lambda y : eta_p.T*linsolver.solve(Ibar.T*y))
-        
-        return dqdpT
+        # Returns
+        return p,gF_approx

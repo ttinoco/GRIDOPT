@@ -9,8 +9,8 @@
 import time
 import numpy as np
 from types import MethodType
-from method import MS_DCOPF_Method
-from problem import MS_DCOPF_Problem
+from .method import MS_DCOPF_Method
+from .problem import MS_DCOPF_Problem
 from optalg.stoch_solver import StochProblemMS_Policy
 
 class MS_DCOPF_GR(MS_DCOPF_Method):

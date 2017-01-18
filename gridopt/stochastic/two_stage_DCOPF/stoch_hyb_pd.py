@@ -6,8 +6,9 @@
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
 
-from method import TS_DCOPF_Method
-from problem_risk import TS_DCOPF_RA_Problem
+from .method import TS_DCOPF_Method
+from .problem_risk import TS_DCOPF_Problem
+from .problem_risk import TS_DCOPF_RA_Problem
 from optalg.stoch_solver import StochHybridPD
 
 class TS_DCOPF_PDSH(TS_DCOPF_Method):
@@ -17,17 +18,50 @@ class TS_DCOPF_PDSH(TS_DCOPF_Method):
     """
     
     parameters = {'quiet': False}
-    
+
     def __init__(self):
 
         TS_DCOPF_Method.__init__(self)
         self.parameters = TS_DCOPF_PDSH.parameters.copy()
+        self.parameters.update(TS_DCOPF_Problem.parameters)
+        self.parameters.update(TS_DCOPF_RA_Problem.parameters)
+        self.parameters.update(StochHybridPD.parameters)
 
-    def create_problem(self,net):
+        self.problem = None
+        self.results = None
+
+    def get_name(self):
         
-        return TS_DCOPF_RA_Problem(net)
+        name = 'Primal-Dual Stochatic Hybrid Approximation'
+        if not self.parameters['no_G']:
+            return name
+        else:
+            return name + ' - No G'
+ 
+    def create_problem(self,net,parameters):
+        
+        return TS_DCOPF_RA_Problem(net,parameters)
         
     def solve(self,net):
         
-        pass
-
+        # Local variables
+        params = self.parameters
+        
+        # Parameters
+        quiet = params['quiet']
+        
+        # Problem
+        self.problem = self.create_problem(net,params)
+        if not quiet:
+            self.problem.show()
+            
+        # Solver
+        solver = StochHybridPD()
+        solver.set_parameters(params)
+        
+        # Solve
+        solver.solve(self.problem)
+        
+        # Results
+        self.results = solver.get_results()
+        

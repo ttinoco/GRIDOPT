@@ -210,8 +210,8 @@ class DCOPF_Corr(PFmethod):
         Zr = coo_matrix((nr,nr))
         zr = np.zeros(nr)
         
-        H = bmat([[Hp,None],[None,Zr]],format='coo')/net.base_power # scaled
-        g = np.hstack((gp,zr))/net.base_power                       # scaled
+        H = bmat([[Hp,None],[None,Zr]],format='coo')
+        g = np.hstack((gp,zr))
 
         y = np.hstack((p,zr))
 
@@ -227,7 +227,7 @@ class DCOPF_Corr(PFmethod):
             assert((Iw-eye(Pw.shape[0])).nnz == 0)
             assert(l.shape == (n,))
             assert(u.shape == (n,))
-            assert(np.abs(phi-net.base_power*(0.5*np.dot(y,H*y)+np.dot(g,y))) < 1e-8)
+            assert(np.abs(phi-(0.5*np.dot(y,H*y)+np.dot(g,y))) < 1e-8)
             assert(H.shape == (n,n))
             assert(m == num_blocks*net.num_buses+sum(nz_list)+(num_blocks-1)*ng)
             assert(np.linalg.norm(x-Pp.T*p-Pw.T*w,np.inf) < 1e-8)
@@ -306,7 +306,7 @@ class DCOPF_Corr(PFmethod):
         
         # Network sensitivities
         net.clear_sensitivities()
-        problem.store_sensitivities(lam[:net.num_buses]*net.base_power,
+        problem.store_sensitivities(lam[:net.num_buses],
                                     nu,
-                                    mu*net.base_power,
-                                    pi*net.base_power)
+                                    mu,
+                                    pi)

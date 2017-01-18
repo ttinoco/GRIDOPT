@@ -43,47 +43,47 @@ class AugLOPF(PFmethod):
         net.clear_flags()
         
         # Voltage magnitudes
-        net.set_flags(pfnet.OBJ_BUS,
-                      pfnet.FLAG_VARS,
-                      pfnet.BUS_PROP_ANY,
-                      pfnet.BUS_VAR_VMAG)
+        net.set_flags('bus',
+                      'variable',
+                      'any',
+                      'voltage magnitude')
         
         # Voltage angles
-        net.set_flags(pfnet.OBJ_BUS,
-                      pfnet.FLAG_VARS,
-                      pfnet.BUS_PROP_NOT_SLACK,
-                      pfnet.BUS_VAR_VANG)
+        net.set_flags('bus',
+                      'variable',
+                      'not slack',
+                      'voltage angle')
 
         # Generator active power
-        net.set_flags(pfnet.OBJ_GEN,
-                      pfnet.FLAG_VARS|pfnet.FLAG_BOUNDED,
-                      pfnet.GEN_PROP_NOT_OUT,
-                      pfnet.GEN_VAR_P)
+        net.set_flags('generator',
+                      ['variable','bounded'],
+                      'not on outage',
+                      'active power')
 
         # Generator reactive power
-        net.set_flags(pfnet.OBJ_GEN,
-                      pfnet.FLAG_VARS|pfnet.FLAG_BOUNDED,
-                      pfnet.GEN_PROP_REG,
-                      pfnet.GEN_VAR_Q)
+        net.set_flags('generator',
+                      ['variable','bounded'],
+                      'regulator',
+                      'reactive power')
 
         try:
             assert(net.num_vars == (2*net.num_buses-net.get_num_slack_buses() +
                                     net.get_num_gens_not_on_outage() + 
-                                    net.get_num_reg_gens()))
+                                    net.get_num_reg_gens())*net.num_periods)
             assert(net.num_bounded == (net.get_num_gens_not_on_outage() + 
-                                       net.get_num_reg_gens()))
+                                       net.get_num_reg_gens())*net.num_periods)
         except AssertionError:
             raise PFmethodError_BadProblem(self)
                                     
         # Set up problem
         problem = pfnet.Problem()
         problem.set_network(net)
-        problem.add_constraint(pfnet.CONSTR_TYPE_PF)
-        problem.add_constraint(pfnet.CONSTR_TYPE_BOUND) 
-        problem.add_function(pfnet.FUNC_TYPE_GEN_COST,wc)
-        problem.add_function(pfnet.FUNC_TYPE_SLIM_VMAG,wl)
-        problem.add_function(pfnet.FUNC_TYPE_REG_VANG,wr)
-        problem.add_function(pfnet.FUNC_TYPE_REG_PQ,wr)
+        problem.add_constraint('AC power balance')
+        problem.add_constraint('variable nonlinear bounds') 
+        problem.add_function('generation cost',wc)
+        problem.add_function('soft voltage magnitude limits',wl)
+        problem.add_function('voltage angle regularization',wr)
+        problem.add_function('generator powers regularization',wr)
         problem.analyze()
         
         # Return
@@ -100,11 +100,11 @@ class AugLOPF(PFmethod):
                 print('{0:^6}'.format('gQvio'), end=' ')
                 print('{0:^6}'.format('gPvio'))
             else:
-                print('{0:^5.2f}'.format(net.bus_v_max), end=' ')
-                print('{0:^5.2f}'.format(net.bus_v_min), end=' ')
-                print('{0:^6.0e}'.format(net.bus_v_vio), end=' ')
-                print('{0:^6.0e}'.format(net.gen_Q_vio), end=' ')
-                print('{0:^6.0e}'.format(net.gen_P_vio))
+                print('{0:^5.2f}'.format(np.average(net.bus_v_max)), end=' ')
+                print('{0:^5.2f}'.format(np.average(net.bus_v_min)), end=' ')
+                print('{0:^6.0e}'.format(np.average(net.bus_v_vio)), end=' ')
+                print('{0:^6.0e}'.format(np.average(net.gen_Q_vio)), end=' ')
+                print('{0:^6.0e}'.format(np.average(net.gen_P_vio)))
         return info_printer
             
     def solve(self,net):
@@ -120,7 +120,7 @@ class AugLOPF(PFmethod):
 
         # Termination
         def t1(s):
-            if s.problem.network.bus_v_min < vmin_thresh:
+            if np.min(s.problem.network.bus_v_min) < vmin_thresh:
                 return True
             else:
                 return False
@@ -178,3 +178,4 @@ class AugLOPF(PFmethod):
         # Network sensitivities
         net.clear_sensitivities()
         problem.store_sensitivities(lam,nu,mu,pi)
+        

@@ -4,8 +4,17 @@ Targets
 
 Unreleased
 ----------
+* Compatibility with PFNET 1.2.5
+
+Version 1.3
+-----------
+* Compatibility with multiperiod pfnet (dc_opf, nr_pf, augL_pf and augL_opf)
+
+Version 1.2
+-----------
 * Multi-stage stochastic DCOPF.
 * Variable generator power curtailment in DCOPF.
+* Python 2 and 3 compatibility.
 
 Version 1.1
 -----------
@@ -15,7 +24,7 @@ Version 1.1
 * Updated Dockerfile.
 * Elastic loads in DCOPF.
 * Thermal limits flag in DCOPF.
-	
+
 Version 1.0
 -----------
 * Initial version.

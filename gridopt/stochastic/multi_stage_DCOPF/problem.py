@@ -6,10 +6,12 @@
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
 
+from __future__ import print_function
 import csv
+import time
 import pfnet as pf
 import numpy as np
-from utils import ApplyFunc
+from .utils import ApplyFunc
 from numpy.linalg import norm
 from gridopt.power_flow import new_method
 from optalg.lin_solver import new_linsolver
@@ -29,7 +31,8 @@ class MS_DCOPF_Problem(StochProblemMS):
                   'r_ramp_freq' : 0.10,  # renewable ramping frequency 
                   'r_eps'       : 1e-3,  # smallest renewable injection
                   'num_samples' : 1000,  # number of samples
-                  'draw': False}         # drawing flag
+                  'draw': False,         # drawing flag
+                  'name': ''}            # name
 
     def __init__(self,net,forecast,parameters={}):
         """
@@ -43,13 +46,13 @@ class MS_DCOPF_Problem(StochProblemMS):
         """
         
         # Check forecast
-        assert(forecast.has_key('vargen'))
-        assert(forecast.has_key('load'))
-        assert(forecast.has_key('size'))
+        assert('vargen' in forecast)
+        assert('load' in forecast)
+        assert('size' in forecast)
         assert(len(forecast['load']) == net.num_loads)
         assert(len(forecast['vargen']) == net.num_vargens)
-        assert(set([len(v) for v in forecast['load'].values()]) == set([forecast['size']]))
-        assert(set([len(v) for v in forecast['vargen'].values()]) == set([forecast['size']]))
+        assert(set([len(v) for v in list(forecast['load'].values())]) == set([forecast['size']]))
+        assert(set([len(v) for v in list(forecast['vargen'].values())]) == set([forecast['size']]))
         
         # Parameters
         self.parameters = MS_DCOPF_Problem.parameters.copy()
@@ -88,45 +91,45 @@ class MS_DCOPF_Problem(StochProblemMS):
         
         # Variables
         net.clear_flags()
-        net.set_flags(pf.OBJ_BUS,
-                      pf.FLAG_VARS,
-                      pf.BUS_PROP_NOT_SLACK,
-                      pf.BUS_VAR_VANG)
-        net.set_flags(pf.OBJ_GEN,
-                      pf.FLAG_VARS,
-                      pf.GEN_PROP_P_ADJUST,
-                      pf.GEN_VAR_P)
-        net.set_flags(pf.OBJ_LOAD,
-                      pf.FLAG_VARS,
-                      pf.LOAD_PROP_ANY,
-                      pf.LOAD_VAR_P)
-        net.set_flags(pf.OBJ_VARGEN,
-                      pf.FLAG_VARS,
-                      pf.VARGEN_PROP_ANY,
-                      pf.VARGEN_VAR_P)
+        net.set_flags('bus',
+                      'variable',
+                      'not slack',
+                      'voltage angle')
+        net.set_flags('generator',
+                      'variable',
+                      'adjustable active power',
+                      'active power')
+        net.set_flags('load',
+                      'variable',
+                      'any',
+                      'active power')
+        net.set_flags('variable generator',
+                      'variable',
+                      'any',
+                      'active power')
 
         # Current values
         x = net.get_var_values()
         
         # Projections
-        Pw = net.get_var_projection(pf.OBJ_BUS,pf.BUS_VAR_VANG)
-        Pp = net.get_var_projection(pf.OBJ_GEN,pf.GEN_VAR_P)
-        Pl = net.get_var_projection(pf.OBJ_LOAD,pf.LOAD_VAR_P)
-        Pr = net.get_var_projection(pf.OBJ_VARGEN,pf.VARGEN_VAR_P)
+        Pw = net.get_var_projection('bus','voltage angle')
+        Pp = net.get_var_projection('generator','active power')
+        Pl = net.get_var_projection('load','active power')
+        Pr = net.get_var_projection('variable generator','active power')
         assert(Pw.shape == (num_w,net.num_vars))
         assert(Pp.shape == (num_p,net.num_vars))
         assert(Pl.shape == (num_l,net.num_vars))
         assert(Pr.shape == (num_r,net.num_vars))
 
         # Power flow equations
-        pf_eq = pf.Constraint(pf.CONSTR_TYPE_DCPF,net)
+        pf_eq = pf.Constraint('DC power balance',net)
         pf_eq.analyze()
         pf_eq.eval(x)
         A = pf_eq.A.copy()
         b = pf_eq.b.copy()
 
         # Branch flow limits
-        fl_lim = pf.Constraint(pf.CONSTR_TYPE_DC_FLOW_LIM,net)
+        fl_lim = pf.Constraint('DC branch flow limits',net)
         fl_lim.analyze()
         fl_lim.eval(x)
         G = fl_lim.G.copy()
@@ -135,15 +138,15 @@ class MS_DCOPF_Problem(StochProblemMS):
         assert(np.all(hl < hu))
         
         # Generation cost
-        cost = pf.Function(pf.FUNC_TYPE_GEN_COST,1.,net)
+        cost = pf.Function('generation cost',1.,net)
         cost.analyze()
         cost.eval(x)
         H = (cost.Hphi + cost.Hphi.T - triu(cost.Hphi))/net.base_power # symmetric, scaled
         g = cost.gphi/net.base_power - H*x                             # scaled
 
         # Bounds
-        l = net.get_var_values(pf.LOWER_LIMITS)
-        u = net.get_var_values(pf.UPPER_LIMITS)
+        l = net.get_var_values('lower limits')
+        u = net.get_var_values('upper limits')
         assert(np.all(Pw*l < Pw*u))
         assert(np.all(Pp*l < Pp*u))
         assert(np.all(Pl*l <= Pl*u))
@@ -270,10 +273,10 @@ class MS_DCOPF_Problem(StochProblemMS):
         assert(self.A.shape == (self.num_bus,self.num_w))
         assert(self.J.shape == (self.num_br,self.num_w))
         assert(self.b.shape == (self.num_bus,))
-        assert(all(map(lambda d: d.shape == (self.num_l,),self.d_forecast)))
-        assert(all(map(lambda r: r.shape == (self.num_r,),self.r_forecast)))
-        assert(all(map(lambda r: np.all(r < self.r_max),self.r_forecast)))
-        assert(all(map(lambda r: np.all(r >= 0),self.r_forecast)))
+        assert(all([d.shape == (self.num_l,) for d in self.d_forecast]))
+        assert(all([r.shape == (self.num_r,) for r in self.r_forecast]))
+        assert(all([np.all(r < self.r_max) for r in self.r_forecast]))
+        assert(all([np.all(r >= 0) for r in self.r_forecast]))
         assert(np.all(D.row == D.col))
         assert(np.all(Dh.row == Dh.col))
         assert(np.all(D.data > 0))
@@ -503,7 +506,7 @@ class MS_DCOPF_Problem(StochProblemMS):
         assert(b.shape == (A.shape[0],))
 
         p_prev = x_prev[:self.num_p]
-        inf = self.parameters['infinity']
+        inf = self.parameters['infinity']*1e2
 
         H = bmat([[self.Hp,None,None,None,None,None],  # p
                   [None,self.Hq,None,None,None,None],  # q
@@ -842,7 +845,7 @@ class MS_DCOPF_Problem(StochProblemMS):
             assert norm(p-p_prev-y)/(norm(p)+norm(p_prev)+norm(y)) < eps, 'ramp eq'
             return True
         except AssertionError as e:
-            print e
+            print(e)
         return False
 
     def sample_w(self,t,observations):
@@ -967,8 +970,8 @@ class MS_DCOPF_Problem(StochProblemMS):
         params : dic
         """
         
-        for key,value in params.items():
-            if self.parameters.has_key(key):
+        for key,value in list(params.items()):
+            if key in self.parameters:
                 self.parameters[key] = value
  
     def show(self,scenario_tree=None):
@@ -986,25 +989,31 @@ class MS_DCOPF_Problem(StochProblemMS):
         load_for = [np.sum(d) for d in self.d_forecast]
         load_max = max(load_for)
  
-        print '\nStochastic Multi-Stage DCOPF'
-        print '----------------------------'
-        print 'num buses          : %d' %self.num_bus
-        print 'num gens           : %d' %self.num_p
-        print 'num vargens        : %d' %self.num_r
-        print 'num loads          : %d' %self.num_l
-        print 'num stages         : %d' %self.T
-        print 'vargen cap         : %.2f (%% of max load)' %(100.*vargen_cap/load_max)
-        print 'vargen corr_rad    : %d (edges)' %(self.corr_radius)
-        print 'vargen corr_val    : %.2f (unitless)' %(self.corr_value)
+        print('\nStochastic Multi-Stage DCOPF')
+        print('----------------------------')
+        print('num buses          : %d' %self.num_bus)
+        print('num branches       : %d' %self.num_br)
+        print('num gens           : %d' %self.num_p)
+        print('num vargens        : %d' %self.num_r)
+        print('num loads          : %d' %self.num_l)
+        print('num stages         : %d' %self.T)
+        print('vargen cap         : %.2f (%% of max load)' %(100.*vargen_cap/load_max))
+        print('vargen corr_rad    : %d (edges)' %(self.corr_radius))
+        print('vargen corr_val    : %.2f (unitless)' %(self.corr_value))
+
+        if scenario_tree is not None:
+            scenario_tree.show()
 
         # Draw
         if self.parameters['draw']:
         
             import matplotlib.pyplot as plt
             from matplotlib import rcParams
-            rcParams.update({'figure.autolayout': True})
             import seaborn
 
+            plt.rc('text', usetex=True)
+            plt.rc('font', family='serif')
+            rcParams.update({'figure.autolayout': True})
             seaborn.set_style("ticks")
 
             N = 20
@@ -1013,49 +1022,49 @@ class MS_DCOPF_Problem(StochProblemMS):
             # Vargen forecast
             plt.subplot(2,2,1)
             plt.plot([100.*r/load_max for r in vargen_for])
-            plt.xlabel('stage')
-            plt.ylabel('vargen forecast (% of max load)')
+            plt.xlabel(r'stage')
+            plt.ylabel(r'vargen forecast (\% of max load)')
             plt.axis([0,self.T-1,0.,100.])
             plt.grid()
 
             # Vargen uncertainty
             plt.subplot(2,2,2)
             plt.plot([100.*u/vargen_cap for u in vargen_unc])
-            plt.xlabel('stage')
-            plt.ylabel('vargen uncertainty (% of local cap)')
+            plt.xlabel(r'stage')
+            plt.ylabel(r'vargen uncertainty (\% of local cap)')
             plt.axis([0,self.T-1,0.,100.])
             plt.grid()
             
             # Vargen profile
             plt.subplot(2,2,3)
             plt.plot([r/max(vargen_for) for r in vargen_for])
-            plt.xlabel('stage')
-            plt.ylabel('vargen profile')
+            plt.xlabel(r'stage')
+            plt.ylabel(r'vargen profile')
             plt.axis([0,self.T-1,0.,1.])
             plt.grid()
             
             # Load profile
             plt.subplot(2,2,4)
             plt.plot([l/max(load_for) for l in load_for])
-            plt.xlabel('stage')
-            plt.ylabel('load profile')
+            plt.xlabel(r'stage')
+            plt.ylabel(r'load profile')
             plt.axis([0,self.T-1,0.,1.])
             plt.grid()
             
             # Vargen prediction
-            fig = plt.figure()
+            fig = plt.figure(figsize=(6,5))
             plt.hold(True)
             for i in range(N):
-                R = map(lambda w: np.sum(w),self.sample_W(self.T-1))
-                plt.plot([100.*r/load_max for r in R],color=colors[i])
-            R = map(lambda w: np.sum(w),self.predict_W(self.T-1))
-            plt.plot([100.*r/load_max for r in R],color='black',linewidth=3.)
-            plt.xlabel('stage',fontsize=22)
-            plt.ylabel('% of max load',fontsize=22)
-            plt.axis([0,self.T-1,0.,100.])
-            plt.tick_params(axis='both',which='major',labelsize=20)
-            plt.tick_params(axis='both',which='minor',labelsize=20)
-            plt.title('Total Renewable Powers')
+                R = [np.sum(w) for w in self.sample_W(self.T-1)]
+                plt.plot(range(1,self.T+1),[100.*r/load_max for r in R],color=colors[i])
+            R = [np.sum(w) for w in self.predict_W(self.T-1)]
+            plt.plot(range(1,self.T+1),[100.*r/load_max for r in R],color='black',linewidth=3.)
+            plt.xlabel(r'stage',fontsize=22)
+            plt.ylabel(r'power (\% of max load)',fontsize=22)
+            plt.axis([1,self.T,0.,100.])
+            plt.tick_params(axis='both',which='major',labelsize=18)
+            plt.tick_params(axis='both',which='minor',labelsize=18)
+            plt.title(r'%s: Aggregate Renewable Powers' %self.parameters['name'],fontsize=22,y=1.05)
             plt.grid()
 
             # Scenario tree
@@ -1067,16 +1076,16 @@ class MS_DCOPF_Problem(StochProblemMS):
                 fig = plt.figure()
                 plt.hold(True)
                 for i in range(N):
-                    R = map(lambda n: np.sum(n.get_w()),scenario_tree.sample_branch(self.T-1))
+                    R = [np.sum(n.get_w()) for n in scenario_tree.sample_branch(self.T-1)]
                     plt.plot([100.*r/load_max for r in R],color=colors[i])
-                R = map(lambda w: np.sum(w),self.predict_W(self.T-1))
+                R = [np.sum(w) for w in self.predict_W(self.T-1)]
                 plt.plot([100.*r/load_max for r in R],color='black',linewidth=3.)
-                plt.xlabel('stage',fontsize=22)
-                plt.ylabel('% of max load',fontsize=22)
+                plt.xlabel(r'stage',fontsize=22)
+                plt.ylabel(r'\% of max load',fontsize=22)
                 plt.axis([0,self.T-1,0.,100.])
                 plt.tick_params(axis='both',which='major',labelsize=20)
                 plt.tick_params(axis='both',which='minor',labelsize=20)
-                plt.title('Total Renewable Powers (Scenerio Tree)')
+                plt.title(r'Total Renewable Powers (Scenerio Tree)')
                 plt.grid()
 
             # Vargen closests branch from scenario tree
@@ -1085,20 +1094,20 @@ class MS_DCOPF_Problem(StochProblemMS):
                 plt.hold(True)
                 for i in range(3):
                     W = self.sample_W(self.T-1)
-                    R1 = map(lambda w: np.sum(w),W)
-                    R2 = map(lambda n: np.sum(n.get_w()),scenario_tree.get_closest_branch(W))
+                    R1 = [np.sum(w) for w in W]
+                    R2 = [np.sum(n.get_w()) for n in scenario_tree.get_closest_branch(W)]
                     plt.plot([100.*r/load_max for r in R1],color=colors[i],linestyle='-')
                     plt.plot([100.*r/load_max for r in R2],color=colors[i],linestyle='--')
-                    plt.xlabel('stage',fontsize=22)
-                    plt.ylabel('% of max load',fontsize=22)
+                    plt.xlabel(r'stage',fontsize=22)
+                    plt.ylabel(r'\% of max load',fontsize=22)
                     plt.axis([0,self.T-1,0.,100.])
                     plt.tick_params(axis='both',which='major',labelsize=20)
                     plt.tick_params(axis='both',which='minor',labelsize=20)
-                    plt.title('Closest Branch from Scenerio Tree')
+                    plt.title(r'Closest Branch from Scenerio Tree')
                     plt.grid()
             plt.show()
 
-    def simulate_policies(self,policies,R):
+    def simulate_policies(self,sim_id):
         """
         Simulates policies for a given
         realization of uncertainty.
@@ -1107,15 +1116,21 @@ class MS_DCOPF_Problem(StochProblemMS):
         ----------
         policies : list
         R : list
+        sim_id : int
 
         Returns
         -------
         a lot
         """
 
+        t0 = time.time()
+    
+        policies = self.policies
+        R = self.samples[sim_id]
+
         assert(len(R) == self.T)
 
-        print 'simulating policies'
+        print('simulation %d,' %sim_id, end=' ')
 
         num = len(policies)
         dtot = np.zeros(self.T)
@@ -1141,6 +1156,8 @@ class MS_DCOPF_Problem(StochProblemMS):
                 qtot[i][t] = np.sum(q)
                 stot[i][t] = np.sum(s)
                 x_prev[i] = x.copy()
+
+        print('time %.2f min' %((time.time()-t0)/60.))
                     
         return dtot,rtot,cost,ptot,qtot,stot
 
@@ -1159,7 +1176,7 @@ class MS_DCOPF_Problem(StochProblemMS):
 
         assert(len(policies) > 0)
 
-        from multiprocess import Pool,cpu_count
+        from multiprocess import Pool,cpu_count,Process
         
         if not num_procs:
             num_procs = cpu_count()
@@ -1172,19 +1189,24 @@ class MS_DCOPF_Problem(StochProblemMS):
 
         np.random.seed(seed)
 
-        print 'Evaluating policies with %d processes' %num_procs
-                    
+        print('Evaluating policies with %d processes' %num_procs)
+                   
         # Eval
+        self.policies = policies
+        self.samples = [self.sample_W(self.T-1) for j in range(num_sims)]
         if num_procs > 1:
             pool = Pool(num_procs)
             func = pool.map
         else:
             func = map
-        results = func(ApplyFunc, [(self,'simulate_policies',policies,self.sample_W(self.T-1)) for j in range(num_sims)])
+        t0 = time.time()
+        results = func(lambda i: self.simulate_policies(i), range(num_sims))
+        t1 = time.time()            
+        print('Total time: %.2f min' %((t1-t0)/60.))
 
         # Process
         num_pol = len(policies)
-        dtot,rtot,cost,ptot,qtot,stot = zip(*results)
+        dtot,rtot,cost,ptot,qtot,stot = list(zip(*results))
         dtot = np.average(np.array(dtot),axis=0)
         rtot = np.average(np.array(rtot),axis=0)
         cost = dict([(i,np.average(np.array([cost[j][i] for j in range(num_sims)]),axis=0)) for i in range(num_pol)])
@@ -1208,6 +1230,7 @@ class MS_DCOPF_Problem(StochProblemMS):
             iref = 0
         
         # Write
+        writer.writerow([self.num_bus,num_sims])
         writer.writerow([p.get_name() for p in policies])
         writer.writerow([p.get_construction_time() for p in policies])
         writer.writerow(['d','r']+num_pol*['cost','p','q','s'])

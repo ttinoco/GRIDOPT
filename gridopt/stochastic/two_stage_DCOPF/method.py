@@ -19,6 +19,9 @@ class TS_DCOPF_Method:
         #: Parameters dictionary
         self.parameters = {}
 
+        #: Problem
+        self.problem = None
+
     def create_problem(self,net):
         """
         Creates optimization problem.
@@ -43,9 +46,31 @@ class TS_DCOPF_Method:
         parameters : dict
         """
         
-        for key,value in parameters.items():
-            if self.parameters.has_key(key):
+        for key,value in list(parameters.items()):
+            if key in self.parameters:
                 self.parameters[key] = value
+
+    def get_problem(self):
+        """
+        Gets problem.
+        
+        Returns
+        -------
+        problem
+        """
+        
+        return self.problem
+
+    def get_name(self):
+        """
+        Gets method name.
+
+        Returns
+        -------
+        name : string
+        """
+
+        return ''
 
     def get_results(self):
         """
