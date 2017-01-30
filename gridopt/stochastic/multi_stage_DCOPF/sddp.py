@@ -6,8 +6,8 @@
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
 
-from method import MS_DCOPF_Method
-from problem import MS_DCOPF_Problem
+from .method import MS_DCOPF_Method
+from .problem import MS_DCOPF_Problem
 from optalg.stoch_solver import StochDualDynProg,StochProblemMS_Tree
 
 class MS_DCOPF_SDDP(MS_DCOPF_Method):
@@ -15,8 +15,9 @@ class MS_DCOPF_SDDP(MS_DCOPF_Method):
     Stochastic dual dynamic programming method for multi-stage DC OPF problem.
     """
     
-    parameters = {'branching_factor': 2,
-                  'branching_type': 'decreasing',
+    parameters = {'branching_factors': None,
+                  'cluster': False,
+                  'num_samples': 1000,
                   'quiet': False}
     
     def __init__(self):
@@ -37,14 +38,18 @@ class MS_DCOPF_SDDP(MS_DCOPF_Method):
         
         # Parameters
         quiet = params['quiet']
-        bfactor = params['branching_factor']
-        btype = params['branching_type']
+        bfactors = params['branching_factors']
+        cluster = params['cluster']
+        num_samples = params['num_samples']
 
         # Problem
         self.problem = self.create_problem(net,forecast,params)
 
         # Scenario tree
-        self.tree = StochProblemMS_Tree(self.problem,bfactor,btype)
+        self.tree = StochProblemMS_Tree(self.problem,
+                                        bfactors,
+                                        cluster=cluster,
+                                        num_samples=num_samples)
 
         # Show
         if not quiet:

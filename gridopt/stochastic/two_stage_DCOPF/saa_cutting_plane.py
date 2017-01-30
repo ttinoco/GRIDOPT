@@ -11,11 +11,11 @@ import numpy as np
 from .method import TS_DCOPF_Method
 from .problem import TS_DCOPF_Problem
 from scipy.sparse import eye,coo_matrix,bmat
-from optalg.opt_solver import OptSolverIQP,QuadProblem
+from optalg.opt_solver import OptSolverIQP, QuadProblem
 
-class TS_DCOPF_LSM(TS_DCOPF_Method):
+class TS_DCOPF_LS(TS_DCOPF_Method):
     """
-    L-shaped multi-cut method for solving two-stage DCOPF problems.
+    L-shaped method for solving two-stage DCOPF problems.
     """
     
     parameters = {'scenarios':100,
@@ -27,7 +27,7 @@ class TS_DCOPF_LSM(TS_DCOPF_Method):
     def __init__(self):
 
         TS_DCOPF_Method.__init__(self)
-        self.parameters = TS_DCOPF_LSM.parameters.copy()
+        self.parameters = TS_DCOPF_LS.parameters.copy()
     
     def create_problem(self,net):
 
@@ -57,26 +57,24 @@ class TS_DCOPF_LSM(TS_DCOPF_Method):
         g0 = problem.g0
         p_min = problem.p_min
         p_max = problem.p_max
-        A1 = np.zeros((0,p.size+num_sce))
+        A1 = np.zeros((0,p.size+1))
         b = np.zeros(0)
 
         # Init eval
-        Qlist,gQlist = list(zip(*[problem.eval_Q(p,r) for r in scenarios]))
+        Q,gQ = [sum(l)/float(num_sce) for l in zip(*[problem.eval_Q(p,r) for r in scenarios])]
 
         # Iteartions
-        t = np.zeros(num_sce)
+        t = 0
         num_z = 0
-        counter = 0
         t0 = time.time()
         solved = False
         for k in range(maxiters):
 
             # Show info
             t1 = time.time()
-            Q = sum(Qlist)/float(num_sce)
             F = 0.5*np.dot(p,H0*p)+np.dot(g0,p) + Q
             EF,EgF = problem.eval_EF(p,samples=samples)
-            print('%d,%.2f,%d,%.2e,%.2e,%.5e,%.5e' %(k,t1-t0,counter,Q,np.sum(t)/float(num_sce),F,EF))
+            print(('%d,%.2f,%.2e,%.2e,%.5e,%.5e' %(k,t1-t0,Q,t,F,EF)))
             t0 += time.time()-t1
             
             # Solved
@@ -84,31 +82,24 @@ class TS_DCOPF_LSM(TS_DCOPF_Method):
                 print('solved')
                 break
             
-            # Add cuts
-            counter = 0
-            a = np.zeros((0,p.size+num_sce))
-            for i in range(num_sce):
-                if (k == 0 or Qlist[i] > t[i]):
-                    ei = np.zeros(num_sce)
-                    ei[i] = 1.
-                    a = np.vstack((a,np.hstack((-gQlist[i],ei))))
-                    b = np.hstack((b,Qlist[i]-np.dot(gQlist[i],p)))
-                    counter += 1
-            num_z += counter
+            # Add cut
+            a = np.hstack((-gQ,1.))
             A1 = np.vstack((A1,a))
+            b = np.hstack((b,Q-np.dot(gQ,p)))
+            num_z += 1
             
             # Prepare problem
             A1sp = coo_matrix(A1)
             A = bmat([[A1sp,-eye(num_z)]],format='coo')
             
             H = bmat([[H0,None,None],
-                      [None,coo_matrix((num_sce,num_sce)),None],
+                      [None,coo_matrix((1,1)),None],
                       [None,None,coo_matrix((num_z,num_z))]],format='coo')
 
-            g = np.hstack((g0,np.ones(num_sce)/float(num_sce),np.zeros(num_z)))
+            g = np.hstack((g0,1,np.zeros(num_z)))
             
-            u = np.hstack((p_max,t_max*np.ones(num_sce),z_max*np.ones(num_z)))
-            l = np.hstack((p_min,-t_max*np.ones(num_sce),np.zeros(num_z)))
+            u = np.hstack((p_max,t_max,z_max*np.ones(num_z)))
+            l = np.hstack((p_min,-t_max,np.zeros(num_z)))
             qp_prob = QuadProblem(H,g,A,b,l,u)
 
             # Solve problem
@@ -119,15 +110,15 @@ class TS_DCOPF_LSM(TS_DCOPF_Method):
             # Get results
             x = qp_sol.get_primal_variables()
             p = x[:p.size]
-            t = x[p.size:p.size+num_sce]
-            z = x[p.size+num_sce:]
+            t = x[p.size]
+            z = x[p.size+1:]
             assert(np.all(z > 0))
             
             # Eval
-            Qlist,gQlist = list(zip(*[problem.eval_Q(p,r) for r in scenarios]))
+            Q,gQ = [sum(l)/float(num_sce) for l in zip(*[problem.eval_Q(p,r) for r in scenarios])]
             
             # Check solved
-            if all([Qlist[i] <= t[i] for i in range(num_sce)]):
+            if Q <= t:
                 solved = True
             
             
