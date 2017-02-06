@@ -1,7 +1,7 @@
 #*****************************************************#
 # This file is part of GRIDOPT.                       #
 #                                                     #
-# Copyright (c) 2015-2016, Tomas Tinoco De Rubira.    #
+# Copyright (c) 2015-2017, Tomas Tinoco De Rubira.    #
 #                                                     #
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
@@ -52,11 +52,11 @@ class TestPowerFlow(unittest.TestCase):
                     if (sol == 'sol1' and         # no controls
                         method_name == 'AugLPF'):
                         continue
-                    if sol == 'sol1':   # no controls
+                    if sol == 'sol1':             # no controls
                         method.set_parameters({'limit_gens': False})
-                    elif sol == 'sol2': # generator voltage control
+                    elif sol == 'sol2':           # generator voltage control
                         pass
-                    else:               # generator and tap controls
+                    else:                         # generator and tap controls
                         method.set_parameters({'lock_taps': False})
                     method.set_parameters({'quiet': True})
 
@@ -78,9 +78,9 @@ class TestPowerFlow(unittest.TestCase):
                     v_ang_tol = sol_data['v_ang_tol']
                     bus_data = sol_data['bus_data']
 
-                    v_mag_error = [0]
-                    v_ang_error = [0]
                     counter = 0
+                    v_mag_error = []
+                    v_ang_error = []
                     for bus_num,val in list(bus_data.items()):
                         
                         v_mag = val['v_mag']
@@ -101,11 +101,14 @@ class TestPowerFlow(unittest.TestCase):
                         v_ang_error.append(np.abs(bus.v_ang*180./np.pi-v_ang))
                     
                     print((method_name,case,sol_types[sol],len(v_mag_error),len(v_ang_error)))
-                    self.assertEqual(len(v_mag_error),counter*(self.T+1)+1)
-                    self.assertEqual(len(v_ang_error),counter*(self.T+1)+1)
 
-                    self.assertLessEqual(np.max(v_mag_error),v_mag_tol)
-                    self.assertLessEqual(np.max(v_ang_error),v_ang_tol)
+                    self.assertEqual(len(v_mag_error),counter*(self.T+1))
+                    self.assertEqual(len(v_ang_error),counter*(self.T+1))
+
+                    if len(v_mag_error) > 0:
+                        self.assertLessEqual(np.max(v_mag_error),v_mag_tol)
+                    if len(v_ang_error) > 0:
+                        self.assertLessEqual(np.max(v_ang_error),v_ang_tol)
 
     def test_AugLOPF(self):
         

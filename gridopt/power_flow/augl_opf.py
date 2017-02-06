@@ -1,7 +1,7 @@
 #*****************************************************#
 # This file is part of GRIDOPT.                       #
 #                                                     #
-# Copyright (c) 2015-2016, Tomas Tinoco De Rubira.    #
+# Copyright (c) 2015-2017, Tomas Tinoco De Rubira.    #
 #                                                     #
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
@@ -11,7 +11,7 @@ import pfnet
 import numpy as np
 from .method_error import *
 from .method import PFmethod
-from optalg.opt_solver import OptSolverError,OptCallback,OptTermination,OptSolverAugL
+from optalg.opt_solver import OptSolverError, OptCallback, OptTermination, OptSolverAugL
 
 class AugLOPF(PFmethod):
     """
@@ -20,10 +20,10 @@ class AugLOPF(PFmethod):
  
     name = 'AugLOPF'
 
-    parameters = {'weight_cost':1e-2,   # for generation cost
-                  'weight_limit':1e2,   # for soft limits
-                  'weight_reg':1e-5,    # for regularization
-                  'vmin_thresh':0.1}    # threshold for vmin
+    parameters = {'weight_cost': 1e0,  # for generation cost
+                  'weight_limit': 1e2, # for soft limits
+                  'weight_reg': 1e-5,  # for regularization
+                  'vmin_thresh': 0.1}  # threshold for vmin
                    
     def __init__(self):
 
@@ -80,10 +80,10 @@ class AugLOPF(PFmethod):
         problem.set_network(net)
         problem.add_constraint('AC power balance')
         problem.add_constraint('variable nonlinear bounds') 
-        problem.add_function('generation cost',wc)
-        problem.add_function('soft voltage magnitude limits',wl)
-        problem.add_function('voltage angle regularization',wr)
-        problem.add_function('generator powers regularization',wr)
+        problem.add_function('generation cost',wc/max([net.num_generators,1.]))
+        problem.add_function('soft voltage magnitude limits',wl/max([net.num_buses,1.]))
+        problem.add_function('voltage angle regularization',wr/max([net.num_buses,1.]))
+        problem.add_function('generator powers regularization',wr/max([net.num_generators,1.]))
         problem.analyze()
         
         # Return

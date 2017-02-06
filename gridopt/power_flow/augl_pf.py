@@ -1,7 +1,7 @@
 #*****************************************************#
 # This file is part of GRIDOPT.                       #
 #                                                     #
-# Copyright (c) 2015-2016, Tomas Tinoco De Rubira.    #
+# Copyright (c) 2015-2017, Tomas Tinoco De Rubira.    #
 #                                                     #
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
@@ -11,7 +11,7 @@ import pfnet
 import numpy as np
 from .method_error import *
 from .method import PFmethod
-from optalg.opt_solver import OptSolverError,OptCallback,OptTermination,OptSolverAugL
+from optalg.opt_solver import OptSolverError, OptCallback, OptTermination, OptSolverAugL
 
 class AugLPF(PFmethod):
     """
@@ -20,14 +20,14 @@ class AugLPF(PFmethod):
 
     name = 'AugLPF'
         
-    parameters = {'weight_vmag':1e0,     # for reg voltage magnitude penalty
-                  'weight_vang':1e-3,    # for angle difference penalty
-                  'weight_pq':1e-3,      # for gen powers
-                  'weight_t':1e1,        # for tap ratios
-                  'weight_b':1e-4,       # for shunt susceptances
-                  'lock_taps':True,      # flag for locking transformer tap ratios
-                  'lock_shunts':True,    # flag for locking swtiched shunts
-                  'vmin_thresh':0.1}     # threshold for vmin
+    parameters = {'weight_vmag':1e0,  # for reg voltage magnitude penalty
+                  'weight_vang':1e0,  # for angle difference penalty
+                  'weight_pq':1e-3,   # for gen powers
+                  'weight_t':1e-3,    # for tap ratios
+                  'weight_b':1e-3,    # for shunt susceptances
+                  'lock_taps':True,   # flag for locking transformer tap ratios
+                  'lock_shunts':True, # flag for locking swtiched shunts
+                  'vmin_thresh':0.1}  # threshold for vmin
                   
     def __init__(self):
 
@@ -39,11 +39,11 @@ class AugLPF(PFmethod):
 
         # Parameters
         params = self.parameters
-        weight_vang = params['weight_vang']
-        weight_vmag = params['weight_vmag']
-        weight_pq = params['weight_pq']
-        weight_t = params['weight_t']
-        weight_b = params['weight_b']
+        wm = params['weight_vang']
+        wa = params['weight_vmag']
+        wp = params['weight_pq']
+        wt = params['weight_t']
+        wb = params['weight_b']
         lock_taps = params['lock_taps']
         lock_shunts = params['lock_shunts']
         
@@ -123,13 +123,13 @@ class AugLPF(PFmethod):
             problem.add_constraint('voltage regulation by transformers')
         if not lock_shunts:
             problem.add_constraint('voltage regulation by shunts')
-        problem.add_function('voltage magnitude regularization',weight_vmag)
-        problem.add_function('voltage angle regularization',weight_vang)
-        problem.add_function('generator powers regularization',weight_pq)
+        problem.add_function('voltage magnitude regularization',wm/max([net.num_buses,1.]))
+        problem.add_function('voltage angle regularization',wa/max([net.num_buses,1.]))
+        problem.add_function('generator powers regularization',wp/max([net.num_generators,1.]))
         if not lock_taps:
-            problem.add_function('tap ratio regularization',weight_t)
+            problem.add_function('tap ratio regularization',wt/max([net.get_num_tap_changers_v(),1.]))
         if not lock_shunts:
-            problem.add_function('susceptance regularization',weight_b)
+            problem.add_function('susceptance regularization',wb/max([get_num_switched_shunts(),1.]))
         problem.analyze()
         
         # Return
