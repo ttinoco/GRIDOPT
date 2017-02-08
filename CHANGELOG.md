@@ -5,6 +5,7 @@ Targets
 Unreleased
 ----------
 * Compatibility with PFNET 1.2.5
+* OPF method based on IPOPT
 
 Version 1.3
 -----------
