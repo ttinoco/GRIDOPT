@@ -44,18 +44,18 @@ class ProblemTransformer:
         p = self.problem_pfnet
         nx = self.nx
         nz = self.nz
-        
+
         new_p = OptProblem()
 
-        new_p.x = p.x
-
+        new_p.x = np.hstack((p.x.copy(),np.zeros(nz)))
+        
         new_p.gphi = np.hstack((p.gphi,np.zeros(nz)))
         new_p.Hphi = coo_matrix((p.Hphi.data,(p.Hphi.row,p.Hphi.col)),shape=(nx+nz,nx+nz))
         
         new_p.A = bmat([[p.A,None],[p.G,-eye(nz)]],format='coo')
         new_p.b = np.hstack((p.b,np.zeros(nz)))
         
-        new_p.f = p.f
+        new_p.f = p.f.copy()
         new_p.J = coo_matrix((p.J.data,(p.J.row,p.J.col)),shape=(p.J.shape[0],nx+nz))
         new_p.H_combined = coo_matrix((p.H_combined.data,(p.H_combined.row,p.H_combined.col)),shape=(nx+nz,nx+nz))
         
@@ -69,7 +69,7 @@ class ProblemTransformer:
             cls.phi = p.phi
             cls.gphi = np.hstack((p.gphi,np.zeros(nz)))
             cls.Hphi = coo_matrix((p.Hphi.data,(p.Hphi.row,p.Hphi.col)),shape=(nx+nz,nx+nz))
-            cls.f = p.f
+            cls.f = p.f.copy()
             cls.J = coo_matrix((p.J.data,(p.J.row,p.J.col)),shape=(p.J.shape[0],nx+nz))
 
         def combine_H(cls, coeff, ensure_psd=False):

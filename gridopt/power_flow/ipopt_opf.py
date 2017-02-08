@@ -11,7 +11,6 @@ import pfnet
 import numpy as np
 from .method_error import *
 from .method import PFmethod
-from .transform import ProblemTransformer
 from optalg.opt_solver import OptSolverError, OptSolverIpopt
 
 class IpoptOPF(PFmethod):
@@ -97,8 +96,10 @@ class IpoptOPF(PFmethod):
 
         # Problem
         problem = self.create_problem(net)
-        trans = ProblemTransformer(problem)
-        trans_problem = trans.transform()
+
+        # G identity, otherwise use transform
+        assert(np.all(problem.G.row == problem.G.col))
+        assert(np.all(problem.G.data == 1.))
                 
         # Set up solver
         solver = OptSolverIpopt()
@@ -106,7 +107,7 @@ class IpoptOPF(PFmethod):
         
         # Solve
         try:
-            solver.solve(trans_problem)
+            solver.solve(problem)
         except OptSolverError as e:
             raise PFmethodError_SolverError(self,e)
         finally:
@@ -115,8 +116,8 @@ class IpoptOPF(PFmethod):
             self.set_status(solver.get_status())
             self.set_error_msg(solver.get_error_msg())
             self.set_iterations(solver.get_iterations())
-            self.set_primal_variables(trans.recover_primal(solver.get_primal_variables()))
-            self.set_dual_variables(trans.recover_duals(*solver.get_dual_variables()))
+            self.set_primal_variables(solver.get_primal_variables())
+            self.set_dual_variables(solver.get_dual_variables())
             self.set_net_properties(net.get_properties())
             self.set_problem(problem)
 

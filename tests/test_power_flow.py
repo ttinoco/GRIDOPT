@@ -126,9 +126,6 @@ class TestPowerFlow(unittest.TestCase):
             method.solve(net)
             self.assertEqual(method.results['status'],'solved')
 
-            print method.get_results()['net properties']['gen_P_cost']
-
-    @unittest.skip("skipping until seg fault is fixed")            
     def test_IpoptOPF(self):
         
         net = self.net # single period
@@ -136,34 +133,36 @@ class TestPowerFlow(unittest.TestCase):
         
         try:
             method_ipopt = gopt.power_flow.new_method('IpoptOPF')
-            #method_augl = gopt.power_flow.new_method('AugLOPF')
+            method_augl = gopt.power_flow.new_method('AugLOPF')
         except ImportError:
             return
-
+            
         for case in utils.test_cases:
         
-            net.load(case)
+            if case.split('/')[-1] == 'case3012wp.mat':
+                eps = 5.
+            else:
+                eps = 1.
 
-            if net.num_buses > 100:
-                continue
+            net.load(case)
             
-            if case.split('/')[-1] != 'ieee14.mat':
-                continue
-            
-            method_ipopt.set_parameters({'quiet':False})
-            #method_augl.set_parameters({'quiet':True})
+            method_ipopt.set_parameters({'quiet':True})
+            method_augl.set_parameters({'quiet':True,
+                                        'kappa':1e-2})
             
             method_ipopt.solve(net)
             self.assertEqual(method_ipopt.results['status'],'solved')
             x1 = method_ipopt.get_results()['primal variables']
             p1 = method_ipopt.get_results()['net properties']['gen_P_cost']
-
-            #method_augl.solve(net)
-            #self.assertEqual(method_augl.results['status'],'solved')
-            #x2 = method_augl.get_results()['primal variables']
-            #p2 = method_augl.get_results()['net properties']['gen_P_cost']
             
-            #print norm(x1-x2),abs(p1-p2)
+            method_augl.solve(net)
+            self.assertEqual(method_augl.results['status'],'solved')
+            x2 = method_augl.get_results()['primal variables']
+            p2 = method_augl.get_results()['net properties']['gen_P_cost']
+            
+            error = 100*(p1-p2)/abs(p2)
+            
+            self.assertLess(np.abs(error),eps)
 
     def test_DCOPF(self):
         
