@@ -6,6 +6,7 @@ Unreleased
 ----------
 * Compatibility with PFNET 1.2.5
 * OPF method based on IPOPT
+* Tool for transforming PFNET to OPTALG problems and recovering primal and dual variables
 
 Version 1.3
 -----------
