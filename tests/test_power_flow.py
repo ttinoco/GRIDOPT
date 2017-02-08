@@ -127,7 +127,8 @@ class TestPowerFlow(unittest.TestCase):
             self.assertEqual(method.results['status'],'solved')
 
             print method.get_results()['net properties']['gen_P_cost']
-
+            
+    @unittest.skip("skipping Ipopt until optalg canonicalization is done")
     def test_IpoptOPF(self):
         
         net = self.netMP # multi period
