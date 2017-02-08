@@ -24,7 +24,7 @@ class TestPowerFlow(unittest.TestCase):
         self.net = pf.Network()
         self.netMP = pf.Network(self.T)
 
-    def test_method_solutions(self):
+    def test_PF_method_solutions(self):
 
         print('')
 
@@ -70,9 +70,9 @@ class TestPowerFlow(unittest.TestCase):
                     self.assertEqual(resultsMP['status'],'solved')
                     method.update_network(netMP)
 
-                    self.assertLess(norm(resultsMP['net_properties']['bus_P_mis']-netMP.bus_P_mis,np.inf),1e-10)
-                    self.assertLess(norm(resultsMP['net_properties']['bus_Q_mis']-netMP.bus_Q_mis,np.inf),1e-10)
-                    self.assertLess(norm(resultsMP['net_properties']['gen_P_cost']-netMP.gen_P_cost,np.inf),1e-10)
+                    self.assertLess(norm(resultsMP['net properties']['bus_P_mis']-netMP.bus_P_mis,np.inf),1e-10)
+                    self.assertLess(norm(resultsMP['net properties']['bus_Q_mis']-netMP.bus_Q_mis,np.inf),1e-10)
+                    self.assertLess(norm(resultsMP['net properties']['gen_P_cost']-netMP.gen_P_cost,np.inf),1e-10)
 
                     v_mag_tol = sol_data['v_mag_tol']
                     v_ang_tol = sol_data['v_ang_tol']
@@ -125,12 +125,29 @@ class TestPowerFlow(unittest.TestCase):
 
             method.solve(net)
             self.assertEqual(method.results['status'],'solved')
- 
-            # gen outage
-            cont = pf.Contingency([net.get_gen(0)])
-            cont.apply()
-            problem = method.create_problem(net)
-            cont.clear()
+
+            print method.get_results()['net properties']['gen_P_cost']
+
+    def test_IpoptOPF(self):
+        
+        net = self.netMP # multi period
+        self.assertEqual(net.num_periods,self.T)
+        
+        try:
+            method = gopt.power_flow.new_method('IpoptOPF')
+        except ImportError:
+            return
+
+        for case in utils.test_cases:
+        
+            net.load(case)
+            
+            method.set_parameters({'quiet':False})
+
+            method.solve(net)
+            self.assertEqual(method.results['status'],'solved')
+
+            print method.get_results()['net properties']['gen_P_cost']
 
     def test_DCOPF(self):
         
@@ -159,17 +176,17 @@ class TestPowerFlow(unittest.TestCase):
                 
             method.update_network(net)
            
-            self.assertLess(norm(results['net_properties']['bus_P_mis']-net.bus_P_mis,np.inf),1e-10)
-            self.assertLess(norm(results['net_properties']['bus_Q_mis']-net.bus_Q_mis,np.inf),1e-10)
-            self.assertLess(norm(results['net_properties']['gen_P_cost']-net.gen_P_cost,np.inf),1e-10)
+            self.assertLess(norm(results['net properties']['bus_P_mis']-net.bus_P_mis,np.inf),1e-10)
+            self.assertLess(norm(results['net properties']['bus_Q_mis']-net.bus_Q_mis,np.inf),1e-10)
+            self.assertLess(norm(results['net properties']['gen_P_cost']-net.gen_P_cost,np.inf),1e-10)
 
             gen_P_cost0 = net.gen_P_cost
             load_P_util0 = net.load_P_util
             self.assertTupleEqual(gen_P_cost0.shape,(self.T,))
             self.assertTupleEqual(load_P_util0.shape,(self.T,))
             
-            x = results['primal_variables']
-            lam0,nu0,mu0,pi0 = results['dual_variables']
+            x = results['primal variables']
+            lam0,nu0,mu0,pi0 = results['dual variables']
 
             self.assertTupleEqual(x.shape,((net.num_branches+
                                             net.num_buses-
@@ -217,7 +234,7 @@ class TestPowerFlow(unittest.TestCase):
             method.update_network(net)
             gen_P_cost1 = net.gen_P_cost
             load_P_util1 = net.load_P_util
-            lam1,nu1,mu1,pi1 = results['dual_variables']
+            lam1,nu1,mu1,pi1 = results['dual variables']
             if ((norm(mu0[net.num_vars:],np.inf) > 1e-3 or 
                  norm(pi0[net.num_vars:],np.inf) > 1e-3) and case != INFCASE):
                 self.assertTrue(np.all(gen_P_cost1 <= gen_P_cost0))
@@ -240,8 +257,8 @@ class TestPowerFlow(unittest.TestCase):
             method.update_network(net)
             self.assertTrue(np.all(net.gen_P_cost-net.load_P_util < gen_P_cost1-load_P_util1))
 
-            x = results['primal_variables']
-            lam2,nu2,mu2,pi2 = results['dual_variables']
+            x = results['primal variables']
+            lam2,nu2,mu2,pi2 = results['dual variables']
 
             self.assertTupleEqual(x.shape,((net.num_branches+
                                             net.get_num_P_adjust_loads()+

@@ -1,7 +1,7 @@
 #*****************************************************#
 # This file is part of GRIDOPT.                       #
 #                                                     #
-# Copyright (c) 2015-2016, Tomas Tinoco De Rubira.    #
+# Copyright (c) 2015-2017, Tomas Tinoco De Rubira.    #
 #                                                     #
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
@@ -33,8 +33,9 @@ class NRPF(PFmethod):
     def __init__(self):
 
         PFmethod.__init__(self)
-        self.parameters = NRPF.parameters.copy()       # method parameters
-        self.parameters.update(OptSolverNR.parameters) # solver parameters
+        parameters = OptSolverNR.parameters.copy() # solver parameters
+        parameters.update(NRPF.parameters) # method parameters
+        self.parameters = parameters
         
     def apply_shunt_v_regulation(self,solver):
 
@@ -362,8 +363,8 @@ class NRPF(PFmethod):
         
         # Get data
         problem = self.results['problem']
-        x = self.results['primal_variables']
-        lam,nu,mu,pi = self.results['dual_variables']
+        x = self.results['primal variables']
+        lam,nu,mu,pi = self.results['dual variables']
        
         # No problem
         if problem is None:

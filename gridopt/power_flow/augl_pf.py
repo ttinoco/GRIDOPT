@@ -32,8 +32,9 @@ class AugLPF(PFmethod):
     def __init__(self):
 
         PFmethod.__init__(self)
-        self.parameters = AugLPF.parameters.copy()
-        self.parameters.update(OptSolverAugL.parameters)
+        parameters = OptSolverAugL.parameters.copy()
+        parameters.update(AugLPF.parameters)
+        self.parameters = parameters
 
     def create_problem(self,net):
 
@@ -202,8 +203,8 @@ class AugLPF(PFmethod):
         
         # Get data
         problem = self.results['problem']
-        x = self.results['primal_variables']
-        lam,nu,mu,pi = self.results['dual_variables']
+        x = self.results['primal variables']
+        lam,nu,mu,pi = self.results['dual variables']
        
         # No problem
         if problem is None:

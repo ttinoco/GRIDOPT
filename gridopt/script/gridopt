@@ -17,7 +17,7 @@ import gridopt
 
 methods_PF = ['DCPF','NRPF','AugLPF']
 
-methods_OPF = ['DCOPF','AugLOPF']
+methods_OPF = ['DCOPF','AugLOPF','IpoptOPF']
 
 def create_parser():
     
@@ -80,7 +80,7 @@ def main():
                 method.solve(net)
                 print(method.results['status'])
             except gridopt.power_flow.PFmethodError:
-                print(method.results['error_msg'])
+                print(method.results['error msg'])
             
             # Update
             method.update_network(net)

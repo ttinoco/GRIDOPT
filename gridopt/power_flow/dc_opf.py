@@ -1,7 +1,7 @@
 #*****************************************************#
 # This file is part of GRIDOPT.                       #
 #                                                     #
-# Copyright (c) 2015-2016, Tomas Tinoco De Rubira.    #
+# Copyright (c) 2015-2017, Tomas Tinoco De Rubira.    #
 #                                                     #
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
@@ -30,8 +30,9 @@ class DCOPF(PFmethod):
     def __init__(self):
 
         PFmethod.__init__(self)
-        self.parameters = DCOPF.parameters.copy()
-        self.parameters.update(OptSolverIQP.parameters)
+        parameters = OptSolverIQP.parameters.copy()
+        parameters.update(DCOPF.parameters)
+        self.parameters = parameters
 
     def create_problem(self,net):
         
@@ -202,8 +203,8 @@ class DCOPF(PFmethod):
     
         # Get data
         problem = self.results['problem']
-        xz = self.results['primal_variables']
-        lam,nu,mu,pi = self.results['dual_variables']
+        xz = self.results['primal variables']
+        lam,nu,mu,pi = self.results['dual variables']
         nx = net.num_vars
         nz = net.get_num_branches_not_on_outage()*net.num_periods
         n = nx+nz
