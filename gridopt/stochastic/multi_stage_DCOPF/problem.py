@@ -1,7 +1,7 @@
 #*****************************************************#
 # This file is part of GRIDOPT.                       #
 #                                                     #
-# Copyright (c) 2015-2016, Tomas Tinoco De Rubira.    #
+# Copyright (c) 2015-2017, Tomas Tinoco De Rubira.    #
 #                                                     #
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
@@ -14,7 +14,6 @@ import numpy as np
 from .utils import ApplyFunc
 from numpy.linalg import norm
 from gridopt.power_flow import new_method
-from optalg.lin_solver import new_linsolver
 from optalg.opt_solver.opt_solver_error import *
 from optalg.stoch_solver import StochProblemMS
 from optalg.opt_solver import OptSolverIQP,QuadProblem
@@ -32,7 +31,7 @@ class MS_DCOPF_Problem(StochProblemMS):
                   'r_eps'       : 1e-3,  # smallest renewable injection
                   'num_samples' : 1000,  # number of samples
                   'draw': False,         # drawing flag
-                  'name': ''}            # name
+                  'name': 'unknown'}     # name
 
     def __init__(self,net,forecast,parameters={}):
         """
@@ -155,6 +154,8 @@ class MS_DCOPF_Problem(StochProblemMS):
         # Renewable covariance
         from scikits.sparse.cholmod import cholesky
         r_cov = Pr*net.create_vargen_P_sigma(net.vargen_corr_radius,net.vargen_corr_value)*Pr.T
+        r_cov = r_cov.tocoo()
+        assert(np.all(r_cov.row >= r_cov.col))
         r_cov = (r_cov+r_cov.T-triu(r_cov)).tocsc()
         factor = cholesky(r_cov)
         L,D = factor.L_D()
@@ -297,8 +298,8 @@ class MS_DCOPF_Problem(StochProblemMS):
 
         Parameters
         ----------
-        t : int (initial stage)
-        tf : int (end stage)
+        t : {0,...,T} (initial stage)
+        tf : {0,...,T} (end stage)
 
         Returns
         -------
@@ -331,7 +332,7 @@ class MS_DCOPF_Problem(StochProblemMS):
                       [None,None,None,None,None,self.Oz]], # z
                      format='coo')
 
-            g = np.hstack((self.gp,  # p (add correction)
+            g = np.hstack((self.gp,  # p (place to add correction)
                            self.gq,  # q
                            self.ow,  # w
                            self.os,  # s
@@ -354,13 +355,13 @@ class MS_DCOPF_Problem(StochProblemMS):
 
             A_list += [Arow1,Arow2,Arow3]
             b_list += [self.b+self.D*self.d_forecast[t+i],
-                       self.oy, # (add p_prev for first stage)
+                       self.oy, # (place to add p_prev for first stage)
                        self.oz]
             
             u_list += [self.p_max,
                        self.q_max,
                        self.w_max,
-                       self.r_max, # (add available r)
+                       self.r_max, # (place to add available r)
                        self.y_max,
                        self.z_max]
             l_list += [self.p_min,
@@ -378,7 +379,7 @@ class MS_DCOPF_Problem(StochProblemMS):
 
         # Stages after start stage
         if A_list[3:]:
-            An = bmat([a[6:] for a in A_list[3:]],format='coo')
+            An = bmat([a[6:] for a in A_list[3:]],format='coo') # ignores first 6 blocks
             bn = np.hstack((b_list[3:]))
         else:
             An = None
@@ -419,6 +420,16 @@ class MS_DCOPF_Problem(StochProblemMS):
     def eval_F(self,t,x,w):
         """
         Evaluates current cost.
+        
+        Parameters
+        ----------
+        t : {0,...,T-1}
+        x : vector
+        w : vector
+        
+        Returns
+        -------
+        F : float
         """
         
         p,q,w,s,y,z = self.separate_x(x)
@@ -471,15 +482,21 @@ class MS_DCOPF_Problem(StochProblemMS):
         
         return self.T
 
-    def get_size_x(self):
+    def get_size_x(self,t):
         """
         Gets size of stage vector x.
+
+        Parameters
+        ----------
+        t : {0,...,T-1}        
 
         Returns
         -------
         size : int
         """
 
+        assert(0 <= t < self.T)
+        
         return self.num_x
 
     def get_x_prev(self):
@@ -493,7 +510,7 @@ class MS_DCOPF_Problem(StochProblemMS):
         
         return self.x_prev
 
-    def solve_stage_with_cuts(self,t,w,x_prev,A,b,quiet=False,tol=1e-4,init_data=None):
+    def solve_stage_with_cuts(self,t,w,x_prev,A,b,tol=1e-4,init_data=None,quiet=False):
         """
         Solves approximate stage problem for given realization of
         uncertainty and cuts that approximate cost-to-go function.
@@ -617,35 +634,35 @@ class MS_DCOPF_Problem(StochProblemMS):
         # Return
         return xt,Q,gQ,results
 
-    def solve_stages(self,t,w_list,x_prev,g_corr=[],init_data=None,tf=None,quiet=False,tol=1e-4,next_stage=False):
+    def solve_stages(self,t,w_list,x_prev,g_list=[],tf=None,tol=1e-4,quiet=False,next=False):
         """
         Solves stages using given realizations of uncertainty 
         and cost-to-go slope corrections.
         
         Parameters
         ----------
-        t : int (start stage)
-        w_list : list of random vectors for stage t,...,T
+        t : {0,...,T-1}
+        w_list : list of random vectors for stage t,...,tf
         x_prev : vector of previous stage variables
-        g_corr : list of slope corrections for stage t,...,T
-        tf : int (end stage)
-        init_data :
+        g_list : list of slope corrections for stage t,...,tf
+        tf : {0,...,T-1} (T-1 by default)
+        tol : float
         quiet : {True,False}
-        tol : 
-        next_stage : 
+        next : {True,False}
         
         Returns
         -------
-        x : stage solution
-        Q : total cost
-        gQ : subgradient with respect to x_prev
+        x : stage-t solution
+        H : stage-t cost
+        gH : stage-t cost subgradient wrt x_prev
+        gHnext : stage-(t+1) cost subgradient wrt x
         """
 
         if tf is None:
             tf = self.T-1
 
-        if len(g_corr) == 0:
-            g_corr = (tf-t+1)*[np.zeros(self.num_x)]
+        if not len(g_list):
+            g_list = (tf-t+1)*[np.zeros(self.num_x)]
         
         assert(t >= 0)
         assert(t < self.T)
@@ -653,12 +670,12 @@ class MS_DCOPF_Problem(StochProblemMS):
         assert(tf < self.T)
         assert(t <= tf)
         assert(len(w_list) == tf-t+1)
-        assert(len(g_corr) == tf-t+1)
+        assert(len(g_list) == tf-t+1)
         assert(x_prev.shape == (self.num_x,))
         
         p_prev = x_prev[:self.num_p]
 
-        # Base
+        # Base problem
         if tf == self.T-1:
             QPproblem = self.base_problem[t]
         else:
@@ -669,18 +686,12 @@ class MS_DCOPF_Problem(StochProblemMS):
         s_offset = self.num_p+self.num_q+self.num_w
         QPproblem.b[self.num_bus:self.num_bus+self.num_y] = p_prev
         for i in range(tf-t+1):
-            QPproblem.g[p_offset:p_offset+self.num_p] = self.gp+g_corr[i][:self.num_p]
+            QPproblem.g[p_offset:p_offset+self.num_p] = self.gp+g_list[i][:self.num_p]
             QPproblem.u[s_offset:s_offset+self.num_s] = w_list[i]
             p_offset += self.num_x
             s_offset += self.num_x
 
-        # Warm start
-        if init_data is not None:
-            QPproblem.x = init_data['x']
-            QPproblem.lam = init_data['lam']
-            QPproblem.mu = init_data['mu']
-            QPproblem.pi = init_data['pi']
-            
+        # Quiet
         if not quiet:
             QPproblem.show()
 
@@ -691,6 +702,7 @@ class MS_DCOPF_Problem(StochProblemMS):
         
         # Solve
         solver.solve(QPproblem)
+        assert(solver.get_status() == 'solved')
 
         # Results
         results = solver.get_results()
@@ -704,109 +716,31 @@ class MS_DCOPF_Problem(StochProblemMS):
         # Solutions
         xt = x[:self.num_x]
         y_offset = self.num_p+self.num_q+self.num_w+self.num_s
-        Q = np.dot(QPproblem.g,x)+0.5*np.dot(x,QPproblem.H*x)
-        gQ = np.hstack(((-mu+pi)[y_offset:y_offset+self.num_y],
+        H = np.dot(QPproblem.g,x)+0.5*np.dot(x,QPproblem.H*x)
+        gH = np.hstack(((-mu+pi)[y_offset:y_offset+self.num_y],
                         self.oq,self.ow,self.os,self.oy,self.oz))
+        gHnext = None
 
-        # Others
-        results['xn'] = x[self.num_x:].copy()
-        results['gQn'] = None
-        results['lamn'] = None
-        results['mun'] = None
-        results['pin'] = None
-        results['Qn'] = None
-
-        # Next stage sens
-        if t < self.T-1 and next_stage:
+        # Next stage
+        if t < self.T-1 and next:
             Pn = eye(x.size-self.num_x,x.size,self.num_x,format='csr')
             xn = Pn*x
             un = Pn*QPproblem.u
             ln = Pn*QPproblem.l
             An = QPproblem.An
             bn = QPproblem.bn
-            bn[self.num_bus:self.num_bus+self.num_y] = x[:self.num_p]
+            bn[self.num_bus:self.num_bus+self.num_y] = x[:self.num_p] 
             gn = Pn*QPproblem.g
             Hn = Pn*QPproblem.H*Pn.T
             lamn = lam[self.num_bus+self.num_p+self.num_z:]
             solver.solve(QuadProblem(Hn,gn,An,bn,ln,un,x=xn,lam=lamn,mu=Pn*mu,pi=Pn*pi))
             xn = solver.get_primal_variables()
             lamn,nun,mun,pin = solver.get_dual_variables() 
-            results['gQn'] = np.hstack(((-mun+pin)[y_offset:y_offset+self.num_y],
-                                        self.oq,self.ow,self.os,self.oy,self.oz))
-            results['lamn'] = lamn
-            results['mun'] = mun
-            results['pin'] = pin
-            results['Qn'] = np.dot(gn,xn)+0.5*np.dot(xn,Hn*xn)
+            gHnext = np.hstack(((-mun+pin)[y_offset:y_offset+self.num_y],
+                                self.oq,self.ow,self.os,self.oy,self.oz))
             
         # Return
-        return xt,Q,gQ,results
-
-    def solve_stage_adjustments(self,t,r,p,quiet=False,tol=1e-4):
-        """
-        Evaluates stage fast-gen adjustments cost.
-        
-        Parameters
-        ----------
-        t : int (stage)
-        r : vector of current renewable powers
-        p : vector of current slow-gen powers
-        quiet : {True,False}
-
-        Returns
-        -------
-        q : stage t vars (q,w,s,z)
-        Q : stage t cost
-        """
-
-        # Check
-        assert(0 <= t < self.T)
-        assert(r.shape == (self.num_r,))
-        assert(p.shape == (self.num_p,))
-        
-        # Objective
-        H = bmat([[self.Hq,None,None,None],  # q
-                  [None,self.Ow,None,None],  # w
-                  [None,None,self.Os,None],  # s
-                  [None,None,None,self.Oz]], # z
-                 format='coo')
-
-        g = np.hstack((self.gq,  # q
-                       self.ow,  # w
-                       self.os,  # s
-                       self.oz)) # z
-
-        # Linear constraints
-        A = bmat([[self.C,-self.A,self.R,None],
-                  [None,self.J,None,-self.Iz]],format='coo')
-        
-        b = np.hstack((self.b+self.D*self.d_forecast[t]-self.G*p,self.oz))
-        
-        # Bounds
-        u = np.hstack((self.q_max,self.w_max,r,self.z_max))
-        l = np.hstack((self.q_min,self.w_min,self.os,self.z_min))
-
-        # Problem
-        QPproblem = QuadProblem(H,g,A,b,l,u)
-        if not quiet:
-            QPproblem.show()
-
-        # Set up solver
-        solver = OptSolverIQP()
-        solver.set_parameters({'quiet': quiet, 
-                               'tol': tol})
-        
-        # Solve
-        solver.solve(QPproblem)
-
-        # Stage optimal point
-        xadj = solver.get_primal_variables()
-        q = xadj[:self.num_q]
-        w = xadj[self.num_q:self.num_q+self.num_w]
-        s = xadj[self.num_q+self.num_w:self.num_q+self.num_w+self.num_s]
-        z = xadj[self.num_q+self.num_w+self.num_s:]
-        
-        # Return
-        return q,w,s,z
+        return xt,H,gH,gHnext
 
     def is_point_feasible(self,t,x,x_prev,w):
         """
@@ -814,7 +748,10 @@ class MS_DCOPF_Problem(StochProblemMS):
 
         Parameters
         ----------
-        a lot
+        t : {0,...,T-1}
+        x : vector
+        x_prev : vector
+        w : vector
 
         Returns
         -------
@@ -855,8 +792,8 @@ class MS_DCOPF_Problem(StochProblemMS):
 
         Parameters
         ----------
-        t : int (stage)
-        observations : list
+        t : {0,...,T-1}
+        observations : list (length t)
 
         Parameters
         ----------
@@ -870,6 +807,8 @@ class MS_DCOPF_Problem(StochProblemMS):
         r_eps = self.parameters['r_eps']
         r_ramp_max = self.parameters['r_ramp_max']
         r_ramp_freq = self.parameters['r_ramp_freq']
+
+        assert(0 <= r_ramp_freq <= 1.)
 
         r = self.r_forecast[t]+self.L_sca[t]*self.L_cov*np.random.randn(self.num_r) # perturbed
         r = np.maximum(np.minimum(r,self.r_max),r_eps)                              # cap bound
@@ -887,13 +826,13 @@ class MS_DCOPF_Problem(StochProblemMS):
         
         Parameters
         ----------
-        t : int (stage)
-        t_from : int
-        observations : list
+        t : {0,...,T-1}
+        t_from : {0,...,T-1}
+        observations : list (length t_from)
 
         Parameters
         ----------
-        W : list
+        W : list (length t+1)
         """
 
         assert(t >= 0)
@@ -915,8 +854,8 @@ class MS_DCOPF_Problem(StochProblemMS):
 
         Parameters
         ----------
-        t : int (stage)
-        observations : list
+        t : {0,...,T-1}
+        observations : list (length t)
 
         Returns
         -------
@@ -940,7 +879,9 @@ class MS_DCOPF_Problem(StochProblemMS):
 
         Parameters
         ----------
-        t : int (stage)
+        t : {0,...,T-1}
+        t_from : {0,...,T-1}
+        observations : list (length t_from)
 
         Returns
         -------
@@ -957,6 +898,7 @@ class MS_DCOPF_Problem(StochProblemMS):
         for i in range(self.parameters['num_samples']):
             r_pred *= float(i)/float(i+1)
             r_pred += np.array(self.sample_W(t,t_from,observations))/(i+1.)
+        assert(r_pred.shape == (t-t_from+1,self.num_r))
         predictions = [r_pred[tau,:] for tau in range(t-t_from+1)]
         assert(len(predictions) == t-t_from+1)
         return predictions
@@ -980,7 +922,7 @@ class MS_DCOPF_Problem(StochProblemMS):
 
         Parameters
         ----------
-        sceneario_tree : 
+        scenario_tree : StochProbleMS_Tree
         """
 
         vargen_cap = np.sum(self.r_max)
