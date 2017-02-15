@@ -31,7 +31,7 @@ class MS_DCOPF_Problem(StochProblemMS):
                   'r_eps'       : 1e-3,  # smallest renewable injection
                   'num_samples' : 1000,  # number of samples
                   'draw': False,         # drawing flag
-                  'name': 'unknown'}     # name
+                  'name': ''}            # name
 
     def __init__(self,net,forecast,parameters={}):
         """
@@ -1051,18 +1051,20 @@ class MS_DCOPF_Problem(StochProblemMS):
 
     def simulate_policies(self,sim_id):
         """
-        Simulates policies for a given
-        realization of uncertainty.
+        Simulates policies for a given realization of uncertainty.
 
         Parameters
         ----------
-        policies : list
-        R : list
         sim_id : int
 
         Returns
         -------
-        a lot
+        dtot : vector
+        rtot : vector
+        cost : dict
+        ptot : dict
+        qtot : dict
+        stot : dict
         """
 
         t0 = time.time()
@@ -1089,11 +1091,9 @@ class MS_DCOPF_Problem(StochProblemMS):
             for i in range(num):
                 x = policies[i].apply(t,x_prev[i],R[:t+1])
                 p,q,w,s,y,z = self.separate_x(x)
+                F = self.eval_F(t,x,r)
                 for tau in range(t+1):
-                    cost[i][tau] += (np.dot(self.gp,p)+
-                                     0.5*np.dot(p,self.Hp*p)+ # slow gen cost
-                                     np.dot(self.gq,q)+
-                                     0.5*np.dot(q,self.Hq*q)) # fast gen cost
+                    cost[i][tau] += F
                 ptot[i][t] = np.sum(p)
                 qtot[i][t] = np.sum(q)
                 stot[i][t] = np.sum(s)
@@ -1109,9 +1109,10 @@ class MS_DCOPF_Problem(StochProblemMS):
 
         Parameters
         ----------
-        policies : list of StochProblemMS_Policy
-        num_runs : int
+        policies : list of StochProblemMS_Policy objects
+        num_sims : int
         seed : int
+        num_procs : int
         outfile : string (name of output file)
         ref_pol : string (name of refernece policy)
         """
@@ -1135,7 +1136,7 @@ class MS_DCOPF_Problem(StochProblemMS):
                    
         # Eval
         self.policies = policies
-        self.samples = [self.sample_W(self.T-1) for j in range(num_sims)]
+        self.samples = [self.sample_W(self.T-1) for i in range(num_sims)]
         if num_procs > 1:
             pool = Pool(num_procs)
             func = pool.map
