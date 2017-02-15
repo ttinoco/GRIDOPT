@@ -514,6 +514,24 @@ class MS_DCOPF_Problem(StochProblemMS):
         """
         Solves approximate stage problem for given realization of
         uncertainty and cuts that approximate cost-to-go function.
+
+        Parameters
+        ----------
+        t : {0,...,T-1}
+        w : random vector
+        x_prev : vector of previous stage variables
+        A : matrix for constructing cuts
+        b : vector for contructing cuts
+        tol : solver tolerance
+        init_data : dict (for warm start)
+        quiet : {True,False}        
+
+        Results
+        -------
+        x : stage-t solution
+        H : stage-t cost
+        gH : stage-t cost subgradient wrt x_prev
+        results : dict
         """
         
         assert(t >= 0)
@@ -589,9 +607,9 @@ class MS_DCOPF_Problem(StochProblemMS):
                            inf,
                            np.ones(num_cuts)*inf))
             
-            l = np.hstack((l,   # x
-                           0.,  # v
-                           oh)) # h (slack)
+            l = np.hstack((l,    # x
+                           -inf, # v
+                           oh))  # h (slack)
         
         # Construct problem
         QPproblem = QuadProblem(H,g,Aeq,beq,l,u)
@@ -627,12 +645,12 @@ class MS_DCOPF_Problem(StochProblemMS):
         # Solutions
         xt = x[:self.num_x]
         y_offset = self.num_p+self.num_q+self.num_w+self.num_s
-        Q = np.dot(QPproblem.g,x)+0.5*np.dot(x,QPproblem.H*x)
-        gQ = np.hstack(((-mu+pi)[y_offset:y_offset+self.num_y],
+        H = np.dot(QPproblem.g,x)+0.5*np.dot(x,QPproblem.H*x)
+        gH = np.hstack(((-mu+pi)[y_offset:y_offset+self.num_y],
                         self.oq,self.ow,self.os,self.oy,self.oz))
 
         # Return
-        return xt,Q,gQ,results
+        return xt,H,gH,results
 
     def solve_stages(self,t,w_list,x_prev,g_list=[],tf=None,tol=1e-4,quiet=False,next=False):
         """
