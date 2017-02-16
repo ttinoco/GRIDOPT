@@ -70,7 +70,7 @@ class MS_DCOPF_CE(MS_DCOPF_Method):
             
         policy = StochProblemMS_Policy(self.problem,
                                        data=None,
-                                       name='Certainty-Equivalent')
+                                       name='CE')
         policy.apply = MethodType(apply,policy)
         
         # Return

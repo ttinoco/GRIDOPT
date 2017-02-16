@@ -1121,7 +1121,7 @@ class MS_DCOPF_Problem(StochProblemMS):
                     
         return dtot,rtot,cost,ptot,qtot,stot
 
-    def evaluate_policies(self,policies,num_sims,seed=1000,num_procs=0,outfile='',ref_pol=''):
+    def evaluate_policies(self,policies,num_sims,seed=1000,num_procs=0,outfile=''):
         """
         Simulates operation policies.
 
@@ -1186,7 +1186,7 @@ class MS_DCOPF_Problem(StochProblemMS):
 
         # Ref policy
         try:
-            iref = [p.name for p in policies].index(ref_pol)
+            iref = [p.name for p in policies].index('CE')
         except ValueError:
             iref = 0
         
@@ -1194,6 +1194,8 @@ class MS_DCOPF_Problem(StochProblemMS):
         writer.writerow([self.num_bus,num_sims])
         writer.writerow([p.get_name() for p in policies])
         writer.writerow([p.get_construction_time() for p in policies])
+        writer.writerow([p.get_param1() for p in policies])
+        writer.writerow([p.get_param2() for p in policies])
         writer.writerow(['d','r']+num_pol*['cost','p','q','s'])
         for t in range(self.T):
             row = [dtot[t],rtot[t]]

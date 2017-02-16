@@ -70,7 +70,7 @@ class MS_DCOPF_GR(MS_DCOPF_Method):
             
         policy = StochProblemMS_Policy(self.problem,
                                        data=None,
-                                       name='Greedy')
+                                       name='GR')
         policy.apply = MethodType(apply,policy)
         
         # Return
