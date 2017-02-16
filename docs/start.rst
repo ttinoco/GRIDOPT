@@ -10,7 +10,7 @@ This section describes how to get started with GRIDOPT. In particular, it covers
 
 * `Numpy <http://www.numpy.org>`_ (>=1.8.2)
 * `Scipy <http://www.scipy.org>`_ (>=0.13.3)
-* `OPTALG <http://ttinoco.github.io/OPTALG>`_ (== 1.1)
+* `OPTALG <http://ttinoco.github.io/OPTALG>`_ (>= 1.1)
 * `PFNET`_ (>= 1.2.5)
 
 .. _start_download:
