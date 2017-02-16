@@ -131,11 +131,8 @@ class TestPowerFlow(unittest.TestCase):
         net = self.net # single period
         self.assertEqual(net.num_periods,1)
         
-        try:
-            method_ipopt = gopt.power_flow.new_method('IpoptOPF')
-            method_augl = gopt.power_flow.new_method('AugLOPF')
-        except ImportError:
-            return
+        method_ipopt = gopt.power_flow.new_method('IpoptOPF')
+        method_augl = gopt.power_flow.new_method('AugLOPF')
             
         for case in utils.test_cases:
         
@@ -150,7 +147,10 @@ class TestPowerFlow(unittest.TestCase):
             method_augl.set_parameters({'quiet':True,
                                         'kappa':1e-2})
             
-            method_ipopt.solve(net)
+            try:
+                method_ipopt.solve(net)
+            except ImportError:
+                return
             self.assertEqual(method_ipopt.results['status'],'solved')
             x1 = method_ipopt.get_results()['primal variables']
             p1 = method_ipopt.get_results()['net properties']['gen_P_cost']
