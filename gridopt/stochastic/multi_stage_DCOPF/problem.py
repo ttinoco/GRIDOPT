@@ -1024,7 +1024,7 @@ class MS_DCOPF_Problem(StochProblemMS):
             plt.axis([1,self.T,0.,100.])
             plt.tick_params(axis='both',which='major',labelsize=18)
             plt.tick_params(axis='both',which='minor',labelsize=18)
-            plt.title(r'%s: Aggregate Renewable Powers' %self.parameters['name'],fontsize=22,y=1.05)
+            plt.title(r'%s: Renewables' %self.parameters['name'],fontsize=22,y=1.05)
             plt.grid()
 
             # Scenario tree
@@ -1045,7 +1045,7 @@ class MS_DCOPF_Problem(StochProblemMS):
                 plt.axis([0,self.T-1,0.,100.])
                 plt.tick_params(axis='both',which='major',labelsize=20)
                 plt.tick_params(axis='both',which='minor',labelsize=20)
-                plt.title(r'Total Renewable Powers (Scenerio Tree)')
+                plt.title(r'Renewables (Scenerio Tree)')
                 plt.grid()
 
             # Vargen closests branch from scenario tree
