@@ -24,7 +24,7 @@ class TestPowerFlow(unittest.TestCase):
         self.net = pf.Network()
         self.netMP = pf.Network(self.T)
 
-    def test_PF_method_solutions(self):
+    def test_ACPF(self):
 
         print('')
 
@@ -99,8 +99,13 @@ class TestPowerFlow(unittest.TestCase):
                             v_ang_error.append(np.abs(busMP.v_ang[t]*180./np.pi-v_ang))
                         v_mag_error.append(np.abs(bus.v_mag-v_mag))
                         v_ang_error.append(np.abs(bus.v_ang*180./np.pi-v_ang))
-                    
-                    print((method_name,case,sol_types[sol],len(v_mag_error),len(v_ang_error)))
+                        
+                    self.assertEqual(len(v_mag_error),len(v_ang_error))
+                    if len(v_mag_error) > 0:
+                        msg = 'testing'
+                    else:
+                        msg = 'not available'
+                    print(method_name,case,sol_types[sol],msg)
 
                     self.assertEqual(len(v_mag_error),counter*(self.T+1))
                     self.assertEqual(len(v_ang_error),counter*(self.T+1))
@@ -110,24 +115,12 @@ class TestPowerFlow(unittest.TestCase):
                     if len(v_ang_error) > 0:
                         self.assertLessEqual(np.max(v_ang_error),v_ang_tol)
 
-    def test_AugLOPF(self):
+    def test_ACOPF(self):
+
+        print('')
         
-        net = self.netMP # multi period
-        self.assertEqual(net.num_periods,self.T)
+        eps = 1.5 # %
 
-        method = gopt.power_flow.new_method('AugLOPF')
-
-        for case in utils.test_cases:
-        
-            net.load(case)
-            
-            method.set_parameters({'quiet':True})
-
-            method.solve(net)
-            self.assertEqual(method.results['status'],'solved')
-
-    def test_IpoptOPF(self):
-        
         net = self.net # single period
         self.assertEqual(net.num_periods,1)
         
@@ -135,34 +128,37 @@ class TestPowerFlow(unittest.TestCase):
         method_augl = gopt.power_flow.new_method('AugLOPF')
             
         for case in utils.test_cases:
-        
-            if case.split('/')[-1] == 'case3012wp.mat':
-                eps = 5.
-            else:
-                eps = 1.
+
+            print(case)
+
+            #if case.split('/')[-1] == 'case3012wp.mat':
+            #    eps = 5.
+            #else:
+            #    eps = 1.5
 
             net.load(case)
             
             method_ipopt.set_parameters({'quiet':True})
             method_augl.set_parameters({'quiet':True,
                                         'kappa':1e-2})
-            
+
             try:
                 method_ipopt.solve(net)
+                has_ipopt = True
+                self.assertEqual(method_ipopt.results['status'],'solved')
+                x1 = method_ipopt.get_results()['primal variables']
+                p1 = method_ipopt.get_results()['net properties']['gen_P_cost']
             except ImportError:
-                return
-            self.assertEqual(method_ipopt.results['status'],'solved')
-            x1 = method_ipopt.get_results()['primal variables']
-            p1 = method_ipopt.get_results()['net properties']['gen_P_cost']
+                has_ipopt = False
             
             method_augl.solve(net)
             self.assertEqual(method_augl.results['status'],'solved')
             x2 = method_augl.get_results()['primal variables']
             p2 = method_augl.get_results()['net properties']['gen_P_cost']
             
-            error = 100*(p1-p2)/abs(p2)
-            
-            self.assertLess(np.abs(error),eps)
+            if has_ipopt:
+                error = 100*(p1-p2)/abs(p2)
+                self.assertLess(np.abs(error),eps)
 
     def test_DCOPF(self):
         

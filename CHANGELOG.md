@@ -4,9 +4,10 @@ Targets
 
 Unreleased
 ----------
-* Compatibility with PFNET 1.2.5
-* OPF method based on IPOPT
-* Tool for transforming PFNET to OPTALG problems and recovering primal and dual variables
+* Compatibility with >= PFNET 1.2.5.
+* OPF method based on IPOPT.
+* Tool for transforming PFNET to OPTALG problems and recovering primal and dual variables.
+* OPF method based on AugL uses linear variable bounds and handles them with barrier.
 
 Version 1.3
 -----------

@@ -23,7 +23,9 @@ class AugLOPF(PFmethod):
     parameters = {'weight_cost': 1e0,  # for generation cost
                   'weight_limit': 1e2, # for soft limits
                   'weight_reg': 1e-5,  # for regularization
-                  'optol' : 1e-1,      # optimality tolerance (see AugL)
+                  'feastol' : 1e-4,    # see AugL
+                  'optol' : 1e-4,      # see AugL
+                  'kappa' : 1e-2,      # see AugL
                   'vmin_thresh': 0.1}  # threshold for vmin
                    
     def __init__(self):
@@ -81,7 +83,7 @@ class AugLOPF(PFmethod):
         problem = pfnet.Problem()
         problem.set_network(net)
         problem.add_constraint('AC power balance')
-        problem.add_constraint('variable nonlinear bounds') 
+        problem.add_constraint('variable bounds') 
         problem.add_function('generation cost',wc/max([net.num_generators,1.]))
         problem.add_function('soft voltage magnitude limits',wl/max([net.num_buses,1.]))
         problem.add_function('voltage angle regularization',wr/max([net.num_buses,1.]))
@@ -118,7 +120,9 @@ class AugLOPF(PFmethod):
         # Problem
         problem = self.create_problem(net)
 
-        # Callbacks
+        # G identity, otherwise use transform
+        assert(np.all(problem.G.row == problem.G.col))
+        assert(np.all(problem.G.data == 1.))
 
         # Termination
         def t1(s):
@@ -168,8 +172,8 @@ class AugLOPF(PFmethod):
         assert(net.num_vars == x.size)
         assert(problem.A.shape[0] == lam.size)
         assert(problem.f.shape[0] == nu.size)
-        assert(mu is None or not mu.size)
-        assert(pi is None or not pi.size)
+        assert(problem.G.shape[0] == mu.size)
+        assert(problem.G.shape[0] == pi.size)
 
         # Network quantities
         net.set_var_values(x)
