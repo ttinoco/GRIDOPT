@@ -133,13 +133,13 @@ class DCOPF(PFmethod):
         ux += Pr.T*Pr*(x-ux) # correct limit for curtailment
 
         nx = net.num_vars
-        nz = net.get_num_branches_not_on_outage()*net.num_periods
+        nz = Gz.shape[0]
         n = nx+nz
 
         Iz = eye(nz)
         Oz = coo_matrix((nz,nz))
         oz = np.zeros(nz)
-        
+
         H = bmat([[Hx,None],[None,Oz]],format='coo')
         g = np.hstack((gx,oz))
 
@@ -164,7 +164,7 @@ class DCOPF(PFmethod):
             assert(Gx.shape == (nx,nx))
             assert(np.all(Gx.row == Gx.col))
             assert(np.all(Gx.data == np.ones(nx)))
-            assert(Gz.shape == (net.get_num_branches_not_on_outage()*net.num_periods,nx))
+            assert(Gz.shape == (len([br for br in net.branches if br.ratingA != 0.])*net.num_periods,nx))
             assert(l.shape == (n,))
             assert(u.shape == (n,))
             assert(np.all(l < u))
@@ -206,7 +206,7 @@ class DCOPF(PFmethod):
         xz = self.results['primal variables']
         lam,nu,mu,pi = self.results['dual variables']
         nx = net.num_vars
-        nz = net.get_num_branches_not_on_outage()*net.num_periods
+        nz = len([br for br in net.branches if br.ratingA != 0.])*net.num_periods
         n = nx+nz
         
         # No problem

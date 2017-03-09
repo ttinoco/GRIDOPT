@@ -171,7 +171,11 @@ class TestPowerFlow(unittest.TestCase):
         for case in utils.test_cases:
         
             net.load(case)
-            
+       
+            for br in net.branches:
+                if br.ratingA == 0.:
+                    br.ratingA = 100.
+     
             method.set_parameters({'quiet':True, 
                                    'thermal_factor': 0.93,
                                    'tol': 1e-6})
