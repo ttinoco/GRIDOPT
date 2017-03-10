@@ -358,6 +358,9 @@ class NRPF(PFmethod):
             self.set_dual_variables(solver.get_dual_variables())
             self.set_net_properties(net.get_properties())
             self.set_problem(problem)
+
+            # Restore net properties
+            net.update_properties()
     
     def update_network(self,net):
         

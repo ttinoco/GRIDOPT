@@ -60,9 +60,12 @@ class TestPowerFlow(unittest.TestCase):
                         method.set_parameters({'lock_taps': False})
                     method.set_parameters({'quiet': True})
 
+                    bus_P_mis = net.bus_P_mis
                     method.solve(net)
                     results = method.get_results()
                     self.assertEqual(results['status'],'solved')
+                    self.assertEqual(net.bus_P_mis,bus_P_mis)
+                    self.assertNotEqual(results['net properties']['bus_P_mis'],bus_P_mis)
                     method.update_network(net)
 
                     method.solve(netMP)
@@ -131,11 +134,6 @@ class TestPowerFlow(unittest.TestCase):
 
             print(case)
 
-            #if case.split('/')[-1] == 'case3012wp.mat':
-            #    eps = 5.
-            #else:
-            #    eps = 1.5
-
             net.load(case)
             
             method_ipopt.set_parameters({'quiet':True})
@@ -143,16 +141,24 @@ class TestPowerFlow(unittest.TestCase):
                                         'kappa':1e-2})
 
             try:
+                net.update_properties()
+                gen_P_cost = net.gen_P_cost
                 method_ipopt.solve(net)
                 has_ipopt = True
                 self.assertEqual(method_ipopt.results['status'],'solved')
+                self.assertEqual(net.gen_P_cost,gen_P_cost)
+                self.assertLess(method_ipopt.results['net properties']['gen_P_cost'],gen_P_cost)
                 x1 = method_ipopt.get_results()['primal variables']
                 p1 = method_ipopt.get_results()['net properties']['gen_P_cost']
             except ImportError:
                 has_ipopt = False
             
+            net.update_properties()
+            gen_P_cost = net.gen_P_cost
             method_augl.solve(net)
             self.assertEqual(method_augl.results['status'],'solved')
+            self.assertEqual(net.gen_P_cost,gen_P_cost)
+            self.assertLess(method_augl.results['net properties']['gen_P_cost'],gen_P_cost)
             x2 = method_augl.get_results()['primal variables']
             p2 = method_augl.get_results()['net properties']['gen_P_cost']
             
@@ -181,8 +187,12 @@ class TestPowerFlow(unittest.TestCase):
                                    'tol': 1e-6})
 
             try:
+                net.update_properties()
+                gen_P_cost = net.gen_P_cost
                 method.solve(net)
                 self.assertEqual(method.results['status'],'solved')
+                self.assertTrue(np.all(net.gen_P_cost == gen_P_cost))
+                self.assertTrue(np.all(method.results['net properties']['gen_P_cost'] != gen_P_cost))
             except gopt.power_flow.PFmethodError:
                 self.assertEqual(case,INFCASE)
                 self.assertEqual(method.results['status'],'error')
