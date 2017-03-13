@@ -43,8 +43,9 @@ class IpoptOPF(PFmethod):
         net.clear_flags()
         
         # Voltage magnitudes
+        #Add the term bounded 
         net.set_flags('bus',
-                      'variable',
+                      ['variable','bounded'], 
                       'any',
                       'voltage magnitude')
         
@@ -71,7 +72,7 @@ class IpoptOPF(PFmethod):
                                     net.get_num_gens_not_on_outage() + 
                                     net.get_num_reg_gens())*net.num_periods)
             assert(net.num_bounded == (net.get_num_gens_not_on_outage() + 
-                                       net.get_num_reg_gens())*net.num_periods)
+                                       net.get_num_reg_gens())*net.num_periods + net.num_buses)
         except AssertionError:
             raise PFmethodError_BadProblem(self)
                                     
@@ -81,9 +82,9 @@ class IpoptOPF(PFmethod):
         problem.add_constraint('AC power balance')
         problem.add_constraint('variable bounds') 
         problem.add_function('generation cost',wc/max([net.num_generators,1.]))
-        problem.add_function('soft voltage magnitude limits',wl/max([net.num_buses,1.]))
-        problem.add_function('voltage angle regularization',wr/max([net.num_buses,1.]))
-        problem.add_function('generator powers regularization',wr/max([net.num_generators,1.]))
+        #problem.add_function('soft voltage magnitude limits',wl/max([net.num_buses,1.]))
+        #problem.add_function('voltage angle regularization',wr/max([net.num_buses,1.]))
+        #problem.add_function('generator powers regularization',wr/max([net.num_generators,1.]))
         problem.analyze()
         
         # Return
