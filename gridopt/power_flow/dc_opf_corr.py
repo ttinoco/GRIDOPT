@@ -1,7 +1,7 @@
 #*****************************************************#
 # This file is part of GRIDOPT.                       #
 #                                                     #
-# Copyright (c) 2015-2016, Tomas Tinoco De Rubira.    #
+# Copyright (c) 2015-2017, Tomas Tinoco De Rubira.    #
 #                                                     #
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
@@ -29,8 +29,9 @@ class DCOPF_Corr(PFmethod):
     def __init__(self):
         
         PFmethod.__init__(self)
-        self.parameters = DCOPF_Corr.parameters.copy()
-        self.parameters.update(OptSolverIQP.parameters)
+        parameters = OptSolverIQP.parameters.copy()
+        parameters.update(DCOPF_Corr.parameters)
+        self.parameters = parameters
 
     def create_problem(self,net):
         

@@ -1,7 +1,7 @@
 #*****************************************************#
 # This file is part of GRIDOPT.                       #
 #                                                     #
-# Copyright (c) 2015-2016, Tomas Tinoco De Rubira.    #
+# Copyright (c) 2015-2017, Tomas Tinoco De Rubira.    #
 #                                                     #
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
@@ -30,8 +30,9 @@ class DCOPF(PFmethod):
     def __init__(self):
 
         PFmethod.__init__(self)
-        self.parameters = DCOPF.parameters.copy()
-        self.parameters.update(OptSolverIQP.parameters)
+        parameters = OptSolverIQP.parameters.copy()
+        parameters.update(DCOPF.parameters)
+        self.parameters = parameters
 
     def create_problem(self,net):
         
@@ -132,13 +133,13 @@ class DCOPF(PFmethod):
         ux += Pr.T*Pr*(x-ux) # correct limit for curtailment
 
         nx = net.num_vars
-        nz = net.get_num_branches_not_on_outage()*net.num_periods
+        nz = Gz.shape[0]
         n = nx+nz
 
         Iz = eye(nz)
         Oz = coo_matrix((nz,nz))
         oz = np.zeros(nz)
-        
+
         H = bmat([[Hx,None],[None,Oz]],format='coo')
         g = np.hstack((gx,oz))
 
@@ -163,7 +164,7 @@ class DCOPF(PFmethod):
             assert(Gx.shape == (nx,nx))
             assert(np.all(Gx.row == Gx.col))
             assert(np.all(Gx.data == np.ones(nx)))
-            assert(Gz.shape == (net.get_num_branches_not_on_outage()*net.num_periods,nx))
+            assert(Gz.shape == (len([br for br in net.branches if br.ratingA != 0.])*net.num_periods,nx))
             assert(l.shape == (n,))
             assert(u.shape == (n,))
             assert(np.all(l < u))
@@ -197,15 +198,18 @@ class DCOPF(PFmethod):
             self.set_dual_variables(solver.get_dual_variables())
             self.set_net_properties(net.get_properties())
             self.set_problem(problem)
+
+            # Restore net properties
+            net.update_properties()
             
     def update_network(self,net):
     
         # Get data
         problem = self.results['problem']
-        xz = self.results['primal_variables']
-        lam,nu,mu,pi = self.results['dual_variables']
+        xz = self.results['primal variables']
+        lam,nu,mu,pi = self.results['dual variables']
         nx = net.num_vars
-        nz = net.get_num_branches_not_on_outage()*net.num_periods
+        nz = len([br for br in net.branches if br.ratingA != 0.])*net.num_periods
         n = nx+nz
         
         # No problem

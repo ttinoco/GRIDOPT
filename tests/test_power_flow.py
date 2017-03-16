@@ -1,7 +1,7 @@
 #*****************************************************#
 # This file is part of GRIDOPT.                       #
 #                                                     #
-# Copyright (c) 2015-2016, Tomas Tinoco De Rubira.    #
+# Copyright (c) 2015-2017, Tomas Tinoco De Rubira.    #
 #                                                     #
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
@@ -24,7 +24,7 @@ class TestPowerFlow(unittest.TestCase):
         self.net = pf.Network()
         self.netMP = pf.Network(self.T)
 
-    def test_method_solutions(self):
+    def test_ACPF(self):
 
         print('')
 
@@ -52,17 +52,20 @@ class TestPowerFlow(unittest.TestCase):
                     if (sol == 'sol1' and         # no controls
                         method_name == 'AugLPF'):
                         continue
-                    if sol == 'sol1':   # no controls
+                    if sol == 'sol1':             # no controls
                         method.set_parameters({'limit_gens': False})
-                    elif sol == 'sol2': # generator voltage control
+                    elif sol == 'sol2':           # generator voltage control
                         pass
-                    else:               # generator and tap controls
+                    else:                         # generator and tap controls
                         method.set_parameters({'lock_taps': False})
                     method.set_parameters({'quiet': True})
 
+                    bus_P_mis = net.bus_P_mis
                     method.solve(net)
                     results = method.get_results()
                     self.assertEqual(results['status'],'solved')
+                    self.assertEqual(net.bus_P_mis,bus_P_mis)
+                    self.assertNotEqual(results['net properties']['bus_P_mis'],bus_P_mis)
                     method.update_network(net)
 
                     method.solve(netMP)
@@ -70,17 +73,17 @@ class TestPowerFlow(unittest.TestCase):
                     self.assertEqual(resultsMP['status'],'solved')
                     method.update_network(netMP)
 
-                    self.assertLess(norm(resultsMP['net_properties']['bus_P_mis']-netMP.bus_P_mis,np.inf),1e-10)
-                    self.assertLess(norm(resultsMP['net_properties']['bus_Q_mis']-netMP.bus_Q_mis,np.inf),1e-10)
-                    self.assertLess(norm(resultsMP['net_properties']['gen_P_cost']-netMP.gen_P_cost,np.inf),1e-10)
+                    self.assertLess(norm(resultsMP['net properties']['bus_P_mis']-netMP.bus_P_mis,np.inf),1e-10)
+                    self.assertLess(norm(resultsMP['net properties']['bus_Q_mis']-netMP.bus_Q_mis,np.inf),1e-10)
+                    self.assertLess(norm(resultsMP['net properties']['gen_P_cost']-netMP.gen_P_cost,np.inf),1e-10)
 
                     v_mag_tol = sol_data['v_mag_tol']
                     v_ang_tol = sol_data['v_ang_tol']
                     bus_data = sol_data['bus_data']
 
-                    v_mag_error = [0]
-                    v_ang_error = [0]
                     counter = 0
+                    v_mag_error = []
+                    v_ang_error = []
                     for bus_num,val in list(bus_data.items()):
                         
                         v_mag = val['v_mag']
@@ -99,35 +102,69 @@ class TestPowerFlow(unittest.TestCase):
                             v_ang_error.append(np.abs(busMP.v_ang[t]*180./np.pi-v_ang))
                         v_mag_error.append(np.abs(bus.v_mag-v_mag))
                         v_ang_error.append(np.abs(bus.v_ang*180./np.pi-v_ang))
-                    
-                    print((method_name,case,sol_types[sol],len(v_mag_error),len(v_ang_error)))
-                    self.assertEqual(len(v_mag_error),counter*(self.T+1)+1)
-                    self.assertEqual(len(v_ang_error),counter*(self.T+1)+1)
+                        
+                    self.assertEqual(len(v_mag_error),len(v_ang_error))
+                    if len(v_mag_error) > 0:
+                        msg = 'testing'
+                    else:
+                        msg = 'not available'
+                    print(method_name,case,sol_types[sol],msg)
 
-                    self.assertLessEqual(np.max(v_mag_error),v_mag_tol)
-                    self.assertLessEqual(np.max(v_ang_error),v_ang_tol)
+                    self.assertEqual(len(v_mag_error),counter*(self.T+1))
+                    self.assertEqual(len(v_ang_error),counter*(self.T+1))
 
-    def test_AugLOPF(self):
+                    if len(v_mag_error) > 0:
+                        self.assertLessEqual(np.max(v_mag_error),v_mag_tol)
+                    if len(v_ang_error) > 0:
+                        self.assertLessEqual(np.max(v_ang_error),v_ang_tol)
+
+    def test_ACOPF(self):
+
+        print('')
         
-        net = self.netMP # multi period
-        self.assertEqual(net.num_periods,self.T)
+        eps = 2. # %
 
-        method = gopt.power_flow.new_method('AugLOPF')
-
+        net = self.net # single period
+        self.assertEqual(net.num_periods,1)
+        
+        method_ipopt = gopt.power_flow.new_method('IpoptOPF')
+        method_augl = gopt.power_flow.new_method('AugLOPF')
+            
         for case in utils.test_cases:
-        
+
+            print(case)
+
             net.load(case)
             
-            method.set_parameters({'quiet':True})
+            method_ipopt.set_parameters({'quiet':True})
+            method_augl.set_parameters({'quiet':True,
+                                        'kappa':1e-2})
 
-            method.solve(net)
-            self.assertEqual(method.results['status'],'solved')
- 
-            # gen outage
-            cont = pf.Contingency([net.get_gen(0)])
-            cont.apply()
-            problem = method.create_problem(net)
-            cont.clear()
+            try:
+                net.update_properties()
+                gen_P_cost = net.gen_P_cost
+                method_ipopt.solve(net)
+                has_ipopt = True
+                self.assertEqual(method_ipopt.results['status'],'solved')
+                self.assertEqual(net.gen_P_cost,gen_P_cost)
+                self.assertNotEqual(method_ipopt.results['net properties']['gen_P_cost'],gen_P_cost)
+                x1 = method_ipopt.get_results()['primal variables']
+                p1 = method_ipopt.get_results()['net properties']['gen_P_cost']
+            except ImportError:
+                has_ipopt = False
+            
+            net.update_properties()
+            gen_P_cost = net.gen_P_cost
+            method_augl.solve(net)
+            self.assertEqual(method_augl.results['status'],'solved')
+            self.assertEqual(net.gen_P_cost,gen_P_cost)
+            self.assertNotEqual(method_augl.results['net properties']['gen_P_cost'],gen_P_cost)
+            x2 = method_augl.get_results()['primal variables']
+            p2 = method_augl.get_results()['net properties']['gen_P_cost']
+            
+            if has_ipopt:
+                error = 100*(p1-p2)/abs(p2)
+                self.assertLess(np.abs(error),eps)
 
     def test_DCOPF(self):
         
@@ -140,14 +177,22 @@ class TestPowerFlow(unittest.TestCase):
         for case in utils.test_cases:
         
             net.load(case)
-            
+       
+            for br in net.branches:
+                if br.ratingA == 0.:
+                    br.ratingA = 100.
+     
             method.set_parameters({'quiet':True, 
                                    'thermal_factor': 0.93,
                                    'tol': 1e-6})
 
             try:
+                net.update_properties()
+                gen_P_cost = net.gen_P_cost
                 method.solve(net)
                 self.assertEqual(method.results['status'],'solved')
+                self.assertTrue(np.all(net.gen_P_cost == gen_P_cost))
+                self.assertTrue(np.all(method.results['net properties']['gen_P_cost'] != gen_P_cost))
             except gopt.power_flow.PFmethodError:
                 self.assertEqual(case,INFCASE)
                 self.assertEqual(method.results['status'],'error')
@@ -156,17 +201,17 @@ class TestPowerFlow(unittest.TestCase):
                 
             method.update_network(net)
            
-            self.assertLess(norm(results['net_properties']['bus_P_mis']-net.bus_P_mis,np.inf),1e-10)
-            self.assertLess(norm(results['net_properties']['bus_Q_mis']-net.bus_Q_mis,np.inf),1e-10)
-            self.assertLess(norm(results['net_properties']['gen_P_cost']-net.gen_P_cost,np.inf),1e-10)
+            self.assertLess(norm(results['net properties']['bus_P_mis']-net.bus_P_mis,np.inf),1e-10)
+            self.assertLess(norm(results['net properties']['bus_Q_mis']-net.bus_Q_mis,np.inf),1e-10)
+            self.assertLess(norm(results['net properties']['gen_P_cost']-net.gen_P_cost,np.inf),1e-10)
 
             gen_P_cost0 = net.gen_P_cost
             load_P_util0 = net.load_P_util
             self.assertTupleEqual(gen_P_cost0.shape,(self.T,))
             self.assertTupleEqual(load_P_util0.shape,(self.T,))
             
-            x = results['primal_variables']
-            lam0,nu0,mu0,pi0 = results['dual_variables']
+            x = results['primal variables']
+            lam0,nu0,mu0,pi0 = results['dual variables']
 
             self.assertTupleEqual(x.shape,((net.num_branches+
                                             net.num_buses-
@@ -214,7 +259,7 @@ class TestPowerFlow(unittest.TestCase):
             method.update_network(net)
             gen_P_cost1 = net.gen_P_cost
             load_P_util1 = net.load_P_util
-            lam1,nu1,mu1,pi1 = results['dual_variables']
+            lam1,nu1,mu1,pi1 = results['dual variables']
             if ((norm(mu0[net.num_vars:],np.inf) > 1e-3 or 
                  norm(pi0[net.num_vars:],np.inf) > 1e-3) and case != INFCASE):
                 self.assertTrue(np.all(gen_P_cost1 <= gen_P_cost0))
@@ -237,8 +282,8 @@ class TestPowerFlow(unittest.TestCase):
             method.update_network(net)
             self.assertTrue(np.all(net.gen_P_cost-net.load_P_util < gen_P_cost1-load_P_util1))
 
-            x = results['primal_variables']
-            lam2,nu2,mu2,pi2 = results['dual_variables']
+            x = results['primal variables']
+            lam2,nu2,mu2,pi2 = results['dual variables']
 
             self.assertTupleEqual(x.shape,((net.num_branches+
                                             net.get_num_P_adjust_loads()+

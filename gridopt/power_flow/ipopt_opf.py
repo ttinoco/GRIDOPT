@@ -11,28 +11,24 @@ import pfnet
 import numpy as np
 from .method_error import *
 from .method import PFmethod
-from optalg.opt_solver import OptSolverError, OptCallback, OptTermination, OptSolverAugL
+from optalg.opt_solver import OptSolverError, OptSolverIpopt
 
-class AugLOPF(PFmethod):
+class IpoptOPF(PFmethod):
     """
-    Augmented Lagrangian-based optimal power flow method.
+    IPOPT-based optimal power flow method.
     """
  
-    name = 'AugLOPF'
+    name = 'IpoptOPF'
 
     parameters = {'weight_cost': 1e0,  # for generation cost
                   'weight_limit': 1e2, # for soft limits
-                  'weight_reg': 1e-5,  # for regularization
-                  'feastol' : 1e-4,    # see AugL
-                  'optol' : 1e-4,      # see AugL
-                  'kappa' : 1e-2,      # see AugL
-                  'vmin_thresh': 0.1}  # threshold for vmin
+                  'weight_reg': 1e-5}  # for regularization
                    
     def __init__(self):
 
         PFmethod.__init__(self)
-        parameters = OptSolverAugL.parameters.copy()
-        parameters.update(AugLOPF.parameters)
+        parameters = OptSolverIpopt.parameters.copy()
+        parameters.update(IpoptOPF.parameters)
         self.parameters = parameters
 
     def create_problem(self,net):
@@ -92,30 +88,11 @@ class AugLOPF(PFmethod):
         
         # Return
         return problem
-
-    def get_info_printer(self):
-
-        def info_printer(solver,header):
-            net = solver.problem.network
-            if header:
-                print('{0:^5}'.format('vmax'), end=' ')
-                print('{0:^5}'.format('vmin'), end=' ')
-                print('{0:^6}'.format('bvvio'), end=' ')
-                print('{0:^6}'.format('gQvio'), end=' ')
-                print('{0:^6}'.format('gPvio'))
-            else:
-                print('{0:^5.2f}'.format(np.average(net.bus_v_max)), end=' ')
-                print('{0:^5.2f}'.format(np.average(net.bus_v_min)), end=' ')
-                print('{0:^6.0e}'.format(np.average(net.bus_v_vio)), end=' ')
-                print('{0:^6.0e}'.format(np.average(net.gen_Q_vio)), end=' ')
-                print('{0:^6.0e}'.format(np.average(net.gen_P_vio)))
-        return info_printer
             
     def solve(self,net):
         
         # Parameters
         params = self.parameters
-        vmin_thresh = params['vmin_thresh']
 
         # Problem
         problem = self.create_problem(net)
@@ -123,22 +100,10 @@ class AugLOPF(PFmethod):
         # G identity, otherwise use transform
         assert(np.all(problem.G.row == problem.G.col))
         assert(np.all(problem.G.data == 1.))
-
-        # Termination
-        def t1(s):
-            if np.min(s.problem.network.bus_v_min) < vmin_thresh:
-                return True
-            else:
-                return False
-        
-        # Info printer
-        info_printer = self.get_info_printer()
-        
+                
         # Set up solver
-        solver = OptSolverAugL()
+        solver = OptSolverIpopt()
         solver.set_parameters(params)
-        solver.add_termination(OptTermination(t1,'low voltage'))
-        solver.set_info_printer(info_printer)
         
         # Solve
         try:

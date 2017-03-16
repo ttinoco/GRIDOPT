@@ -1,7 +1,7 @@
 #*****************************************************#
 # This file is part of GRIDOPT.                       #
 #                                                     #
-# Copyright (c) 2015-2016, Tomas Tinoco De Rubira.    #
+# Copyright (c) 2015-2017, Tomas Tinoco De Rubira.    #
 #                                                     #
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
@@ -21,10 +21,14 @@ class MS_DCOPF_GR(MS_DCOPF_Method):
     parameters = {'quiet': False}
     
     def __init__(self):
-        
+        """
+        Greedy method for multi-stage DC OPF problem.
+        """
+  
         MS_DCOPF_Method.__init__(self)
-        self.parameters = MS_DCOPF_GR.parameters.copy()
-        self.parameters.update(MS_DCOPF_Problem.parameters)
+        parameters = MS_DCOPF_Problem.parameters.copy()
+        parameters.update(MS_DCOPF_GR.parameters)
+        self.parameters = parameters
 
     def create_problem(self,net,forecast,parameters):
         
@@ -44,19 +48,21 @@ class MS_DCOPF_GR(MS_DCOPF_Method):
             self.problem.show()
  
         # Construct policy
-        def apply(cls,t,x_prev,Wt):
+        def apply(cls,t,x_prev,W):
+           
+            T = cls.problem.get_num_stages()
+ 
+            assert(0 <= t < T)
+            assert(len(W) == t+1)
             
-            assert(0 <= t < cls.problem.T)
-            assert(len(Wt) == t+1)
-            
-            x,Q,gQ,results = cls.problem.solve_stages(t,
-                                                      [Wt[-1]],
-                                                      x_prev,
-                                                      quiet=True,
-                                                      tf=t)
+            x,H,gH,gHnext = cls.problem.solve_stages(t,
+                                                     [W[-1]],
+                                                     x_prev,
+                                                     quiet=True,
+                                                     tf=t)
             
             # Check feasibility
-            if not cls.problem.is_point_feasible(t,x,x_prev,Wt[-1]):
+            if not cls.problem.is_point_feasible(t,x,x_prev,W[-1]):
                 raise ValueError('infeasible point')
             
             # Return
@@ -64,7 +70,7 @@ class MS_DCOPF_GR(MS_DCOPF_Method):
             
         policy = StochProblemMS_Policy(self.problem,
                                        data=None,
-                                       name='Greedy')
+                                       name='GR')
         policy.apply = MethodType(apply,policy)
         
         # Return

@@ -1,7 +1,7 @@
 #*****************************************************#
 # This file is part of GRIDOPT.                       #
 #                                                     #
-# Copyright (c) 2015-2016, Tomas Tinoco De Rubira.    #
+# Copyright (c) 2015-2017, Tomas Tinoco De Rubira.    #
 #                                                     #
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
@@ -21,10 +21,14 @@ class MS_DCOPF_CE(MS_DCOPF_Method):
     parameters = {'quiet': False}
     
     def __init__(self):
-        
+        """
+        Certainty-Equivalent method for multi-stage DC OPF problem.
+        """
+  
         MS_DCOPF_Method.__init__(self)
-        self.parameters = MS_DCOPF_CE.parameters.copy()
-        self.parameters.update(MS_DCOPF_Problem.parameters)
+        parameters = MS_DCOPF_Problem.parameters.copy()
+        parameters.update(MS_DCOPF_CE.parameters)
+        self.parameters = parameters
 
     def create_problem(self,net,forecast,parameters):
         
@@ -44,20 +48,21 @@ class MS_DCOPF_CE(MS_DCOPF_Method):
             self.problem.show()
  
         # Construct policy
-        def apply(cls,t,x_prev,Wt):
+        def apply(cls,t,x_prev,W):
             
-            T = cls.problem.T
+            T = cls.problem.get_num_stages()
+
             assert(0 <= t < T)
-            assert(len(Wt) == t+1)
+            assert(len(W) == t+1)
             
-            w_list = Wt[-1:] + cls.problem.predict_W(T-1,t+1,Wt)
-            x,Q,gQ,results = cls.problem.solve_stages(t,
-                                                      w_list,
-                                                      x_prev,
-                                                      quiet=True)
+            w_list = W[-1:] + cls.problem.predict_W(T-1,t+1,W)
+            x,H,gH,gHnext = cls.problem.solve_stages(t,
+                                                     w_list,
+                                                     x_prev,
+                                                     quiet=True)
             
             # Check feasibility
-            if not cls.problem.is_point_feasible(t,x,x_prev,Wt[-1]):
+            if not cls.problem.is_point_feasible(t,x,x_prev,W[-1]):
                 raise ValueError('infeasible point')
             
             # Return
@@ -65,7 +70,7 @@ class MS_DCOPF_CE(MS_DCOPF_Method):
             
         policy = StochProblemMS_Policy(self.problem,
                                        data=None,
-                                       name='Certainty-Equivalent')
+                                       name='CE')
         policy.apply = MethodType(apply,policy)
         
         # Return

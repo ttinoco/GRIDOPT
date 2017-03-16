@@ -1,7 +1,7 @@
 #*****************************************************#
 # This file is part of GRIDOPT.                       #
 #                                                     #
-# Copyright (c) 2015-2016, Tomas Tinoco De Rubira.    #
+# Copyright (c) 2015-2017, Tomas Tinoco De Rubira.    #
 #                                                     #
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
@@ -95,12 +95,15 @@ class DCPF(PFmethod):
             self.set_net_properties(net.get_properties())
             self.set_problem(problem)
 
+            # Restore net properties
+            net.update_properties()
+
     def update_network(self,net):
         
         # Get data
         problem = self.results['problem']
-        x = self.results['primal_variables']
-        lam,nu,mu,pi = self.results['dual_variables']
+        x = self.results['primal variables']
+        lam,nu,mu,pi = self.results['dual variables']
        
         # No problem
         if problem is None:
