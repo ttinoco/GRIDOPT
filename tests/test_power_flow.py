@@ -122,7 +122,7 @@ class TestPowerFlow(unittest.TestCase):
 
         print('')
         
-        eps = 1.5 # %
+        eps = 2. # %
 
         net = self.net # single period
         self.assertEqual(net.num_periods,1)
@@ -147,7 +147,7 @@ class TestPowerFlow(unittest.TestCase):
                 has_ipopt = True
                 self.assertEqual(method_ipopt.results['status'],'solved')
                 self.assertEqual(net.gen_P_cost,gen_P_cost)
-                self.assertLess(method_ipopt.results['net properties']['gen_P_cost'],gen_P_cost)
+                self.assertNotEqual(method_ipopt.results['net properties']['gen_P_cost'],gen_P_cost)
                 x1 = method_ipopt.get_results()['primal variables']
                 p1 = method_ipopt.get_results()['net properties']['gen_P_cost']
             except ImportError:
@@ -158,7 +158,7 @@ class TestPowerFlow(unittest.TestCase):
             method_augl.solve(net)
             self.assertEqual(method_augl.results['status'],'solved')
             self.assertEqual(net.gen_P_cost,gen_P_cost)
-            self.assertLess(method_augl.results['net properties']['gen_P_cost'],gen_P_cost)
+            self.assertNotEqual(method_augl.results['net properties']['gen_P_cost'],gen_P_cost)
             x2 = method_augl.get_results()['primal variables']
             p2 = method_augl.get_results()['net properties']['gen_P_cost']
             
