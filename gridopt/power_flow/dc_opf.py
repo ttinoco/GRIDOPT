@@ -78,8 +78,8 @@ class DCOPF(PFmethod):
         problem.add_constraint('variable bounds')
         problem.add_constraint('DC power balance')
         problem.add_constraint('DC branch flow limits')
-        problem.add_function('generation cost',1.)
-        problem.add_function('consumption utility',-1.)
+        problem.add_function(pfnet.Function('generation cost',1.,net))
+        problem.add_function(pfnet.Function('consumption utility',-1.,net))
         problem.analyze()
         
         # Return

@@ -127,13 +127,13 @@ class AugLPF(PFmethod):
             problem.add_constraint('voltage regulation by transformers')
         if not lock_shunts:
             problem.add_constraint('voltage regulation by shunts')
-        problem.add_function('voltage magnitude regularization',wm/max([net.num_buses,1.]))
-        problem.add_function('voltage angle regularization',wa/max([net.num_buses,1.]))
-        problem.add_function('generator powers regularization',wp/max([net.num_generators,1.]))
+        problem.add_function(pfnet.Function('voltage magnitude regularization',wm/max([net.num_buses,1.]),net))
+        problem.add_function(pfnet.Function('voltage angle regularization',wa/max([net.num_buses,1.]),net))
+        problem.add_function(pfnet.Function('generator powers regularization',wp/max([net.num_generators,1.]),net))
         if not lock_taps:
-            problem.add_function('tap ratio regularization',wt/max([net.get_num_tap_changers_v(),1.]))
+            problem.add_function(pfnet.Function('tap ratio regularization',wt/max([net.get_num_tap_changers_v(),1.]),net))
         if not lock_shunts:
-            problem.add_function('susceptance regularization',wb/max([net.get_num_switched_shunts(),1.]))
+            problem.add_function(pfnet.Function('susceptance regularization',wb/max([net.get_num_switched_shunts(),1.]),net))
         problem.analyze()
         
         # Return
