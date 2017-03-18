@@ -119,14 +119,14 @@ class AugLPF(PFmethod):
         # Set up problem
         problem = pfnet.Problem()
         problem.set_network(net)
-        problem.add_constraint('AC power balance')
-        problem.add_constraint('generator active power participation')
-        problem.add_constraint('generator reactive power participation')
-        problem.add_constraint('voltage regulation by generators')
+        problem.add_constraint(pfnet.Constraint('AC power balance',net))
+        problem.add_constraint(pfnet.Constraint('generator active power participation',net))
+        problem.add_constraint(pfnet.Constraint('generator reactive power participation',net))
+        problem.add_constraint(pfnet.Constraint('voltage regulation by generators',net))
         if not lock_taps:
-            problem.add_constraint('voltage regulation by transformers')
+            problem.add_constraint(pfnet.Constraint('voltage regulation by transformers',net))
         if not lock_shunts:
-            problem.add_constraint('voltage regulation by shunts')
+            problem.add_constraint(pfnet.Constraint('voltage regulation by shunts',net))
         problem.add_function(pfnet.Function('voltage magnitude regularization',wm/max([net.num_buses,1.]),net))
         problem.add_function(pfnet.Function('voltage angle regularization',wa/max([net.num_buses,1.]),net))
         problem.add_function(pfnet.Function('generator powers regularization',wp/max([net.num_generators,1.]),net))

@@ -58,7 +58,7 @@ class NRPF(PFmethod):
         # Offset
         offset = 0
         for c in p.constraints:
-            if c.type == 'variable fixing':
+            if c.name == 'variable fixing':
                 break
             else:
                 offset += c.A.shape[0]
@@ -141,7 +141,7 @@ class NRPF(PFmethod):
         # Offset
         offset = 0
         for c in p.constraints:
-            if c.type == 'variable fixing':
+            if c.name == 'variable fixing':
                 break
             else:
                 offset += c.A.shape[0]
@@ -264,10 +264,10 @@ class NRPF(PFmethod):
         # Set up problem
         problem = pfnet.Problem()
         problem.set_network(net)
-        problem.add_constraint('AC power balance')
-        problem.add_constraint('generator active power participation')
-        problem.add_constraint('generator reactive power participation')
-        problem.add_constraint('variable fixing')
+        problem.add_constraint(pfnet.Constraint('AC power balance',net))
+        problem.add_constraint(pfnet.Constraint('generator active power participation',net))
+        problem.add_constraint(pfnet.Constraint('generator reactive power participation',net))
+        problem.add_constraint(pfnet.Constraint('variable fixing',net))
         if limit_gens:
             problem.add_heuristic(pfnet.HEUR_TYPE_PVPQ)
         problem.analyze()

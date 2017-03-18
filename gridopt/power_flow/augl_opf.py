@@ -82,8 +82,8 @@ class AugLOPF(PFmethod):
         # Set up problem
         problem = pfnet.Problem()
         problem.set_network(net)
-        problem.add_constraint('AC power balance')
-        problem.add_constraint('variable bounds') 
+        problem.add_constraint(pfnet.Constraint('AC power balance',net))
+        problem.add_constraint(pfnet.Constraint('variable bounds',net))
         problem.add_function(pfnet.Function('generation cost',wc/max([net.num_generators,1.]),net))
         problem.add_function(pfnet.Function('soft voltage magnitude limits',wl/max([net.num_buses,1.]),net))
         problem.add_function(pfnet.Function('voltage angle regularization',wr/max([net.num_buses,1.]),net))
