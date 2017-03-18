@@ -20,8 +20,9 @@ class AugLOPF(PFmethod):
     name = 'AugLOPF'
 
     parameters = {'weight_cost': 1e0,  # for generation cost
-                  'weight_limit': 1e2, # for soft limits
-                  'weight_reg': 1e-5,  # for regularization
+                  'weight_limit': 0,   # for soft limits
+                  'weight_ang_reg': 0, # for voltage angle regularization
+                  'weight_gen_reg': 0, # for generators regularization
                   'feastol' : 1e-4,    # see AugL
                   'optol' : 1e-4,      # see AugL
                   'kappa' : 1e-2,      # see AugL
@@ -38,9 +39,10 @@ class AugLOPF(PFmethod):
 
         # Parameters
         params = self.parameters
-        wc = params['weight_cost']
-        wl = params['weight_limit']
-        wr = params['weight_reg']
+        wc  = params['weight_cost']
+        wl  = params['weight_limit']
+        war = params['weight_ang_reg']
+        wgr = params['weight_gen_reg']
         
         # Clear flags
         net.clear_flags()
@@ -86,12 +88,14 @@ class AugLOPF(PFmethod):
         problem.add_constraint('variable bounds') 
         problem.add_function('generation cost',wc/max([net.num_generators,1.]))
         
-        #Create standard Problem as in Matpower
-        """
-        problem.add_function('soft voltage magnitude limits',wl/max([net.num_buses,1.]))
-        problem.add_function('voltage angle regularization',wr/max([net.num_buses,1.]))
-        problem.add_function('generator powers regularization',wr/max([net.num_generators,1.]))
-        """
+        #Set of options depending on the parameters
+        if wl!=0:
+            problem.add_function('soft voltage magnitude limits',wl/max([net.num_buses,1.]))
+        if war!=0:
+            problem.add_function('voltage angle regularization',war/max([net.num_buses,1.]))
+        if wgr!=0:
+            problem.add_function('generator powers regularization',wgr/max([net.num_generators,1.]))
+
         problem.analyze()
         
         # Return
