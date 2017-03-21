@@ -21,17 +21,10 @@ class TestPowerFlow(unittest.TestCase):
         
         # Network
         self.T = 2
-        self.net = pf.Network()
-        self.netMP = pf.Network(self.T)
 
     def test_ACPF(self):
 
         print('')
-
-        net = self.net     # single period
-        netMP = self.netMP # multi period
-        self.assertEqual(net.num_periods,1)
-        self.assertEqual(netMP.num_periods,self.T)
         
         sol_types = {'sol1': 'no controls',
                      'sol2': 'gen controls',
@@ -43,8 +36,11 @@ class TestPowerFlow(unittest.TestCase):
                     
                     method = gopt.power_flow.new_method(method_name)
                     
-                    netMP.load(case)
-                    net.load(case)
+                    net = pf.Parser(case.split('.')[-1]).parse(case)
+                    netMP = pf.Parser(case.split('.')[-1]).parse(case,self.T)
+
+                    self.assertEqual(net.num_periods,1)
+                    self.assertEqual(netMP.num_periods,self.T)
 
                     sol_data = utils.read_solution_data(case+'.'+sol)
                 
@@ -123,9 +119,6 @@ class TestPowerFlow(unittest.TestCase):
         print('')
         
         eps = 2. # %
-
-        net = self.net # single period
-        self.assertEqual(net.num_periods,1)
         
         method_ipopt = gopt.power_flow.new_method('IpoptOPF')
         method_augl = gopt.power_flow.new_method('AugLOPF')
@@ -134,7 +127,9 @@ class TestPowerFlow(unittest.TestCase):
 
             print(case)
 
-            net.load(case)
+            net = pf.Parser(case.split('.')[-1]).parse(case)
+            
+            self.assertEqual(net.num_periods,1)
             
             method_ipopt.set_parameters({'quiet':True})
             method_augl.set_parameters({'quiet':True,
@@ -168,15 +163,13 @@ class TestPowerFlow(unittest.TestCase):
 
     def test_DCOPF(self):
         
-        net = self.netMP # multi period
-
         method = gopt.power_flow.new_method('DCOPF')
-
-        self.assertEqual(net.num_periods,self.T)
 
         for case in utils.test_cases:
         
-            net.load(case)
+            net = pf.Parser(case.split('.')[-1]).parse(case,self.T)
+            
+            self.assertEqual(net.num_periods,self.T)
        
             for br in net.branches:
                 if br.ratingA == 0.:
