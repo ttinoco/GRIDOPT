@@ -48,6 +48,10 @@ def create_parser():
     parser.add_argument('--profile',action='store_true',default=False,
                         help='flag for profiling execution.')
 
+    # FlatStart
+    parser.add_argument('--flatstart',action='store_true',default=False,
+                        help='Flat start for solving the Problem.')
+
     return parser
 
 def main():
@@ -61,7 +65,14 @@ def main():
         net = pfnet.Network()
         net.load(args.case)
         net.show_components()
-            
+        
+        if args.flatstart:
+
+            # FlatStart
+            for bus in net.buses:
+                bus.v_mag = 1
+                bus.v_ang = 0
+        
         # Method
         method = gridopt.power_flow.new_method(args.method)
             
