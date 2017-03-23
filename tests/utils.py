@@ -1,7 +1,7 @@
 #*****************************************************#
 # This file is part of GRIDOPT.                       #
 #                                                     #
-# Copyright (c) 2015-2016, Tomas Tinoco De Rubira.    #
+# Copyright (c) 2015-2017, Tomas Tinoco De Rubira.    #
 #                                                     #
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
@@ -10,19 +10,21 @@ import csv
 from os import listdir
 from os.path import join
 
-# Test cases
-RES_DIR = './tests/resources'
-files = [join(RES_DIR,f) for f in listdir(RES_DIR)]
-test_cases = [f for f in files if f.split('.')[-1] not in ['sol1','sol2','sol3']]
+DIR = './tests/resources'
+test_cases = [join(DIR+'/cases',f) for f in listdir(DIR+'/cases')]
 
-def read_solution_data(sol_file):
+def get_pf_solution_file(case,sol):
 
-    bus_data = {}
-    sol_data = {'v_mag_tol': 0.,
-                'v_ang_tol': 0.,
-                'bus_data': bus_data}
+    return join(DIR+'/pf_solutions',case.split('/')[-1]+'.'+sol)
+
+def read_pf_solution_file(sol_file):
 
     try:
+
+        bus_data = {}
+        sol_data = {'v_mag_tol': 0.,
+                    'v_ang_tol': 0.,
+                    'bus_data': bus_data}
 
         f = open(sol_file)
         reader = csv.reader(f,delimiter=',')
@@ -38,9 +40,8 @@ def read_solution_data(sol_file):
             bus_number,code,v_mag,v_ang = int(row[0]),int(row[1]),float(row[2]),float(row[3])
             bus_data[bus_number] = {'v_mag': v_mag, # p.u.
                                     'v_ang': v_ang} # degrees
-            
+           
+        return sol_data
+
     except IOError:
-        pass
-
-    return sol_data
-
+        return None

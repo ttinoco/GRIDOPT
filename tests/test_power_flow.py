@@ -6,6 +6,7 @@
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
 
+from __future__ import print_function
 from . import utils
 import unittest
 import numpy as np
@@ -13,47 +14,54 @@ import pfnet as pf
 import gridopt as gopt
 from numpy.linalg import norm
 
-INFCASE = './tests/resources/ieee25.raw'
-
 class TestPowerFlow(unittest.TestCase):
     
     def setUp(self):
-        
-        # Network
-        self.T = 2
+                    
+        pass
 
     def test_ACPF(self):
 
         print('')
         
-        sol_types = {'sol1': 'no controls',
-                     'sol2': 'gen controls',
-                     'sol3': 'all controls'}
+        T = 2
+
+        sol_types = {'sol1': 'no--controls',
+                     'sol2': 'gen-controls',
+                     'sol3': 'all-controls'}
         
-        for method_name in ['NRPF','AugLPF']:
-            for case in utils.test_cases:
-                for sol in list(sol_types.keys()):
+        for case in utils.test_cases:
+            for sol in list(sol_types.keys()):
+                for method_name in ['NRPF','AugLPF']:
                     
                     method = gopt.power_flow.new_method(method_name)
                     
-                    net = pf.Parser(case.split('.')[-1]).parse(case)
-                    netMP = pf.Parser(case.split('.')[-1]).parse(case,self.T)
-
+                    net = pf.Parser(case).parse(case)
+                    netMP = pf.Parser(case).parse(case,T)
+                    
                     self.assertEqual(net.num_periods,1)
-                    self.assertEqual(netMP.num_periods,self.T)
+                    self.assertEqual(netMP.num_periods,T)
 
-                    sol_data = utils.read_solution_data(case+'.'+sol)
-                
-                    # Skip
-                    if (sol == 'sol1' and         # no controls
-                        method_name == 'AugLPF'):
+                    sol_file = utils.get_pf_solution_file(case,sol)
+                    sol_data = utils.read_pf_solution_file(sol_file)
+
+                    # No sol
+                    if sol_data is None:
                         continue
-                    if sol == 'sol1':             # no controls
+                    
+                    # Skip
+                    if (sol == 'sol1' and method_name == 'AugLPF'):
+                        continue
+
+                    # Set parameters
+                    if sol == 'sol1':
                         method.set_parameters({'limit_gens': False})
-                    elif sol == 'sol2':           # generator voltage control
+                    elif sol == 'sol2':
                         pass
-                    else:                         # generator and tap controls
+                    elif sol == 'sol3':
                         method.set_parameters({'lock_taps': False})
+                    else:
+                        raise ValueError('invalid solution type')
                     method.set_parameters({'quiet': True})
 
                     bus_P_mis = net.bus_P_mis
@@ -90,29 +98,22 @@ class TestPowerFlow(unittest.TestCase):
                             bus = net.get_bus_by_number(bus_num)
                         except pf.NetworkError:
                             continue
-                           
-                        counter += 1
-                            
-                        for t in range(self.T):
+                                                       
+                        for t in range(T):
                             v_mag_error.append(np.abs(busMP.v_mag[t]-v_mag))
                             v_ang_error.append(np.abs(busMP.v_ang[t]*180./np.pi-v_ang))
                         v_mag_error.append(np.abs(bus.v_mag-v_mag))
                         v_ang_error.append(np.abs(bus.v_ang*180./np.pi-v_ang))
-                        
+                       
+                        counter += 1
+
                     self.assertEqual(len(v_mag_error),len(v_ang_error))
                     if len(v_mag_error) > 0:
-                        msg = 'testing'
-                    else:
-                        msg = 'not available'
-                    print(method_name,case,sol_types[sol],msg)
-
-                    self.assertEqual(len(v_mag_error),counter*(self.T+1))
-                    self.assertEqual(len(v_ang_error),counter*(self.T+1))
-
-                    if len(v_mag_error) > 0:
                         self.assertLessEqual(np.max(v_mag_error),v_mag_tol)
-                    if len(v_ang_error) > 0:
                         self.assertLessEqual(np.max(v_ang_error),v_ang_tol)
+                        print("%s\t%s\t%s" %(method_name,case.split('/')[-1],sol_types[sol]))
+                    self.assertEqual(len(v_mag_error),counter*(T+1))
+                    self.assertEqual(len(v_ang_error),counter*(T+1))
 
     def test_ACOPF(self):
 
@@ -122,14 +123,16 @@ class TestPowerFlow(unittest.TestCase):
         
         method_ipopt = gopt.power_flow.new_method('IpoptOPF')
         method_augl = gopt.power_flow.new_method('AugLOPF')
+
+        skipcases = ['case1354pegase.mat', 'aesoSL2014.raw',
+                     'case2869pegase.mat', 'case3375wp.mat','case9241pegase.mat']
             
         for case in utils.test_cases:
 
-            if case == './tests/resources/aesoSL2014.raw':
+            if case.split('/')[-1] in skipcases:
                 continue
-            print(case)
 
-            net = pf.Parser(case.split('.')[-1]).parse(case)
+            net = pf.Parser(case).parse(case)
             
             self.assertEqual(net.num_periods,1)
             
@@ -146,6 +149,7 @@ class TestPowerFlow(unittest.TestCase):
                 self.assertNotEqual(method_ipopt.results['net properties']['gen_P_cost'],gen_P_cost)
                 x1 = method_ipopt.get_results()['primal variables']
                 p1 = method_ipopt.get_results()['net properties']['gen_P_cost']
+                print("%s  %s" %('IpoptOPF',case.split('/')[-1]))
             except ImportError:
                 has_ipopt = False
             
@@ -157,25 +161,36 @@ class TestPowerFlow(unittest.TestCase):
             self.assertNotEqual(method_augl.results['net properties']['gen_P_cost'],gen_P_cost)
             x2 = method_augl.get_results()['primal variables']
             p2 = method_augl.get_results()['net properties']['gen_P_cost']
-            
+            print("%s  %s" %('AugLOPF ',case.split('/')[-1]))
             if has_ipopt:
                 error = 100*(p1-p2)/abs(p2)
                 self.assertLess(np.abs(error),eps)
-
+                self.assertNotEqual(p1,p2)
+                
     def test_DCOPF(self):
+
+        T = 2
+
+        infcases = ['ieee25.raw']
+
+        skipcases = ['case1354pegase.mat','case2869pegase.mat',
+                     'case3375wp.mat','case9241pegase.mat']
         
         method = gopt.power_flow.new_method('DCOPF')
 
         for case in utils.test_cases:
+
+            if case.split('/')[-1] in skipcases:
+                continue
         
-            net = pf.Parser(case.split('.')[-1]).parse(case,self.T)
+            net = pf.Parser(case).parse(case,T)
+
+            for branch in net.branches:
+                if branch.ratingA == 0:
+                    branch.ratingA = 100
             
-            self.assertEqual(net.num_periods,self.T)
-       
-            for br in net.branches:
-                if br.ratingA == 0.:
-                    br.ratingA = 100.
-     
+            self.assertEqual(net.num_periods,T)
+            
             method.set_parameters({'quiet':True, 
                                    'thermal_factor': 0.93,
                                    'tol': 1e-6})
@@ -188,7 +203,7 @@ class TestPowerFlow(unittest.TestCase):
                 self.assertTrue(np.all(net.gen_P_cost == gen_P_cost))
                 self.assertTrue(np.all(method.results['net properties']['gen_P_cost'] != gen_P_cost))
             except gopt.power_flow.PFmethodError:
-                self.assertEqual(case,INFCASE)
+                self.assertTrue(case.split('/')[-1] in infcases)
                 self.assertEqual(method.results['status'],'error')
                 
             results = method.get_results()
@@ -201,8 +216,8 @@ class TestPowerFlow(unittest.TestCase):
 
             gen_P_cost0 = net.gen_P_cost
             load_P_util0 = net.load_P_util
-            self.assertTupleEqual(gen_P_cost0.shape,(self.T,))
-            self.assertTupleEqual(load_P_util0.shape,(self.T,))
+            self.assertTupleEqual(gen_P_cost0.shape,(T,))
+            self.assertTupleEqual(load_P_util0.shape,(T,))
             
             x = results['primal variables']
             lam0,nu0,mu0,pi0 = results['dual variables']
@@ -210,15 +225,15 @@ class TestPowerFlow(unittest.TestCase):
             self.assertTupleEqual(x.shape,((net.num_branches+
                                             net.num_buses-
                                             net.get_num_slack_buses()+
-                                            net.get_num_P_adjust_gens())*self.T,))
-            self.assertTupleEqual(x.shape,(net.num_vars+net.num_branches*self.T,))
-            self.assertTupleEqual(lam0.shape,((net.num_buses+net.num_branches)*self.T,))
+                                            net.get_num_P_adjust_gens())*T,))
+            self.assertTupleEqual(x.shape,(net.num_vars+net.num_branches*T,))
+            self.assertTupleEqual(lam0.shape,((net.num_buses+net.num_branches)*T,))
             self.assertTrue(nu0.size == 0)
             self.assertTupleEqual(mu0.shape,x.shape)
             self.assertTupleEqual(pi0.shape,x.shape)
 
             xx = x[:net.num_vars]
-            for t in range(self.T):
+            for t in range(T):
                 for bus in net.buses:
                     if not bus.is_slack():
                         self.assertEqual(bus.v_ang[t],xx[bus.index_v_ang[t]])
@@ -241,7 +256,7 @@ class TestPowerFlow(unittest.TestCase):
                     method.solve(net)
                     self.assertEqual(method.results['status'],'solved')
                 except gopt.power_flow.PFmethodError:
-                    self.assertEqual(case,INFCASE)
+                    self.assertTrue(case.split('/')[-1] in infcases)
                     self.assertEqual(method.results['status'],'error')
                 cont.clear()
 
@@ -255,7 +270,7 @@ class TestPowerFlow(unittest.TestCase):
             load_P_util1 = net.load_P_util
             lam1,nu1,mu1,pi1 = results['dual variables']
             if ((norm(mu0[net.num_vars:],np.inf) > 1e-3 or 
-                 norm(pi0[net.num_vars:],np.inf) > 1e-3) and case != INFCASE):
+                 norm(pi0[net.num_vars:],np.inf) > 1e-3) and (case.split('/')[-1] not in infcases)):
                 self.assertTrue(np.all(gen_P_cost1 <= gen_P_cost0))
             self.assertLess(norm(mu1[net.num_vars:],np.inf),1e-6)
             self.assertLess(norm(pi1[net.num_vars:],np.inf),1e-6)
@@ -291,7 +306,7 @@ class TestPowerFlow(unittest.TestCase):
             self.assertTupleEqual(pi2.shape,x.shape)
 
             xx = x[:net.num_vars]
-            for t in range(self.T):
+            for t in range(T):
                 for bus in net.buses:
                     if not bus.is_slack():
                         self.assertEqual(bus.v_ang[t],xx[bus.index_v_ang[t]])
