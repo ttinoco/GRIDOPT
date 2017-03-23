@@ -125,6 +125,8 @@ class TestPowerFlow(unittest.TestCase):
             
         for case in utils.test_cases:
 
+            if case == './tests/resources/aesoSL2014.raw':
+                continue
             print(case)
 
             net = pf.Parser(case.split('.')[-1]).parse(case)
@@ -132,8 +134,7 @@ class TestPowerFlow(unittest.TestCase):
             self.assertEqual(net.num_periods,1)
             
             method_ipopt.set_parameters({'quiet':True})
-            method_augl.set_parameters({'quiet':True,
-                                        'kappa':1e-2})
+            method_augl.set_parameters({'quiet':True})
 
             try:
                 net.update_properties()

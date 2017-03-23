@@ -20,12 +20,13 @@ class IpoptOPF(PFmethod):
  
     name = 'IpoptOPF'
 
-    parameters = {'weight_cost': 1e0,  # for generation cost
-                  'weight_limit': 1e2, # for soft limits
-                  'weight_reg': 1e-5}  # for regularization
-                   
+    parameters = {'weight_cost': 1e0,   # for generation cost
+                  'weight_mag_reg': 0., # for soft limits
+                  'weight_ang_reg': 0., # for voltage angle regularization
+                  'weight_gen_reg': 0., # for generators regularization
+                   }
     def __init__(self):
-
+        
         PFmethod.__init__(self)
         parameters = OptSolverIpopt.parameters.copy()
         parameters.update(IpoptOPF.parameters)
@@ -36,15 +37,16 @@ class IpoptOPF(PFmethod):
         # Parameters
         params = self.parameters
         wc = params['weight_cost']
-        wl = params['weight_limit']
-        wr = params['weight_reg']
+        wm = params['weight_mag_reg']
+        wa = params['weight_ang_reg']
+        wg = params['weight_gen_reg']
         
         # Clear flags
         net.clear_flags()
         
         # Voltage magnitudes
         net.set_flags('bus',
-                      'variable',
+                      ['variable','bounded'], 
                       'any',
                       'voltage magnitude')
         
@@ -71,7 +73,7 @@ class IpoptOPF(PFmethod):
                                     net.get_num_gens_not_on_outage() + 
                                     net.get_num_reg_gens())*net.num_periods)
             assert(net.num_bounded == (net.get_num_gens_not_on_outage() + 
-                                       net.get_num_reg_gens())*net.num_periods)
+                                       net.get_num_reg_gens())*net.num_periods + net.num_buses)
         except AssertionError:
             raise PFmethodError_BadProblem(self)
                                     
@@ -79,11 +81,14 @@ class IpoptOPF(PFmethod):
         problem = pfnet.Problem()
         problem.set_network(net)
         problem.add_constraint(pfnet.Constraint('AC power balance',net))
-        problem.add_constraint(pfnet.Constraint('variable bounds',net))
+        problem.add_constraint(pfnet.Constraint('variable bounds',net)) 
         problem.add_function(pfnet.Function('generation cost',wc/max([net.num_generators,1.]),net))
-        problem.add_function(pfnet.Function('soft voltage magnitude limits',wl/max([net.num_buses,1.]),net))
-        problem.add_function(pfnet.Function('voltage angle regularization',wr/max([net.num_buses,1.]),net))
-        problem.add_function(pfnet.Function('generator powers regularization',wr/max([net.num_generators,1.]),net))
+        if wm:
+            problem.add_function(pfnet.Function('soft voltage magnitude limits',wm/max([net.num_buses,1.]),net))
+        if wa:
+            problem.add_function(pfnet.Function('voltage angle regularization',wa/max([net.num_buses,1.]),net))
+        if wg:
+            problem.add_function(pfnet.Function('generator powers regularization',wg/max([net.num_generators,1.]),net))
         problem.analyze()
         
         # Return
