@@ -17,7 +17,7 @@ before_install:
 
 install:
 
-- git clone -b master git@github.com:ttinoco/PFNET.git
+- git clone -b master https://github.com/ttinoco/PFNET.git
 - cd PFNET
 - ./autogen.sh
 - ./configure
@@ -29,7 +29,7 @@ install:
 - sudo python setup.py install
 - cd ../../
 
-- git clone -b master git@github.com:ttinoco/OPTALG.git
+- git clone -b master https://github.com/ttinoco/OPTALG.git
 - cd OPTALG
 - sudo pip install -r requirements.txt
 - sudo python setup.py install --no_mumps --no_ipopt
