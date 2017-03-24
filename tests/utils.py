@@ -12,6 +12,7 @@ from os.path import join
 
 DIR = './tests/resources'
 test_cases = [join(DIR+'/cases',f) for f in listdir(DIR+'/cases')]
+test_cases.sort()
 
 def get_pf_solution_file(case,sol):
 
