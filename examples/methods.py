@@ -1,17 +1,15 @@
 #*****************************************************#
 # This file is part of GRIDOPT.                       #
 #                                                     #
-# Copyright (c) 2015-2016, Tomas Tinoco De Rubira.    #
+# Copyright (c) 2015-2017, Tomas Tinoco De Rubira.    #
 #                                                     #
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
 
-import sys
 import pfnet
 import gridopt
 
-net = pfnet.Network()
-net.load(sys.argv[1])
+net = pfnet.ParserMAT().parse('../tests/resources/cases/ieee14.mat')
 
 method = gridopt.power_flow.new_method('NRPF')
 
@@ -28,7 +26,7 @@ print((results['iterations']))
 problem = results['problem']
 problem.show()
 
-print((results['net_properties']['bus_v_max']))
+print((results['net properties']['bus_v_max']))
 
 method.update_network(net)
 

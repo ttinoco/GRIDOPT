@@ -16,10 +16,6 @@ GRIDOPT is a Python package that provides methods for solving power grid optimiz
 
 GRIDOPT is released under the BSD 2-clause license.
 
-**Contributors**
-
-* `Tomas Tinoco De Rubira <http://n.ethz.ch/~tomast/>`_
-
 **Documentation Contents**
 
 .. module:: gridopt
@@ -31,6 +27,10 @@ GRIDOPT is released under the BSD 2-clause license.
    Getting Started<start>
    Power Flow Methods<power_flow>
    API Reference<reference>
+
+**Contributors**
+
+* `Tomas Tinoco De Rubira <http://n.ethz.ch/~tomast/>`_
 
 Indices and tables
 ==================
