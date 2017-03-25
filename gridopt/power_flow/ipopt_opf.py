@@ -7,11 +7,9 @@
 #*****************************************************#
 
 from __future__ import print_function
-import pfnet
 import numpy as np
 from .method_error import *
 from .method import PFmethod
-from optalg.opt_solver import OptSolverError, OptSolverIpopt
 
 class IpoptOPF(PFmethod):
     """
@@ -26,6 +24,8 @@ class IpoptOPF(PFmethod):
                   'weight_gen_reg': 0., # for generators regularization
                    }
     def __init__(self):
+
+        from optalg.opt_solver import OptSolverIpopt
         
         PFmethod.__init__(self)
         parameters = OptSolverIpopt.parameters.copy()
@@ -33,6 +33,8 @@ class IpoptOPF(PFmethod):
         self.parameters = parameters
 
     def create_problem(self,net):
+
+        import pfnet
 
         # Parameters
         params = self.parameters
@@ -95,6 +97,8 @@ class IpoptOPF(PFmethod):
         return problem
             
     def solve(self,net):
+
+        from optalg.opt_solver import OptSolverError, OptSolverIpopt
         
         # Parameters
         params = self.parameters

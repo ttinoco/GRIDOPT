@@ -6,13 +6,11 @@
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
 
-import pfnet
 import numpy as np
 from .method_error import *
 from .method import PFmethod
 from numpy.linalg import norm
 from scipy.sparse import triu,coo_matrix,bmat,eye
-from optalg.opt_solver import OptSolverError,OptSolverIQP,QuadProblem
 
 class DCOPF(PFmethod):
     """
@@ -29,12 +27,16 @@ class DCOPF(PFmethod):
                                     
     def __init__(self):
 
+        from optalg.opt_solver import OptSolverIQP
+
         PFmethod.__init__(self)
         parameters = OptSolverIQP.parameters.copy()
         parameters.update(DCOPF.parameters)
         self.parameters = parameters
 
     def create_problem(self,net):
+
+        import pfnet
         
         # Parameters
         params = self.parameters
@@ -86,6 +88,8 @@ class DCOPF(PFmethod):
         return problem
             
     def solve(self,net):
+
+        from optalg.opt_solver import OptSolverError,OptSolverIQP,QuadProblem
         
         # Parameters
         params = self.parameters

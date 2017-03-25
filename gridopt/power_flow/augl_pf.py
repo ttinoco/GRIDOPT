@@ -7,11 +7,9 @@
 #*****************************************************#
 
 from __future__ import print_function
-import pfnet
 import numpy as np
 from .method_error import *
 from .method import PFmethod
-from optalg.opt_solver import OptSolverError, OptCallback, OptTermination, OptSolverAugL
 
 class AugLPF(PFmethod):
     """
@@ -34,12 +32,16 @@ class AugLPF(PFmethod):
                   
     def __init__(self):
 
+        from optalg.opt_solver import OptSolverAugL
+
         PFmethod.__init__(self)
         parameters = OptSolverAugL.parameters.copy()
         parameters.update(AugLPF.parameters)
         self.parameters = parameters
 
     def create_problem(self,net):
+
+        import pfnet
 
         # Parameters
         params = self.parameters
@@ -160,6 +162,8 @@ class AugLPF(PFmethod):
         return info_printer
             
     def solve(self,net):
+
+        from optalg.opt_solver import OptSolverError, OptCallback, OptTermination, OptSolverAugL
         
         # Parameters
         params = self.parameters

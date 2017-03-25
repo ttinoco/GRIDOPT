@@ -6,11 +6,9 @@
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
 
-import pfnet
 import numpy as np
 from .method_error import *
 from .method import PFmethod
-from optalg.lin_solver import new_linsolver
 
 class DCPF(PFmethod):
     """
@@ -27,6 +25,8 @@ class DCPF(PFmethod):
         self.parameters = DCPF.parameters.copy()
 
     def create_problem(self,net):
+
+        import pfnet
 
         # Parameters
         params = self.parameters
@@ -63,6 +63,8 @@ class DCPF(PFmethod):
         return problem
                     
     def solve(self,net):
+
+        from optalg.lin_solver import new_linsolver
         
         # Parameters
         params = self.parameters

@@ -8,7 +8,6 @@
 
 import numpy as np
 from types import MethodType
-from optalg.opt_solver import OptProblem
 from scipy.sparse import eye, bmat, coo_matrix
 
 INF = 1e8
@@ -40,6 +39,8 @@ class ProblemTransformer:
         -------
         new_p : OptProblem
         """
+
+        from optalg.opt_solver import OptProblem
 
         p = self.problem_pfnet
         nx = self.nx

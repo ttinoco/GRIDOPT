@@ -7,12 +7,10 @@
 #*****************************************************#
 
 from __future__ import print_function
-import pfnet
 import numpy as np
 from .method_error import *
 from .method import PFmethod
 from numpy.linalg import norm
-from optalg.opt_solver import OptSolverError,OptCallback,OptTermination,OptSolverNR
 
 class NRPF(PFmethod):
     """
@@ -31,6 +29,8 @@ class NRPF(PFmethod):
                   'dsus':1e-5}        # susceptance perturbation
     
     def __init__(self):
+
+        from optalg.opt_solver import OptSolverNR
 
         PFmethod.__init__(self)
         parameters = OptSolverNR.parameters.copy() # solver parameters
@@ -204,6 +204,8 @@ class NRPF(PFmethod):
         solver.problem.update_lin()
 
     def create_problem(self,net):
+
+        import pfnet
         
         # Parameters
         params = self.parameters
@@ -296,6 +298,8 @@ class NRPF(PFmethod):
         return info_printer
             
     def solve(self,net):
+
+        from optalg.opt_solver import OptSolverError,OptCallback,OptTermination,OptSolverNR
         
         # Parameters
         params = self.parameters
