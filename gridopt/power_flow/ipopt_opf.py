@@ -120,6 +120,9 @@ class IpoptOPF(PFmethod):
         except OptSolverError as e:
             raise PFmethodError_SolverError(self,e)
         finally:
+
+            # Update network properties
+            net.update_properties(solver.get_primal_variables())
             
             # Get results
             self.set_status(solver.get_status())
