@@ -30,6 +30,7 @@ GRIDOPT is released under the BSD 2-clause license.
 
 **Contributors**
 
+* Martin Baltzinger
 * `Tomas Tinoco De Rubira <http://n.ethz.ch/~tomast/>`_
 
 Indices and tables
