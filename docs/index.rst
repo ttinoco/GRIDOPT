@@ -28,7 +28,7 @@ GRIDOPT is released under the BSD 2-clause license.
    Power Flow Methods<power_flow>
    API Reference<reference>
 
-**Contributors**
+**Contributors (alphabetical)**
 
 * Martin Baltzinger
 * `Tomas Tinoco De Rubira <http://n.ethz.ch/~tomast/>`_
