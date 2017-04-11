@@ -17,14 +17,14 @@ class AugLOPF(PFmethod):
     """
     name = 'AugLOPF'
 
-    parameters = {'weight_cost': 1e0,    # for generation cost
-                  'weight_mag_reg': 0.,  # for soft limits
-                  'weight_ang_reg': 0.,  # for voltage angle regularization
-                  'weight_gen_reg': 0.,  # for generators regularization
-                  'feastol' : 1e-4,      # see AugL
-                  'optol' : 1e-4,        # see AugL
-                  'kappa' : 1e-2,        # see AugL
-                  'vmin_thresh': 0.1}    # threshold for vmin
+    parameters = {'weight_cost': 1e0,     # for generation cost
+                  'weight_mag_reg': 1e-4, # for soft limits
+                  'weight_ang_reg': 0.,   # for voltage angle regularization
+                  'weight_gen_reg': 0.,   # for generators regularization
+                  'feastol' : 1e-4,       # see AugL
+                  'optol' : 1e-4,         # see AugL
+                  'kappa' : 1e-2,         # see AugL
+                  'vmin_thresh': 0.1}     # threshold for vmin
                    
     def __init__(self):
 
