@@ -4,9 +4,14 @@
 Getting Started
 ***************
 
-This section describes how to get started with GRIDOPT. In particular, it covers required packages, installation, and provides a quick example showing how to use this package.
+This section describes how to get started with GRIDOPT. In particular, it covers dependencies, installation, and provides a quick example showing how to use this package.
 
-.. _start_requirements:
+.. _start_dependencies:
+
+Dependencies
+============
+
+GRIDOPT has the following dependencies:
 
 * `Numpy <http://www.numpy.org>`_ (>=1.11.2)
 * `Scipy <http://www.scipy.org>`_ (>=0.18.1)
@@ -27,13 +32,13 @@ Installation
 
 The GRIDOPT Python module can be installed using::
 
-  > sudo python setup.py install
+  sudo python setup.py install
 
 from the root directory of the package.
 
-The installation can be tested using `nose <https://nose.readthedocs.org/en/latest/>`_ as follows::
+The module can be tested using `nose <https://nose.readthedocs.org/en/latest/>`_ as follows::
 
-  > nosetests -v -s
+  nosetests -v -s
 
 .. _start_example:
 
