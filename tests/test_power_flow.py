@@ -250,7 +250,7 @@ class TestPowerFlow(unittest.TestCase):
 
             # gen outage 
             if net.get_num_P_adjust_gens() > 1:
-                cont = pf.Contingency(gens=[net.get_gen(0)])
+                cont = pf.Contingency(gens=[net.get_generator(0)])
                 cont.apply()
                 try:
                     method.solve(net)
