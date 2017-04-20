@@ -135,8 +135,8 @@ class TestPowerFlow(unittest.TestCase):
             
             self.assertEqual(net.num_periods,1)
             
-            method_ipopt.set_parameters({'quiet':True,'weight_mag_reg':0.})
-            method_augl.set_parameters({'quiet':True,'weight_mag_reg':0.})
+            method_ipopt.set_parameters({'quiet':True})
+            method_augl.set_parameters({'quiet':True})
 
             try:
                 net.update_properties()
