@@ -18,7 +18,7 @@ class AugLOPF(PFmethod):
     name = 'AugLOPF'
 
     parameters = {'weight_cost': 1e0,     # for generation cost
-                  'weight_mag_reg': 0.,   # for soft limits
+                  'weight_mag_reg': 1e-5, # for soft limits
                   'weight_ang_reg': 0.,   # for voltage angle regularization
                   'weight_gen_reg': 0.,   # for generators regularization
                   'feastol' : 1e-4,       # see AugL
