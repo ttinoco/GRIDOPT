@@ -124,7 +124,7 @@ class TestPowerFlow(unittest.TestCase):
         method_ipopt = gopt.power_flow.new_method('IpoptOPF')
         method_augl = gopt.power_flow.new_method('AugLOPF')
 
-        skipcases = ['aesoSL2014.raw','case3012wp.mat','case9241pegase.mat']
+        skipcases = ['aesoSL2014.raw','case9241pegase.mat']
             
         for case in utils.test_cases:
 
@@ -135,8 +135,8 @@ class TestPowerFlow(unittest.TestCase):
             
             self.assertEqual(net.num_periods,1)
             
-            method_ipopt.set_parameters({'quiet':True})
-            method_augl.set_parameters({'quiet':True})
+            method_ipopt.set_parameters({'quiet':True,'weight_mag_reg':0.})
+            method_augl.set_parameters({'quiet':True,'weight_mag_reg':0.})
 
             try:
                 net.update_properties()
