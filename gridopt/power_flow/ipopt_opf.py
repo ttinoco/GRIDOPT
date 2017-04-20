@@ -21,8 +21,8 @@ class IpoptOPF(PFmethod):
     parameters = {'weight_cost': 1e0,   # for generation cost
                   'weight_mag_reg': 0., # for soft limits
                   'weight_ang_reg': 0., # for voltage angle regularization
-                  'weight_gen_reg': 0., # for generators regularization
-                   }
+                  'weight_gen_reg': 0.} # for generators regularization
+
     def __init__(self):
 
         from optalg.opt_solver import OptSolverIpopt
@@ -58,24 +58,17 @@ class IpoptOPF(PFmethod):
                       'not slack',
                       'voltage angle')
 
-        # Generator active power
+        # Generator powers
         net.set_flags('generator',
                       ['variable','bounded'],
                       'not on outage',
-                      'active power')
-
-        # Generator reactive power
-        net.set_flags('generator',
-                      ['variable','bounded'],
-                      'regulator',
-                      'reactive power')
+                      ['active power','reactive power'])
 
         try:
             assert(net.num_vars == (2*net.num_buses-net.get_num_slack_buses() +
-                                    net.get_num_gens_not_on_outage() + 
-                                    net.get_num_reg_gens())*net.num_periods)
-            assert(net.num_bounded == (net.get_num_gens_not_on_outage() + 
-                                       net.get_num_reg_gens())*net.num_periods + net.num_buses)
+                                    2*net.get_num_gens_not_on_outage())*net.num_periods)
+            assert(net.num_bounded == (2*net.get_num_gens_not_on_outage() +
+                                       net.num_buses)*net.num_periods)
         except AssertionError:
             raise PFmethodError_BadProblem(self)
                                     
