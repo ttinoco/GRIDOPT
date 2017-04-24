@@ -64,10 +64,6 @@ class AugLPF(PFmethod):
                       'variable',
                       'not slack',
                       ['voltage magnitude','voltage angle'])
-        net.set_flags('bus',
-                      'variable',
-                      ['not slack','regulated by generator'],
-                      'voltage magnitude deviation')
         net.set_flags('generator',
                       'variable',
                       'slack',
@@ -101,7 +97,6 @@ class AugLPF(PFmethod):
 
         try:
             num_vars = (2*(net.num_buses-net.get_num_slack_buses()) +
-                        2*(net.get_num_buses_reg_by_gen()-net.get_num_slack_buses()) +
                         net.get_num_slack_gens() +
                         net.get_num_reg_gens())*net.num_periods
             if not lock_taps:
@@ -222,14 +217,14 @@ class AugLPF(PFmethod):
  
         # Checks
         assert(problem.x.shape == x.shape)
-        assert(net.num_vars == x.size)
+        assert(net.num_vars+problem.num_extra_vars == x.size)
         assert(problem.A.shape[0] == lam.size)
         assert(problem.f.shape[0] == nu.size)
         assert(problem.x.size == mu.size)
         assert(problem.x.size == pi.size)
 
         # Network quantities
-        net.set_var_values(x)
+        net.set_var_values(x[:net.num_vars])
 
         # Network properties
         net.update_properties()
