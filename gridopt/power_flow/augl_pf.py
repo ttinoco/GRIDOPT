@@ -27,7 +27,7 @@ class AugLPF(PFmethod):
                   'lock_shunts': True, # flag for locking swtiched shunts
                   'feastol' : 1e-4,    # see AugL
                   'optol' : 1e-4,      # see AugL
-                  'kappa' : 1e-4,      # see AugL
+                  'kappa' : 1e-5,      # see AugL
                   'vmin_thresh': 0.1}  # threshold for vmin
                   
     def __init__(self):
@@ -75,40 +75,26 @@ class AugLPF(PFmethod):
         
         # Tap ratios
         if not lock_taps:
-            net.set_flags('bus',
-                          'variable',
-                          'regulated by transformer',
-                          'voltage magnitude violation')
             net.set_flags('branch', 
                           'variable',
                           'tap changer - v',
-                          ['tap ratio','tap ratio deviation'])
+                          'tap ratio')
 
         # Shunt voltage control
         if not lock_shunts:
-            net.set_flags('bus',
-                          'variable',
-                          'regulated by shunt',
-                          'voltage magnitude violation')
             net.set_flags('shunt', 
                           'variable',
                           'switching - v',
-                          ['susceptance','susceptance deviation'])
+                          'susceptance')
 
         try:
             num_vars = (2*(net.num_buses-net.get_num_slack_buses()) +
                         net.get_num_slack_gens() +
                         net.get_num_reg_gens())*net.num_periods
             if not lock_taps:
-                num_vars += (2*net.get_num_buses_reg_by_tran() +
-                             3*net.get_num_tap_changers_v())*net.num_periods
+                num_vars += net.get_num_tap_changers_v()*net.num_periods
             if not lock_shunts:
-                num_vars += (2*net.get_num_buses_reg_by_shunt() +
-                             3*net.get_num_switched_shunts())*net.num_periods
-            if not lock_shunts and not lock_taps:
-                num_vars -= 2*len([b for b in net.buses 
-                                   if (b.is_regulated_by_tran() and
-                                       b.is_regulated_by_shunt())])*net.num_periods
+                num_vars += net.get_num_switched_shunts()*net.num_periods
             assert(net.num_vars == num_vars)
         except AssertionError:
             raise PFmethodError_BadProblem(self)  
