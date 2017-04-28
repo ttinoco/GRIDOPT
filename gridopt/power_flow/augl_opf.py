@@ -121,13 +121,9 @@ class AugLOPF(PFmethod):
         # Problem
         problem = self.create_problem(net)
 
-        # G identity, otherwise use transform
-        assert(np.all(problem.G.row == problem.G.col))
-        assert(np.all(problem.G.data == 1.))
-
         # Termination
         def t1(s):
-            if np.min(s.problem.network.bus_v_min) < vmin_thresh:
+            if np.min(s.problem.wrapped_problem.network.bus_v_min) < vmin_thresh:
                 return True
             else:
                 return False
@@ -180,7 +176,7 @@ class AugLOPF(PFmethod):
         assert(problem.G.shape[0] == pi.size)
 
         # Network quantities
-        net.set_var_values(x)
+        net.set_var_values(x[:net.num_vars])
 
         # Network properties
         net.update_properties()

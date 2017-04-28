@@ -98,10 +98,6 @@ class IpoptOPF(PFmethod):
 
         # Problem
         problem = self.create_problem(net)
-
-        # G identity, otherwise use transform
-        assert(np.all(problem.G.row == problem.G.col))
-        assert(np.all(problem.G.data == 1.))
                 
         # Set up solver
         solver = OptSolverIpopt()
@@ -149,7 +145,7 @@ class IpoptOPF(PFmethod):
         assert(problem.G.shape[0] == pi.size)
 
         # Network quantities
-        net.set_var_values(x)
+        net.set_var_values(x[:net.num_vars])
 
         # Network properties
         net.update_properties()

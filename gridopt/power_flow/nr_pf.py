@@ -42,7 +42,7 @@ class NRPF(PFmethod):
         # Local variables
         dsus = self.parameters['dsus']
         step = self.parameters['shunt_step']
-        p = solver.problem
+        p = solver.problem.wrapped_problem
         net = p.network
         x = solver.x
         eps = 1e-8
@@ -118,14 +118,14 @@ class NRPF(PFmethod):
 
         # Update
         solver.func(x)
-        solver.problem.update_lin()
+        solver.problem.wrapped_problem.update_lin()
 
     def apply_tran_v_regulation(self,solver):
         
         # Local variables
         dtap = self.parameters['dtap']
         step = self.parameters['tap_step']
-        p = solver.problem
+        p = solver.problem.wrapped_problem
         net = p.network
         x = solver.x
         eps = 1e-8
@@ -201,7 +201,7 @@ class NRPF(PFmethod):
 
         # Update
         solver.func(x)        
-        solver.problem.update_lin()
+        solver.problem.wrapped_problem.update_lin()
 
     def create_problem(self,net):
 
@@ -280,7 +280,7 @@ class NRPF(PFmethod):
     def get_info_printer(self):
 
         def info_printer(solver,header):
-            net = solver.problem.network
+            net = solver.problem.wrapped_problem.network
             if header:
                 print('{0:^5}'.format('vmax'), end=' ')
                 print('{0:^5}'.format('vmin'), end=' ')
@@ -326,11 +326,11 @@ class NRPF(PFmethod):
 
         def c3(s):
             if s.k > 0:
-                s.problem.apply_heuristics(s.x)
+                s.problem.wrapped_problem.apply_heuristics(s.x)
 
         # Termination
         def t1(s):
-            if np.min(s.problem.network.bus_v_min) < vmin_thresh:
+            if np.min(s.problem.wrapped_problem.network.bus_v_min) < vmin_thresh:
                 return True
             else:
                 return False
@@ -386,7 +386,7 @@ class NRPF(PFmethod):
         assert(pi is None or not pi.size)
 
         # Network quantities
-        net.set_var_values(x)
+        net.set_var_values(x[:net.num_vars])
 
         # Network properties
         net.update_properties()

@@ -106,16 +106,14 @@ class AugLPF(PFmethod):
         problem.add_constraint(pfnet.Constraint('generator active power participation',net))
         problem.add_constraint(pfnet.Constraint('generator reactive power participation',net))
         problem.add_constraint(pfnet.Constraint('voltage regulation by generators',net))
-        if not lock_taps:
-            problem.add_constraint(pfnet.Constraint('voltage regulation by transformers',net))
-        if not lock_shunts:
-            problem.add_constraint(pfnet.Constraint('voltage regulation by shunts',net))
         problem.add_function(pfnet.Function('voltage magnitude regularization',wm/max([net.num_buses,1.]),net))
         problem.add_function(pfnet.Function('voltage angle regularization',wa/max([net.num_buses,1.]),net))
         problem.add_function(pfnet.Function('generator powers regularization',wp/max([net.num_generators,1.]),net))
         if not lock_taps:
+            problem.add_constraint(pfnet.Constraint('voltage regulation by transformers',net))
             problem.add_function(pfnet.Function('tap ratio regularization',wt/max([net.get_num_tap_changers_v(),1.]),net))
         if not lock_shunts:
+            problem.add_constraint(pfnet.Constraint('voltage regulation by shunts',net))
             problem.add_function(pfnet.Function('susceptance regularization',wb/max([net.get_num_switched_shunts(),1.]),net))
         problem.analyze()
         
@@ -157,7 +155,7 @@ class AugLPF(PFmethod):
 
         # Termination
         def t1(s):
-            if np.min(s.problem.network.bus_v_min) < vmin_thresh:
+            if np.min(s.problem.wrapped_problem.network.bus_v_min) < vmin_thresh:
                 return True
             else:
                 return False
