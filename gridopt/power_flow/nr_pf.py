@@ -75,8 +75,8 @@ class NRPF(PFmethod):
                 for t in range(net.num_periods):
 
                     v = x[bus.index_v_mag[t]]
-                    vmax = bus.v_max
-                    vmin = bus.v_min
+                    vmax = bus.v_max_reg
+                    vmin = bus.v_min_reg
 
                     assert(len(bus.reg_shunts) > 0)
                     assert(vmax >= vmin)
@@ -158,8 +158,8 @@ class NRPF(PFmethod):
                 for tau in range(net.num_periods):
                     
                     v = x[bus.index_v_mag[tau]]
-                    vmax = bus.v_max
-                    vmin = bus.v_min
+                    vmax = bus.v_max_reg
+                    vmin = bus.v_min_reg
                     
                     assert(len(bus.reg_trans) > 0)
                     assert(vmax > vmin)

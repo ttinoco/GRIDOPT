@@ -124,7 +124,7 @@ class TestPowerFlow(unittest.TestCase):
         method_ipopt = gopt.power_flow.new_method('IpoptOPF')
         method_augl = gopt.power_flow.new_method('AugLOPF')
 
-        skipcases = ['aesoSL2014.raw','case9241pegase.mat']
+        skipcases = ['aesoSL2014.raw','case9241pegase.mat','case32.art']
             
         for case in utils.test_cases:
 
