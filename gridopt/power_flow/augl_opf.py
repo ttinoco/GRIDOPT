@@ -95,7 +95,7 @@ class AugLOPF(PFmethod):
     def get_info_printer(self):
 
         def info_printer(solver,header):
-            net = solver.problem.network
+            net = solver.problem.wrapped_problem.network
             if header:
                 print('{0:^5}'.format('vmax'), end=' ')
                 print('{0:^5}'.format('vmin'), end=' ')
