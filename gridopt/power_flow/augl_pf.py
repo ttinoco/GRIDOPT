@@ -204,8 +204,8 @@ class AugLPF(PFmethod):
         assert(net.num_vars+problem.num_extra_vars == x.size)
         assert(problem.A.shape[0] == lam.size)
         assert(problem.f.shape[0] == nu.size)
-        assert(problem.x.size == mu.size)
-        assert(problem.x.size == pi.size)
+        assert(problem.G.shape[0] == mu.size)
+        assert(problem.G.shape[0] == pi.size)
 
         # Network quantities
         net.set_var_values(x[:net.num_vars])

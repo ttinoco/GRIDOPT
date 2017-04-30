@@ -118,7 +118,9 @@ class NRPF(PFmethod):
 
         # Update
         solver.func(x)
-        solver.problem.wrapped_problem.update_lin()
+        p.update_lin()
+        solver.problem.A = p.A
+        solver.problem.b = p.b
 
     def apply_tran_v_regulation(self,solver):
         
@@ -201,7 +203,9 @@ class NRPF(PFmethod):
 
         # Update
         solver.func(x)        
-        solver.problem.wrapped_problem.update_lin()
+        p.update_lin()
+        solver.problem.A = p.A
+        solver.problem.b = p.b
 
     def create_problem(self,net):
 
@@ -326,7 +330,10 @@ class NRPF(PFmethod):
 
         def c3(s):
             if s.k > 0:
-                s.problem.wrapped_problem.apply_heuristics(s.x)
+                prob = s.problem.wrapped_problem
+                prob.apply_heuristics(s.x)
+                s.problem.A = prob.A
+                s.problem.b = prob.b
 
         # Termination
         def t1(s):

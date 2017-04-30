@@ -159,13 +159,15 @@ class TestPowerFlow(unittest.TestCase):
             self.assertEqual(net.gen_P_cost,gen_P_cost)
             self.assertNotEqual(method_augl.results['net properties']['gen_P_cost'],gen_P_cost)
             x2 = method_augl.get_results()['primal variables']
+            i2 = method_augl.get_results()['iterations']
             p2 = method_augl.get_results()['net properties']['gen_P_cost']
-            print("%s  %s" %('AugLOPF ',case.split('/')[-1]))
+            print("%s  %s %d" %('AugLOPF ',case.split('/')[-1],i2))
             if has_ipopt:
                 error = 100*(p1-p2)/abs(p2)
                 self.assertLess(np.abs(error),eps)
                 self.assertNotEqual(p1,p2)
-                
+
+    @unittest.skip("temporarily disabled")            
     def test_DCOPF(self):
 
         T = 2
