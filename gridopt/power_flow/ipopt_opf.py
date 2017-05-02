@@ -78,7 +78,7 @@ class IpoptOPF(PFmethod):
         problem = pfnet.Problem()
         problem.set_network(net)
         if th:
-            problem.add_constraint(pf.Constraint("AC branch flow limits",net))
+            problem.add_constraint(pfnet.Constraint("AC branch flow limits",net))
         problem.add_constraint(pfnet.Constraint('AC power balance',net))
         problem.add_constraint(pfnet.Constraint('variable bounds',net)) 
         problem.add_function(pfnet.Function('generation cost',wc/max([net.num_generators,1.]),net))
@@ -142,7 +142,7 @@ class IpoptOPF(PFmethod):
  
         # Checks
         assert(problem.x.shape == x.shape)
-        assert(net.num_vars == x.size)
+        assert(net.num_vars + problem.num_extra_vars == x.size)
         assert(problem.A.shape[0] == lam.size)
         assert(problem.f.shape[0] == nu.size)
         assert(problem.G.shape[0] == mu.size)
