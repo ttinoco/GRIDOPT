@@ -21,7 +21,8 @@ class IpoptOPF(PFmethod):
     parameters = {'weight_cost': 1e0,     # for generation cost
                   'weight_mag_reg': 0.,   # for soft limits
                   'weight_ang_reg': 0.,   # for voltage angle regularization
-                  'weight_gen_reg': 0.}   # for generators regularization
+                  'weight_gen_reg': 0.,
+                  'thermal_lim':False}   # for generators regularization
 
     def __init__(self):
 
@@ -42,7 +43,8 @@ class IpoptOPF(PFmethod):
         wm = params['weight_mag_reg']
         wa = params['weight_ang_reg']
         wg = params['weight_gen_reg']
-        
+        th = params['thermal_lim']
+
         # Clear flags
         net.clear_flags()
         
@@ -75,6 +77,8 @@ class IpoptOPF(PFmethod):
         # Set up problem
         problem = pfnet.Problem()
         problem.set_network(net)
+        if th:
+            problem.add_constraint(pf.Constraint("AC branch flow limits",net))
         problem.add_constraint(pfnet.Constraint('AC power balance',net))
         problem.add_constraint(pfnet.Constraint('variable bounds',net)) 
         problem.add_function(pfnet.Function('generation cost',wc/max([net.num_generators,1.]),net))
