@@ -53,8 +53,7 @@ class DCPF(PFmethod):
             raise PFmethodError_BadProblem(self)
 
         # Set up problem
-        problem = pfnet.Problem()
-        problem.set_network(net)
+        problem = pfnet.Problem(net)
         problem.add_constraint(pfnet.Constraint('DC power balance',net))
         problem.add_constraint(pfnet.Constraint('generator active power participation',net))
         problem.analyze()

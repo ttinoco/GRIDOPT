@@ -268,8 +268,7 @@ class NRPF(PFmethod):
             raise PFmethodError_BadProblem(self)
 
         # Set up problem
-        problem = pfnet.Problem()
-        problem.set_network(net)
+        problem = pfnet.Problem(net)
         problem.add_constraint(pfnet.Constraint('AC power balance',net))
         problem.add_constraint(pfnet.Constraint('generator active power participation',net))
         problem.add_constraint(pfnet.Constraint('generator reactive power participation',net))
