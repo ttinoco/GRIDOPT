@@ -168,6 +168,7 @@ Name                 Description                                                
 ``'weight_mag_reg'`` Weight for soft voltage magnitude limits (or regularization) ``0.``
 ``'weight_ang_reg'`` Weight for voltage angle regularization                      ``0.``
 ``'weight_gen_reg'`` Weight for generator powers regularization                   ``0.``
+``'thermal_limits'`` Flag for thermal limits                                      ``False``
 ``'vmin_thresh'``    Low-voltage threshold                                        ``1e-1``
 ==================== ============================================================ ===========
 
