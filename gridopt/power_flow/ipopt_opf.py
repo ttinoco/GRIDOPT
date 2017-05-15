@@ -18,10 +18,11 @@ class IpoptOPF(PFmethod):
  
     name = 'IpoptOPF'
 
-    parameters = {'weight_cost': 1e0,     # for generation cost
-                  'weight_mag_reg': 0.,   # for soft limits
-                  'weight_ang_reg': 0.,   # for voltage angle regularization
-                  'weight_gen_reg': 0.}   # for generators regularization
+    parameters = {'weight_cost': 1e0,      # weight for generation cost
+                  'weight_mag_reg': 0.,    # weight for voltage magnitude regularization
+                  'weight_ang_reg': 0.,    # weight for voltage angle regularization
+                  'weight_gen_reg': 0.,    # weight for generator power regularization
+                  'thermal_limits': False} # flag for thermal limits 
 
     def __init__(self):
 
@@ -42,7 +43,8 @@ class IpoptOPF(PFmethod):
         wm = params['weight_mag_reg']
         wa = params['weight_ang_reg']
         wg = params['weight_gen_reg']
-        
+        th = params['thermal_limits']
+
         # Clear flags
         net.clear_flags()
         
@@ -72,10 +74,16 @@ class IpoptOPF(PFmethod):
         except AssertionError:
             raise PFmethodError_BadProblem(self)
                                     
-        # Set up problem
+        # Problem
         problem = pfnet.Problem(net)
+
+        # Constraints
         problem.add_constraint(pfnet.Constraint('AC power balance',net))
         problem.add_constraint(pfnet.Constraint('variable bounds',net)) 
+        if th:
+            problem.add_constraint(pfnet.Constraint("AC branch flow limits",net))
+
+        # Functions
         problem.add_function(pfnet.Function('generation cost',wc/max([net.num_generators,1.]),net))
         if wm:
             problem.add_function(pfnet.Function('soft voltage magnitude limits',wm/max([net.num_buses,1.]),net))
@@ -137,7 +145,7 @@ class IpoptOPF(PFmethod):
  
         # Checks
         assert(problem.x.shape == x.shape)
-        assert(net.num_vars == x.size)
+        assert(net.num_vars+problem.num_extra_vars == x.size)
         assert(problem.A.shape[0] == lam.size)
         assert(problem.f.shape[0] == nu.size)
         assert(problem.G.shape[0] == mu.size)
