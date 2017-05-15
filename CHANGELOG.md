@@ -3,6 +3,9 @@ Targets
 
 Unreleased
 ----------
+* Compatibility with latest PFNET.
+* Compatibility with latest OPTALG.
+* Thermal limits option for AugL and Ipopt OPFs.
 
 Version 1.3.1
 -------------

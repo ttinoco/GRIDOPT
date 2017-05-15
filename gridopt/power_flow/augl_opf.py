@@ -17,14 +17,15 @@ class AugLOPF(PFmethod):
     """
     name = 'AugLOPF'
 
-    parameters = {'weight_cost': 1e0,     # for generation cost
-                  'weight_mag_reg': 0.,   # for soft limits
-                  'weight_ang_reg': 0.,   # for voltage angle regularization
-                  'weight_gen_reg': 0.,   # for generators regularization
-                  'feastol' : 1e-4,       # see AugL
-                  'optol' : 1e-4,         # see AugL
-                  'kappa' : 1e-2,         # see AugL
-                  'vmin_thresh': 0.1}     # threshold for vmin
+    parameters = {'weight_cost': 1e0,      # weight for generation cost
+                  'weight_mag_reg': 0.,    # weight for voltage magnitude regularization
+                  'weight_ang_reg': 0.,    # weight for voltage angle regularization
+                  'weight_gen_reg': 0.,    # weight for generator power regularization
+                  'feastol' : 1e-4,        # AugL solver parameter
+                  'optol' : 1e-4,          # AugL solver parameter
+                  'kappa' : 1e-2,          # AugL solver parameter
+                  'thermal_limits': False, # flag for thermal limits
+                  'vmin_thresh': 0.1}      # threshold for vmin termination
                    
     def __init__(self):
 
@@ -45,6 +46,7 @@ class AugLOPF(PFmethod):
         wm  = params['weight_mag_reg']
         wa = params['weight_ang_reg']
         wg = params['weight_gen_reg']
+        th = params['thermal_limits']
         
         # Clear flags
         net.clear_flags()
@@ -75,10 +77,16 @@ class AugLOPF(PFmethod):
         except AssertionError:
             raise PFmethodError_BadProblem(self)
                                     
-        # Set up problem
+        # Problem
         problem = pfnet.Problem(net)
+
+        # Constraints
         problem.add_constraint(pfnet.Constraint('AC power balance',net))
         problem.add_constraint(pfnet.Constraint('variable bounds',net))
+        if th:
+            problem.add_constraint(pfnet.Constraint("AC branch flow limits",net))
+
+        # Functions
         problem.add_function(pfnet.Function('generation cost',wc/max([net.num_generators,1.]),net))
         if wm:
             problem.add_function(pfnet.Function('soft voltage magnitude limits',wm/max([net.num_buses,1.]),net))
@@ -165,10 +173,10 @@ class AugLOPF(PFmethod):
         # No problem
         if problem is None:
             raise PFmethodError_NoProblem(self)
- 
+
         # Checks
         assert(problem.x.shape == x.shape)
-        assert(net.num_vars == x.size)
+        assert(net.num_vars+problem.num_extra_vars == x.size)
         assert(problem.A.shape[0] == lam.size)
         assert(problem.f.shape[0] == nu.size)
         assert(problem.G.shape[0] == mu.size)
