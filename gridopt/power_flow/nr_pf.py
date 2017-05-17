@@ -1,18 +1,16 @@
 #*****************************************************#
 # This file is part of GRIDOPT.                       #
 #                                                     #
-# Copyright (c) 2015-2016, Tomas Tinoco De Rubira.    #
+# Copyright (c) 2015-2017, Tomas Tinoco De Rubira.    #
 #                                                     #
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
 
 from __future__ import print_function
-import pfnet
 import numpy as np
 from .method_error import *
 from .method import PFmethod
 from numpy.linalg import norm
-from optalg.opt_solver import OptSolverError,OptCallback,OptTermination,OptSolverNR
 
 class NRPF(PFmethod):
     """
@@ -32,16 +30,19 @@ class NRPF(PFmethod):
     
     def __init__(self):
 
+        from optalg.opt_solver import OptSolverNR
+
         PFmethod.__init__(self)
-        self.parameters = NRPF.parameters.copy()       # method parameters
-        self.parameters.update(OptSolverNR.parameters) # solver parameters
+        parameters = OptSolverNR.parameters.copy() # solver parameters
+        parameters.update(NRPF.parameters) # method parameters
+        self.parameters = parameters
         
     def apply_shunt_v_regulation(self,solver):
 
         # Local variables
         dsus = self.parameters['dsus']
         step = self.parameters['shunt_step']
-        p = solver.problem
+        p = solver.problem.wrapped_problem
         net = p.network
         x = solver.x
         eps = 1e-8
@@ -57,7 +58,7 @@ class NRPF(PFmethod):
         # Offset
         offset = 0
         for c in p.constraints:
-            if c.type == 'variable fixing':
+            if c.name == 'variable fixing':
                 break
             else:
                 offset += c.A.shape[0]
@@ -74,8 +75,8 @@ class NRPF(PFmethod):
                 for t in range(net.num_periods):
 
                     v = x[bus.index_v_mag[t]]
-                    vmax = bus.v_max
-                    vmin = bus.v_min
+                    vmax = bus.v_max_reg
+                    vmin = bus.v_min_reg
 
                     assert(len(bus.reg_shunts) > 0)
                     assert(vmax >= vmin)
@@ -117,14 +118,16 @@ class NRPF(PFmethod):
 
         # Update
         solver.func(x)
-        solver.problem.update_lin()
+        p.update_lin()
+        solver.problem.A = p.A
+        solver.problem.b = p.b
 
     def apply_tran_v_regulation(self,solver):
         
         # Local variables
         dtap = self.parameters['dtap']
         step = self.parameters['tap_step']
-        p = solver.problem
+        p = solver.problem.wrapped_problem
         net = p.network
         x = solver.x
         eps = 1e-8
@@ -140,7 +143,7 @@ class NRPF(PFmethod):
         # Offset
         offset = 0
         for c in p.constraints:
-            if c.type == 'variable fixing':
+            if c.name == 'variable fixing':
                 break
             else:
                 offset += c.A.shape[0]
@@ -157,8 +160,8 @@ class NRPF(PFmethod):
                 for tau in range(net.num_periods):
                     
                     v = x[bus.index_v_mag[tau]]
-                    vmax = bus.v_max
-                    vmin = bus.v_min
+                    vmax = bus.v_max_reg
+                    vmin = bus.v_min_reg
                     
                     assert(len(bus.reg_trans) > 0)
                     assert(vmax > vmin)
@@ -200,9 +203,13 @@ class NRPF(PFmethod):
 
         # Update
         solver.func(x)        
-        solver.problem.update_lin()
+        p.update_lin()
+        solver.problem.A = p.A
+        solver.problem.b = p.b
 
     def create_problem(self,net):
+
+        import pfnet
         
         # Parameters
         params = self.parameters
@@ -261,12 +268,11 @@ class NRPF(PFmethod):
             raise PFmethodError_BadProblem(self)
 
         # Set up problem
-        problem = pfnet.Problem()
-        problem.set_network(net)
-        problem.add_constraint('AC power balance')
-        problem.add_constraint('generator active power participation')
-        problem.add_constraint('generator reactive power participation')
-        problem.add_constraint('variable fixing')
+        problem = pfnet.Problem(net)
+        problem.add_constraint(pfnet.Constraint('AC power balance',net))
+        problem.add_constraint(pfnet.Constraint('generator active power participation',net))
+        problem.add_constraint(pfnet.Constraint('generator reactive power participation',net))
+        problem.add_constraint(pfnet.Constraint('variable fixing',net))
         if limit_gens:
             problem.add_heuristic(pfnet.HEUR_TYPE_PVPQ)
         problem.analyze()
@@ -277,7 +283,7 @@ class NRPF(PFmethod):
     def get_info_printer(self):
 
         def info_printer(solver,header):
-            net = solver.problem.network
+            net = solver.problem.wrapped_problem.network
             if header:
                 print('{0:^5}'.format('vmax'), end=' ')
                 print('{0:^5}'.format('vmin'), end=' ')
@@ -295,6 +301,8 @@ class NRPF(PFmethod):
         return info_printer
             
     def solve(self,net):
+
+        from optalg.opt_solver import OptSolverError,OptCallback,OptTermination,OptSolverNR
         
         # Parameters
         params = self.parameters
@@ -321,11 +329,14 @@ class NRPF(PFmethod):
 
         def c3(s):
             if s.k > 0:
-                s.problem.apply_heuristics(s.x)
+                prob = s.problem.wrapped_problem
+                prob.apply_heuristics(s.x)
+                s.problem.A = prob.A
+                s.problem.b = prob.b
 
         # Termination
         def t1(s):
-            if np.min(s.problem.network.bus_v_min) < vmin_thresh:
+            if np.min(s.problem.wrapped_problem.network.bus_v_min) < vmin_thresh:
                 return True
             else:
                 return False
@@ -357,13 +368,16 @@ class NRPF(PFmethod):
             self.set_dual_variables(solver.get_dual_variables())
             self.set_net_properties(net.get_properties())
             self.set_problem(problem)
+
+            # Restore net properties
+            net.update_properties()
     
     def update_network(self,net):
         
         # Get data
         problem = self.results['problem']
-        x = self.results['primal_variables']
-        lam,nu,mu,pi = self.results['dual_variables']
+        x = self.results['primal variables']
+        lam,nu,mu,pi = self.results['dual variables']
        
         # No problem
         if problem is None:
@@ -378,7 +392,7 @@ class NRPF(PFmethod):
         assert(pi is None or not pi.size)
 
         # Network quantities
-        net.set_var_values(x)
+        net.set_var_values(x[:net.num_vars])
 
         # Network properties
         net.update_properties()

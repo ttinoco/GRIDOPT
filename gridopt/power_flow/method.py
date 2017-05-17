@@ -1,7 +1,7 @@
 #*****************************************************#
 # This file is part of GRIDOPT.                       #
 #                                                     #
-# Copyright (c) 2015-2016, Tomas Tinoco De Rubira.    #
+# Copyright (c) 2015-2017, Tomas Tinoco De Rubira.    #
 #                                                     #
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
@@ -18,11 +18,11 @@ class PFmethod:
         
         #: Results (dictionary)
         self.results = {'status': 'unknown',              # solver status
-                        'error_msg': '',                  # solver error message
+                        'error msg': '',                  # solver error message
                         'iterations': 0,                  # solver iterations
-                        'primal_variables': np.zeros(0),  # primal variables
-                        'dual_variables': 4*[None],       # dual variables
-                        'net_properties': {},             # network properties
+                        'primal variables': np.zeros(0),  # primal variables
+                        'dual variables': 4*[None],       # dual variables
+                        'net properties': {},             # network properties
                         'problem': None}                  # PFNET problem
 
         #: Parameters (dictionary)
@@ -86,7 +86,7 @@ class PFmethod:
         msg : string
         """
         
-        self.results['error_msg'] = msg
+        self.results['error msg'] = msg
 
     def set_iterations(self,k):
         """
@@ -108,7 +108,7 @@ class PFmethod:
         x : vector
         """
         
-        self.results['primal_variables'] = x
+        self.results['primal variables'] = x
 
     def set_dual_variables(self,d):
         """
@@ -119,7 +119,7 @@ class PFmethod:
         d : list
         """
         
-        self.results['dual_variables'] = d
+        self.results['dual variables'] = d
 
     def set_net_properties(self,np):
         """
@@ -130,7 +130,7 @@ class PFmethod:
         np : dictionary
         """
         
-        self.results['net_properties'] = np
+        self.results['net properties'] = np
 
     def set_problem(self,p):
         """

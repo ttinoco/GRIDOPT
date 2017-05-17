@@ -1,7 +1,7 @@
 #*****************************************************#
 # This file is part of GRIDOPT.                       #
 #                                                     #
-# Copyright (c) 2015-2016, Tomas Tinoco De Rubira.    #
+# Copyright (c) 2015-2017, Tomas Tinoco De Rubira.    #
 #                                                     #
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
@@ -18,11 +18,15 @@ class MS_DCOPF_SH(MS_DCOPF_Method):
     parameters = {'quiet': False}
     
     def __init__(self):
-        
+        """
+        Stochatic Hybrid Approximation method for multi-stage DC OPF problem.
+        """
+  
         MS_DCOPF_Method.__init__(self)
-        self.parameters = MS_DCOPF_SH.parameters.copy()
-        self.parameters.update(MS_DCOPF_Problem.parameters)
-        self.parameters.update(StochHybridMS.parameters)
+        parameters = MS_DCOPF_Problem.parameters.copy()
+        parameters.update(StochHybridMS.parameters)
+        parameters.update(MS_DCOPF_SH.parameters)
+        self.parameters = parameters
 
     def create_problem(self,net,forecast,parameters):
         

@@ -24,6 +24,8 @@ Power Flow Method
 
 .. autoclass:: gridopt.power_flow.augl_opf.AugLOPF
 
+.. autoclass:: gridopt.power_flow.ipopt_opf.IpoptOPF
+
 .. autoclass:: gridopt.power_flow.method_error.PFmethodError
    :members:
 

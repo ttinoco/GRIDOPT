@@ -1,7 +1,7 @@
 #*****************************************************#
 # This file is part of GRIDOPT.                       #
 #                                                     #
-# Copyright (c) 2015-2016, Tomas Tinoco De Rubira.    #
+# Copyright (c) 2015-2017, Tomas Tinoco De Rubira.    #
 #                                                     #
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
@@ -21,11 +21,15 @@ class MS_DCOPF_SDDP(MS_DCOPF_Method):
                   'quiet': False}
     
     def __init__(self):
-        
+        """
+        Stochastic dual dynamic programming method for multi-stage DC OPF problem.
+        """
+ 
         MS_DCOPF_Method.__init__(self)
-        self.parameters = MS_DCOPF_SDDP.parameters.copy()
-        self.parameters.update(MS_DCOPF_Problem.parameters)
-        self.parameters.update(StochDualDynProg.parameters)
+        parameters = MS_DCOPF_Problem.parameters.copy()
+        parameters.update(StochDualDynProg.parameters)
+        parameters.update(MS_DCOPF_SDDP.parameters)
+        self.parameters = parameters
 
     def create_problem(self,net,forecast,parameters):
         
