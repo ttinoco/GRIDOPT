@@ -15,8 +15,8 @@ GRIDOPT has the following dependencies:
 
 * `Numpy <http://www.numpy.org>`_ (>=1.11.2)
 * `Scipy <http://www.scipy.org>`_ (>=0.18.1)
-* `OPTALG <http://optalg.readthedocs.io>`_ (>= 1.1.2)
-* `PFNET`_ (>= 1.2.9)
+* `OPTALG <http://optalg.readthedocs.io>`_ (== 1.1.3)
+* `PFNET`_ (== 1.3.0)
 
 .. _start_download:
 
