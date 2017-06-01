@@ -178,6 +178,8 @@ class PFmethod:
                             raise PFmethodError_ParamNotBool(self)
                     elif type(value) is str:
                         new_value = str(valuestr)
+                    elif value is None:
+                        new_value = str(valuestr)
                     else:
                         raise PFmethodError_BadParam(self)
                     self.parameters[key] = new_value
