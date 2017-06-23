@@ -11,29 +11,26 @@ import numpy as np
 from .method_error import *
 from .method import PFmethod
 
-class AugLOPF(PFmethod):
+class IpoptOPF(PFmethod):
     """
-    Augmented Lagrangian-based optimal power flow method.
+    IPOPT-based optimal power flow method.
     """
-    name = 'AugLOPF'
+ 
+    name = 'IpoptOPF'
 
     parameters = {'weight_cost': 1e0,      # weight for generation cost
                   'weight_mag_reg': 0.,    # weight for voltage magnitude regularization
                   'weight_ang_reg': 0.,    # weight for voltage angle regularization
                   'weight_gen_reg': 0.,    # weight for generator power regularization
-                  'feastol' : 1e-4,        # AugL solver parameter
-                  'optol' : 1e-4,          # AugL solver parameter
-                  'kappa' : 1e-2,          # AugL solver parameter
-                  'thermal_limits': False, # flag for thermal limits
-                  'vmin_thresh': 0.1}      # threshold for vmin termination
-                   
+                  'thermal_limits': False} # flag for thermal limits 
+
     def __init__(self):
 
-        from optalg.opt_solver import OptSolverAugL
-
+        from optalg.opt_solver import OptSolverIpopt
+        
         PFmethod.__init__(self)
-        parameters = OptSolverAugL.parameters.copy()
-        parameters.update(AugLOPF.parameters)
+        parameters = OptSolverIpopt.parameters.copy()
+        parameters.update(IpoptOPF.parameters)
         self.parameters = parameters
 
     def create_problem(self,net):
@@ -42,12 +39,12 @@ class AugLOPF(PFmethod):
 
         # Parameters
         params = self.parameters
-        wc  = params['weight_cost']
-        wm  = params['weight_mag_reg']
+        wc = params['weight_cost']
+        wm = params['weight_mag_reg']
         wa = params['weight_ang_reg']
         wg = params['weight_gen_reg']
         th = params['thermal_limits']
-        
+
         # Clear flags
         net.clear_flags()
         
@@ -82,7 +79,7 @@ class AugLOPF(PFmethod):
 
         # Constraints
         problem.add_constraint(pfnet.Constraint('AC power balance',net))
-        problem.add_constraint(pfnet.Constraint('variable bounds',net))
+        problem.add_constraint(pfnet.Constraint('variable bounds',net)) 
         if th:
             problem.add_constraint(pfnet.Constraint("AC branch flow limits",net))
 
@@ -98,51 +95,20 @@ class AugLOPF(PFmethod):
         
         # Return
         return problem
-
-    def get_info_printer(self):
-
-        def info_printer(solver,header):
-            net = solver.problem.wrapped_problem.network
-            if header:
-                print('{0:^5}'.format('vmax'), end=' ')
-                print('{0:^5}'.format('vmin'), end=' ')
-                print('{0:^6}'.format('bvvio'), end=' ')
-                print('{0:^6}'.format('gQvio'), end=' ')
-                print('{0:^6}'.format('gPvio'))
-            else:
-                print('{0:^5.2f}'.format(np.average(net.bus_v_max)), end=' ')
-                print('{0:^5.2f}'.format(np.average(net.bus_v_min)), end=' ')
-                print('{0:^6.0e}'.format(np.average(net.bus_v_vio)), end=' ')
-                print('{0:^6.0e}'.format(np.average(net.gen_Q_vio)), end=' ')
-                print('{0:^6.0e}'.format(np.average(net.gen_P_vio)))
-        return info_printer
             
     def solve(self,net):
 
-        from optalg.opt_solver import OptSolverError, OptTermination, OptSolverAugL
+        from optalg.opt_solver import OptSolverError, OptSolverIpopt
         
         # Parameters
         params = self.parameters
-        vmin_thresh = params['vmin_thresh']
 
         # Problem
         problem = self.create_problem(net)
-
-        # Termination
-        def t1(s):
-            if np.min(s.problem.wrapped_problem.network.bus_v_min) < vmin_thresh:
-                return True
-            else:
-                return False
-        
-        # Info printer
-        info_printer = self.get_info_printer()
-        
+                
         # Set up solver
-        solver = OptSolverAugL()
+        solver = OptSolverIpopt()
         solver.set_parameters(params)
-        solver.add_termination(OptTermination(t1,'low voltage'))
-        solver.set_info_printer(info_printer)
         
         # Solve
         try:
@@ -150,6 +116,9 @@ class AugLOPF(PFmethod):
         except OptSolverError as e:
             raise PFmethodError_SolverError(self,e)
         finally:
+
+            # Update network properties
+            net.update_properties(solver.get_primal_variables())
             
             # Get results
             self.set_status(solver.get_status())
@@ -173,7 +142,7 @@ class AugLOPF(PFmethod):
         # No problem
         if problem is None:
             raise PFmethodError_NoProblem(self)
-
+ 
         # Checks
         assert(problem.x.shape == x.shape)
         assert(net.num_vars+problem.num_extra_vars == x.size)

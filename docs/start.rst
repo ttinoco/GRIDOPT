@@ -4,14 +4,19 @@
 Getting Started
 ***************
 
-This section describes how to get started with GRIDOPT. In particular, it covers required packages, installation, and provides a quick example showing how to use this package.
+This section describes how to get started with GRIDOPT. In particular, it covers dependencies, installation, and provides a quick example showing how to use this package.
 
-.. _start_requirements:
+.. _start_dependencies:
 
-* `Numpy <http://www.numpy.org>`_ (>=1.8.2)
-* `Scipy <http://www.scipy.org>`_ (>=0.13.3)
-* `OPTALG <http://ttinoco.github.io/OPTALG>`_ (>= 1.1)
-* `PFNET`_ (>= 1.2.5)
+Dependencies
+============
+
+GRIDOPT has the following dependencies:
+
+* `Numpy <http://www.numpy.org>`_ (>=1.11.2)
+* `Scipy <http://www.scipy.org>`_ (>=0.18.1)
+* `OPTALG <http://optalg.readthedocs.io>`_ (== 1.1.3)
+* `PFNET`_ (== 1.3.0)
 
 .. _start_download:
 
@@ -27,13 +32,13 @@ Installation
 
 The GRIDOPT Python module can be installed using::
 
-  > sudo python setup.py install
+  sudo python setup.py install
 
 from the root directory of the package.
 
-The installation can be tested using `nose <https://nose.readthedocs.org/en/latest/>`_ as follows::
+The module can be tested using `nose <https://nose.readthedocs.org/en/latest/>`_ as follows::
 
-  > nosetests -v
+  nosetests -v -s
 
 .. _start_example:
 
@@ -45,8 +50,7 @@ The next example shows how to solve the power flow problem associated with a pow
   >>> import pfnet
   >>> import gridopt
 
-  >>> net = pfnet.Network()
-  >>> net.load('ieee14.mat')
+  >>> net = pfnet.ParserMAT().parse('ieee14.mat')
 
   >>> # max mismatches (MW,MVAr)
   >>> print '%.2e %.2e' %(net.bus_P_mis,net.bus_Q_mis)
@@ -69,4 +73,6 @@ The next example shows how to solve the power flow problem associated with a pow
   >>> print '%.2e %.2e' %(net.bus_P_mis,net.bus_Q_mis)
   5.16e-04 5.67e-03
 
-.. _PFNET: http://ttinoco.github.io/PFNET/python
+In this example, it is assumed that the Python interpreter was started from the directory ``tests/resources/cases`` of the GRIDOPT package, where the sample case ``ieee14.mat`` is located.
+
+.. _PFNET: http://pfnet-python.readthedocs.io/

@@ -1,10 +1,25 @@
 Targets
 -------
-* Fully documented and functional ACOPF.
 
 Unreleased
 ----------
-* Compatibility with PFNET 1.2.5
+
+Version 1.3.2
+-------------
+* Compatibility with PFNET v1.3.0.
+* Compatibility with OPTALG v1.1.3.
+* Thermal limits option for AugL and Ipopt OPFs.
+
+Version 1.3.1
+-------------
+* Compatibility with PFNET 1.2.9.
+* Tool for transforming PFNET to OPTALG problems and recovering primal and dual variables.
+* Standard OPF problem formulation.
+* OPF method based on AugL uses linear variable bounds and handles them with barrier.
+* OPF method based on IPOPT solver.
+* Flat start option in gridopt script.
+* Travis continuous integration.
+* Readthedocs.
 
 Version 1.3
 -----------

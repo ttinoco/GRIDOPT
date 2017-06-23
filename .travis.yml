@@ -1,0 +1,40 @@
+language: c
+
+os:
+- osx
+- linux
+
+before_install:
+- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then 
+    sudo apt-get update;
+    sudo apt-get -y purge libgraphviz-dev; 
+    sudo apt-get -y install m4;
+  fi
+- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then 
+    brew update;
+    brew install automake;
+  fi
+
+install:
+
+- git clone -b master https://github.com/ttinoco/PFNET.git
+- cd PFNET
+- ./autogen.sh
+- ./configure
+- make
+- make check
+- sudo make install
+- cd python
+- sudo pip install -r requirements.txt
+- sudo python setup.py install
+- cd ../../
+
+- git clone -b master https://github.com/ttinoco/OPTALG.git
+- cd OPTALG
+- sudo pip install -r requirements.txt
+- sudo python setup.py install
+- cd ../
+
+script: 
+- sudo python setup.py install
+- nosetests -s -v

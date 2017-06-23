@@ -1,16 +1,14 @@
 #*****************************************************#
 # This file is part of GRIDOPT.                       #
 #                                                     #
-# Copyright (c) 2015-2016, Tomas Tinoco De Rubira.    #
+# Copyright (c) 2015-2017, Tomas Tinoco De Rubira.    #
 #                                                     #
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
 
-import pfnet
 import numpy as np
 from .method_error import *
 from .method import PFmethod
-from optalg.lin_solver import new_linsolver
 
 class DCPF(PFmethod):
     """
@@ -27,6 +25,8 @@ class DCPF(PFmethod):
         self.parameters = DCPF.parameters.copy()
 
     def create_problem(self,net):
+
+        import pfnet
 
         # Parameters
         params = self.parameters
@@ -53,16 +53,17 @@ class DCPF(PFmethod):
             raise PFmethodError_BadProblem(self)
 
         # Set up problem
-        problem = pfnet.Problem()
-        problem.set_network(net)
-        problem.add_constraint('DC power balance')
-        problem.add_constraint('generator active power participation')
+        problem = pfnet.Problem(net)
+        problem.add_constraint(pfnet.Constraint('DC power balance',net))
+        problem.add_constraint(pfnet.Constraint('generator active power participation',net))
         problem.analyze()
 
         # Return
         return problem
                     
     def solve(self,net):
+
+        from optalg.lin_solver import new_linsolver
         
         # Parameters
         params = self.parameters
@@ -95,12 +96,15 @@ class DCPF(PFmethod):
             self.set_net_properties(net.get_properties())
             self.set_problem(problem)
 
+            # Restore net properties
+            net.update_properties()
+
     def update_network(self,net):
         
         # Get data
         problem = self.results['problem']
-        x = self.results['primal_variables']
-        lam,nu,mu,pi = self.results['dual_variables']
+        x = self.results['primal variables']
+        lam,nu,mu,pi = self.results['dual variables']
        
         # No problem
         if problem is None:

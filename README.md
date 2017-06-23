@@ -1,32 +1,19 @@
-# GRIDOPT: Power Grid Optimization Package #
+# GRIDOPT: Power Grid Optimization Package
 
-## Overview ##
+[![Build Status](https://travis-ci.org/ttinoco/GRIDOPT.svg?branch=master)](https://travis-ci.org/ttinoco/GRIDOPT)
+[![Documentation Status](https://readthedocs.org/projects/gridopt/badge/?version=latest)](http://gridopt.readthedocs.io/en/latest/?badge=latest)
+
+## Overview
 
 GRIDOPT is a Python package that provides methods for solving power grid optimization problems. Currently, it has the following tools:
 
 * power flow solvers.
-* optimal power flow solver.
-* two-stage DC stochastic optimal power solvers.
+* optimal power flow solvers.
 
-## License ##
+## License
 
 BSD 2-clause license.
 
-## Documentation ##
+## Documentation
 
-The documentation for this package can be found in http://ttinoco.github.io/GRIDOPT.
-
-## Download ##
-
-The latest version of the package can be downloaded from https://github.com/ttinoco/GRIDOPT.
-
-## Dependencies ##
-
-* [Numpy](http://www.numpy.org) (>=1.8.2)
-* [Scipy](http://www.scipy.org) (>=0.13.3)
-* [OPTALG] (https://github.com/ttinoco/OPTALG)
-* [PFNET] (https://github.com/ttinoco/PFNET) 
-
-## Contributors ##
-
-* [Tomas Tinoco De Rubira](http://n.ethz.ch/~tomast/) (principal developer)
+The documentation for this package can be found in http://gridopt.readthedocs.io/.
