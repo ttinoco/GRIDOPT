@@ -124,7 +124,7 @@ class TestPowerFlow(unittest.TestCase):
         method_ipopt = gopt.power_flow.new_method('IpoptOPF')
         method_augl = gopt.power_flow.new_method('AugLOPF')
 
-        skipcases = ['aesoSL2014.raw','case9241pegase.mat','case32.art']
+        skipcases = ['aesoSL2014.raw','case3012wp.mat','case9241pegase.mat','case32.art']
             
         for case in utils.test_cases:
 
@@ -147,8 +147,9 @@ class TestPowerFlow(unittest.TestCase):
                 self.assertEqual(net.gen_P_cost,gen_P_cost)
                 self.assertNotEqual(method_ipopt.results['net properties']['gen_P_cost'],gen_P_cost)
                 x1 = method_ipopt.get_results()['primal variables']
+                i1 = method_ipopt.get_results()['iterations']
                 p1 = method_ipopt.get_results()['net properties']['gen_P_cost']
-                print("%s  %s" %('IpoptOPF',case.split('/')[-1]))
+                print("%s  %s %d" %('IpoptOPF',case.split('/')[-1],i1))
             except ImportError:
                 has_ipopt = False
             

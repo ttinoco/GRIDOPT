@@ -2,6 +2,10 @@
 *.art
 *.raw
 
+# Solutions
+*.raw.sol*
+*.art.sol*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
