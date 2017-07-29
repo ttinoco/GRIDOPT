@@ -32,9 +32,10 @@ class TestPowerFlow(unittest.TestCase):
         
         for case in utils.test_cases:
             for sol in list(sol_types.keys()):
-                for method_name in ['NRPF','AugLPF']:
+                for optsolver in ['nr','augl','ipopt']:
                     
-                    method = gopt.power_flow.new_method(method_name)
+                    method = gopt.power_flow.new_method('ACPF')
+                    method.set_parameters(params={'optsolver':optsolver})
                     
                     net = pf.Parser(case).parse(case)
                     netMP = pf.Parser(case).parse(case,T)
@@ -48,16 +49,16 @@ class TestPowerFlow(unittest.TestCase):
                     # No sol
                     if sol_data is None:
                         continue
-                    
-                    # Skip
-                    if (sol == 'sol1' and method_name == 'AugLPF'):
+                                          
+                    # Skip (no controls is not supported by augl,ipopt formulation
+                    if sol == 'sol1' and optsolver in ['augl','ipopt']:
                         continue
 
                     # Set parameters
                     if sol == 'sol1':
                         method.set_parameters({'limit_gens': False})
                     elif sol == 'sol2':
-                        pass
+                        pass # defaults
                     elif sol == 'sol3':
                         method.set_parameters({'lock_taps': False})
                     else:
@@ -65,7 +66,10 @@ class TestPowerFlow(unittest.TestCase):
                     method.set_parameters({'quiet': True})
 
                     bus_P_mis = net.bus_P_mis
-                    method.solve(net)
+                    try:
+                        method.solve(net)
+                    except ImportError:
+                        continue # no ipopt
                     results = method.get_results()
                     self.assertEqual(results['status'],'solved')
                     self.assertEqual(net.bus_P_mis,bus_P_mis)
@@ -111,7 +115,7 @@ class TestPowerFlow(unittest.TestCase):
                     if len(v_mag_error) > 0:
                         self.assertLessEqual(np.max(v_mag_error),v_mag_tol)
                         self.assertLessEqual(np.max(v_ang_error),v_ang_tol)
-                        print("%s\t%s\t%s" %(method_name,case.split('/')[-1],sol_types[sol]))
+                        print("%s\t%s\t%s" %(optsolver,case.split('/')[-1],sol_types[sol]))
                     self.assertEqual(len(v_mag_error),counter*(T+1))
                     self.assertEqual(len(v_ang_error),counter*(T+1))
 
@@ -121,10 +125,12 @@ class TestPowerFlow(unittest.TestCase):
         
         eps = 0.5 # %
         
-        method_ipopt = gopt.power_flow.new_method('IpoptOPF')
-        method_augl = gopt.power_flow.new_method('AugLOPF')
+        method_ipopt = gopt.power_flow.new_method('ACOPF')
+        method_ipopt.set_parameters(params={'optsolver':'ipopt'})
+        method_augl = gopt.power_flow.new_method('ACOPF')
+        method_augl.set_parameters(params={'optsolver':'augl'})
 
-        skipcases = ['aesoSL2014.raw','case3012wp.mat','case9241pegase.mat','case32.art']
+        skipcases = ['aesoSL2014.raw','case3012wp.mat','case9241.mat','case32.art']
             
         for case in utils.test_cases:
 
@@ -149,7 +155,7 @@ class TestPowerFlow(unittest.TestCase):
                 x1 = method_ipopt.get_results()['primal variables']
                 i1 = method_ipopt.get_results()['iterations']
                 p1 = method_ipopt.get_results()['net properties']['gen_P_cost']
-                print("%s  %s %d" %('IpoptOPF',case.split('/')[-1],i1))
+                print("%s\t%s\t%d" %('ipopt',case.split('/')[-1],i1))
             except ImportError:
                 has_ipopt = False
             
@@ -162,7 +168,7 @@ class TestPowerFlow(unittest.TestCase):
             x2 = method_augl.get_results()['primal variables']
             i2 = method_augl.get_results()['iterations']
             p2 = method_augl.get_results()['net properties']['gen_P_cost']
-            print("%s  %s %d" %('AugLOPF ',case.split('/')[-1],i2))
+            print("%s\t%s\t%d" %('augl',case.split('/')[-1],i2))
             if has_ipopt:
                 error = 100*(p1-p2)/abs(p2)
                 self.assertLess(np.abs(error),eps)
@@ -175,8 +181,8 @@ class TestPowerFlow(unittest.TestCase):
 
         infcases = ['ieee25.raw']
 
-        skipcases = ['case1354pegase.mat','case2869pegase.mat',
-                     'case3375wp.mat','case9241pegase.mat']
+        skipcases = ['case1354.mat','case2869.mat',
+                     'case3375wp.mat','case9241.mat']
         
         method = gopt.power_flow.new_method('DCOPF')
 

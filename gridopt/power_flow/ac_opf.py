@@ -10,41 +10,56 @@ from __future__ import print_function
 import numpy as np
 from .method_error import *
 from .method import PFmethod
+from optalg.opt_solver import OptSolverError, OptTermination
+from optalg.opt_solver import OptSolverAugL, OptSolverIpopt
+        
+class ACOPF(PFmethod):
+    """
+    AC optimal power flow method.
+    """
 
-class IpoptOPF(PFmethod):
-    """
-    IPOPT-based optimal power flow method.
-    """
- 
-    name = 'IpoptOPF'
+    name = 'ACOPF'
 
     parameters = {'weight_cost': 1e0,      # weight for generation cost
                   'weight_mag_reg': 0.,    # weight for voltage magnitude regularization
                   'weight_ang_reg': 0.,    # weight for voltage angle regularization
                   'weight_gen_reg': 0.,    # weight for generator power regularization
-                  'thermal_limits': False} # flag for thermal limits 
+                  'thermal_limits': False, # flag for thermal limits
+                  'vmin_thresh': 0.1,      # threshold for vmin termination
+                  'optsolver': 'augl'}     # OPTALG optimization solver (augl,ipopt)
+
+    augl_parameters = {'feastol' : 1e-4,
+                       'optol' : 1e-4,
+                       'kappa' : 1e-2}
+
+    ipopt_parameters = {}
 
     def __init__(self):
 
-        from optalg.opt_solver import OptSolverIpopt
-        
+        # Parent init
         PFmethod.__init__(self)
-        parameters = OptSolverIpopt.parameters.copy()
-        parameters.update(IpoptOPF.parameters)
-        self.parameters = parameters
 
+        # Optsolver params
+        augl_params = OptSolverAugL.parameters.copy()
+        augl_params.update(self.augl_parameters)   # overwrite defaults
+        ipopt_params = OptSolverIpopt.parameters.copy()
+        ipopt_params.update(self.ipopt_parameters) # overwrite defaults
+        self.parameters.update(ACOPF.parameters)
+        self.parameters['optsolver_params'] = {'augl': augl_params,
+                                               'ipopt': ipopt_params}
+                   
     def create_problem(self,net):
-
+        
         import pfnet
 
         # Parameters
         params = self.parameters
-        wc = params['weight_cost']
-        wm = params['weight_mag_reg']
+        wc  = params['weight_cost']
+        wm  = params['weight_mag_reg']
         wa = params['weight_ang_reg']
         wg = params['weight_gen_reg']
         th = params['thermal_limits']
-
+        
         # Clear flags
         net.clear_flags()
         
@@ -79,7 +94,7 @@ class IpoptOPF(PFmethod):
 
         # Constraints
         problem.add_constraint(pfnet.Constraint('AC power balance',net))
-        problem.add_constraint(pfnet.Constraint('variable bounds',net)) 
+        problem.add_constraint(pfnet.Constraint('variable bounds',net))
         if th:
             problem.add_constraint(pfnet.Constraint("AC branch flow limits",net))
 
@@ -97,35 +112,50 @@ class IpoptOPF(PFmethod):
         return problem
             
     def solve(self,net):
-
-        from optalg.opt_solver import OptSolverError, OptSolverIpopt
         
         # Parameters
         params = self.parameters
+        vmin_thresh = params['vmin_thresh']
+        optsolver_name = params['optsolver']
+        optsolver_params = params['optsolver_params']
 
+        # Opt solver
+        if optsolver_name == 'augl':
+            optsolver = OptSolverAugL()
+        elif optsolver_name == 'ipopt':
+            optsolver = OptSolverIpopt()
+        else:
+            raise PFmethodError_BadOptSolver(self)
+        optsolver.set_parameters(optsolver_params[optsolver_name])
+        
         # Problem
         problem = self.create_problem(net)
-                
-        # Set up solver
-        solver = OptSolverIpopt()
-        solver.set_parameters(params)
+
+        # Termination
+        def t1(s):
+            if np.min(s.problem.wrapped_problem.network.bus_v_min) < vmin_thresh:
+                return True
+            else:
+                return False
+        optsolver.add_termination(OptTermination(t1,'low voltage'))
+        
+        # Info printer
+        info_printer = self.get_info_printer()
+        optsolver.set_info_printer(info_printer)
         
         # Solve
         try:
-            solver.solve(problem)
+            optsolver.solve(problem)
         except OptSolverError as e:
             raise PFmethodError_SolverError(self,e)
         finally:
-
-            # Update network properties
-            net.update_properties(solver.get_primal_variables())
             
             # Get results
-            self.set_status(solver.get_status())
-            self.set_error_msg(solver.get_error_msg())
-            self.set_iterations(solver.get_iterations())
-            self.set_primal_variables(solver.get_primal_variables())
-            self.set_dual_variables(solver.get_dual_variables())
+            self.set_status(optsolver.get_status())
+            self.set_error_msg(optsolver.get_error_msg())
+            self.set_iterations(optsolver.get_iterations())
+            self.set_primal_variables(optsolver.get_primal_variables())
+            self.set_dual_variables(optsolver.get_dual_variables())
             self.set_net_properties(net.get_properties())
             self.set_problem(problem)
 
@@ -142,7 +172,7 @@ class IpoptOPF(PFmethod):
         # No problem
         if problem is None:
             raise PFmethodError_NoProblem(self)
- 
+
         # Checks
         assert(problem.x.shape == x.shape)
         assert(net.num_vars+problem.num_extra_vars == x.size)
@@ -160,4 +190,22 @@ class IpoptOPF(PFmethod):
         # Network sensitivities
         net.clear_sensitivities()
         problem.store_sensitivities(lam,nu,mu,pi)
-        
+
+    def get_info_printer(self):
+
+        def info_printer(solver,header):
+            net = solver.problem.wrapped_problem.network
+            if header:
+                print('{0:^5}'.format('vmax'), end=' ')
+                print('{0:^5}'.format('vmin'), end=' ')
+                print('{0:^6}'.format('bvvio'), end=' ')
+                print('{0:^6}'.format('gQvio'), end=' ')
+                print('{0:^6}'.format('gPvio'))
+            else:
+                print('{0:^5.2f}'.format(np.average(net.bus_v_max)), end=' ')
+                print('{0:^5.2f}'.format(np.average(net.bus_v_min)), end=' ')
+                print('{0:^6.0e}'.format(np.average(net.bus_v_vio)), end=' ')
+                print('{0:^6.0e}'.format(np.average(net.gen_Q_vio)), end=' ')
+                print('{0:^6.0e}'.format(np.average(net.gen_P_vio)))
+        return info_printer
+
