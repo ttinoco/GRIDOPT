@@ -10,8 +10,6 @@ from __future__ import print_function
 import numpy as np
 from .method_error import *
 from .method import PFmethod
-from optalg.opt_solver import OptSolverError, OptTermination
-from optalg.opt_solver import OptSolverAugL, OptSolverIpopt
         
 class ACOPF(PFmethod):
     """
@@ -28,22 +26,24 @@ class ACOPF(PFmethod):
                   'vmin_thresh': 0.1,      # threshold for vmin termination
                   'optsolver': 'augl'}     # OPTALG optimization solver (augl,ipopt)
 
-    augl_parameters = {'feastol' : 1e-4,
+    parameters_augl = {'feastol' : 1e-4,
                        'optol' : 1e-4,
                        'kappa' : 1e-2}
 
-    ipopt_parameters = {}
+    parameters_ipopt = {}
 
     def __init__(self):
+
+        from optalg.opt_solver import OptSolverAugL, OptSolverIpopt
 
         # Parent init
         PFmethod.__init__(self)
 
         # Optsolver params
         augl_params = OptSolverAugL.parameters.copy()
-        augl_params.update(self.augl_parameters)   # overwrite defaults
+        augl_params.update(self.parameters_augl)   # overwrite defaults
         ipopt_params = OptSolverIpopt.parameters.copy()
-        ipopt_params.update(self.ipopt_parameters) # overwrite defaults
+        ipopt_params.update(self.parameters_ipopt) # overwrite defaults
         self.parameters.update(ACOPF.parameters)
         self.parameters['optsolver_params'] = {'augl': augl_params,
                                                'ipopt': ipopt_params}
@@ -112,6 +112,9 @@ class ACOPF(PFmethod):
         return problem
             
     def solve(self,net):
+
+        from optalg.opt_solver import OptSolverError, OptTermination
+        from optalg.opt_solver import OptSolverAugL, OptSolverIpopt
         
         # Parameters
         params = self.parameters

@@ -155,7 +155,9 @@ class PFmethod:
                    Name-value pairs where value is a string
         """
 
-        dict_list = [self.parameters]+list(self.parameters['optsolver_params'].values())
+        dict_list = [self.parameters]
+        if 'optsolver_params' in self.parameters:
+            dict_list += list(self.parameters['optsolver_params'].values())
 
         if params:
             for key,value in list(params.items()):

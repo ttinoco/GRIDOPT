@@ -11,8 +11,6 @@ import numpy as np
 from .method_error import *
 from .method import PFmethod
 from numpy.linalg import norm
-from optalg.opt_solver import OptSolverError, OptTermination, OptCallback
-from optalg.opt_solver import OptSolverAugL, OptSolverIpopt, OptSolverNR
 
 class ACPF(PFmethod):
     """
@@ -45,6 +43,8 @@ class ACPF(PFmethod):
     parameters_nr = {}
                   
     def __init__(self):
+
+        from optalg.opt_solver import OptSolverAugL, OptSolverIpopt, OptSolverNR
 
         # Parent init
         PFmethod.__init__(self)
@@ -213,6 +213,9 @@ class ACPF(PFmethod):
             raise PFmethodError_BadOptSolver(self)
             
     def solve(self,net):
+
+        from optalg.opt_solver import OptSolverError, OptTermination, OptCallback
+        from optalg.opt_solver import OptSolverAugL, OptSolverIpopt, OptSolverNR
         
         # Parameters
         params = self.parameters
