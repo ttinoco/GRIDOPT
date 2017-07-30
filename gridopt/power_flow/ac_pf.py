@@ -24,7 +24,7 @@ class ACPF(PFmethod):
                   'weight_pq': 1e-3,   # weight for gen powers penalty
                   'weight_t': 1e-3,    # weight for tap ratios penalty
                   'weight_b': 1e-3,    # weight for shunt susceptances penalty
-                  'limit_gens': True,  # flag for enforce generator reactive power limits (NR only)
+                  'limit_gens': True,  # flag for enforcing generator reactive power limits (NR only)
                   'lock_taps': True,   # flag for locking transformer tap ratios
                   'lock_shunts': True, # flag for locking swtiched shunts
                   'tap_step': 0.5,     # tap ratio acceleration factor (NR only)

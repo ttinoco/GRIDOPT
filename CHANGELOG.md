@@ -4,6 +4,12 @@ Targets
 Unreleased
 ----------
 
+Version 1.3.3
+-------------
+* Unified methods (ACPF, ACOPF, DCPF, DCOPF) with param "optsolver" for choosing optimization solver.
+* Added documentation for "gridopt" command-line utility.
+* Updated and re-enabled DCOPF unittests.
+
 Version 1.3.2
 -------------
 * Compatibility with PFNET v1.3.0.

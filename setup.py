@@ -9,7 +9,7 @@
 from distutils.core import setup
                 
 setup(name='GRIDOPT',
-      version='1.3.2',
+      version='1.3.3',
       description='Power Grid Optimization Library',
       author='Tomas Tinoco De Rubira',
       author_email='ttinoco5687@gmail.com',

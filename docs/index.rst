@@ -26,12 +26,13 @@ GRIDOPT is released under the BSD 2-clause license.
 
    Getting Started<start>
    Power Flow Methods<power_flow>
+   Command-Line Utility<script>	      
    API Reference<reference>
 
 **Contributors (alphabetical)**
 
 * Martin Baltzinger
-* `Tomas Tinoco De Rubira <http://n.ethz.ch/~tomast/>`_
+* `Tomas Tinoco De Rubira <https://ttinoco.github.io/>`_
 
 Indices and tables
 ==================
