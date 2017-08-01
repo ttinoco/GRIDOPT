@@ -3,6 +3,7 @@ Targets
 
 Unreleased
 ----------
+* Added new OPTALG solver "inlp" to ACPF and ACOPF and updated documentation.
 
 Version 1.3.3
 -------------

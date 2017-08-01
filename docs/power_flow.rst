@@ -130,33 +130,33 @@ As the examples show, GRIDOPT and `PFNET`_ take care of all the details and allo
 ACPF
 ====
 
-This method is represented by an object of type :class:`ACPF <gridopt.power_flow.ac_pf.ACPF>` and solves an AC power flow problem. For doing this, it can use the `Newton-Raphson`_ solver from `OPTALG`_ together with "switching" heuristics for modeling local controls. Alternatively, it can formulate the problem as an optimization problem with a convex objective function and `complementarity constraints`_ for modeling local controls, and solve it using the `Augmented Lagrangian`_ solver or the `IPOPT`_ solver wrapper from `OPTALG`_. For now, the parameters of this power flow method are the following:
+This method is represented by an object of type :class:`ACPF <gridopt.power_flow.ac_pf.ACPF>` and solves an AC power flow problem. For doing this, it can use the `Newton-Raphson`_ solver from `OPTALG`_ together with "switching" heuristics for modeling local controls. Alternatively, it can formulate the problem as an optimization problem with a convex objective function and `complementarity constraints`_ for modeling local controls, and solve it using the `Augmented Lagrangian`_, `INLP`_, or `IPOPT`_ solver from `OPTALG`_. For now, the parameters of this power flow method are the following:
 
-================= ============================================================== ===========
-Name              Description                                                    Default  
-================= ============================================================== ===========
-``'weight_vmag'`` Weight for bus voltage magnitude regularization                ``1e0``
-``'weight_vang'`` Weight for bus voltage angle regularization                    ``1e0``
-``'weight_pq'``   Weight for generator power regularization                      ``1e-3``
-``'weight_t'``    Weight for transformer tap ratio regularization                ``1e-3``
-``'weight_b'``    Weight for shunt susceptance regularization                    ``1e-3``
-``'limit_gens'``  Flag for enforcing generator reactive power limits (NR only)   ``True``
-``'lock_taps'``   Flag for locking transformer tap ratios                        ``True``
-``'lock_shunts'`` Flag for locking swtiched shunts                               ``True``
-``'tap_step'``    Tap ratio acceleration factor (NR heuristics)                  ``0.5``
-``'shunt_step'``  Susceptance acceleration factor (NR heuristics)                ``0.5``
-``'dtap'``        Tap ratio perturbation (NR heuristics)                         ``1e-5``
-``'dsus'``        Susceptance perturbation (NR heuristics)                       ``1e-5``
-``'vmin_thresh'`` Low-voltage threshold                                          ``1e-1``
-``'optsolver'``   Name of OPTALG optimization solver ``{'nr','augl','ipopt'}``   ``'augl'``
-================= ============================================================== ===========
+================= ============================================================ ===========
+Name              Description                                                  Default  
+================= ============================================================ ===========
+``'weight_vmag'`` Weight for bus voltage magnitude regularization              ``1e0``
+``'weight_vang'`` Weight for bus voltage angle regularization                  ``1e0``
+``'weight_pq'``   Weight for generator power regularization                    ``1e-3``
+``'weight_t'``    Weight for transformer tap ratio regularization              ``1e-3``
+``'weight_b'``    Weight for shunt susceptance regularization                  ``1e-3``
+``'limit_gens'``  Flag for enforcing generator reactive power limits (NR only) ``True``
+``'lock_taps'``   Flag for locking transformer tap ratios                      ``True``
+``'lock_shunts'`` Flag for locking swtiched shunts                             ``True``
+``'tap_step'``    Tap ratio acceleration factor (NR heuristics)                ``0.5``
+``'shunt_step'``  Susceptance acceleration factor (NR heuristics)              ``0.5``
+``'dtap'``        Tap ratio perturbation (NR heuristics)                       ``1e-5``
+``'dsus'``        Susceptance perturbation (NR heuristics)                     ``1e-5``
+``'vmin_thresh'`` Low-voltage threshold                                        ``1e-1``
+``'optsolver'``   OPTALG optimization solver ``{'nr','inlp','augl','ipopt'}``  ``'augl'``
+================= ============================================================ ===========
 
 .. _ac_opf: 
 
 ACOPF
 =====
 
-This method is represented by an object of type :class:`ACOPF <gridopt.power_flow.ac_opf.ACOPF>` and solves an AC optimal power flow problem. For doing this, it uses the `Augmented Lagrangian`_ or `IPOPT`_ solver from `OPTALG`_. By default, it minimizes `active power generation cost`_ subject to voltage magnitude limits, generator power limits (`variable limits`_), and `AC power balance constraints`_. For now, the parameters of this optimal power flow method are the following:
+This method is represented by an object of type :class:`ACOPF <gridopt.power_flow.ac_opf.ACOPF>` and solves an AC optimal power flow problem. For doing this, it uses the `Augmented Lagrangian`_, `INLP`_, or `IPOPT`_ solver from `OPTALG`_. By default, it minimizes `active power generation cost`_ subject to voltage magnitude limits, generator power limits (`variable limits`_), and `AC power balance constraints`_. For now, the parameters of this optimal power flow method are the following:
 
 ==================== ============================================================ ===========
 Name                 Description                                                  Default  
@@ -167,11 +167,12 @@ Name                 Description                                                
 ``'weight_gen_reg'`` Weight for generator powers regularization                   ``0.``
 ``'thermal_limits'`` Flag for thermal limits                                      ``False``
 ``'vmin_thresh'``    Low-voltage threshold                                        ``1e-1``
-``'optsolver'``      Name of OPTALG optimization solver ``{'augl','ipopt'}``      ``'augl'``
+``'optsolver'``      OPTALG optimization solver ``{'augl','inlp','ipopt'}``       ``'augl'``
 ==================== ============================================================ ===========
 
 .. _OPTALG: http://optalg.readthedocs.io
 .. _IQP: http://optalg.readthedocs.io/en/latest/opt_solver.html#iqp
+.. _INLP: http://optalg.readthedocs.io/en/latest/opt_solver.html#inlp
 .. _newton-raphson: http://optalg.readthedocs.io/en/latest/opt_solver.html#nr
 .. _augmented lagrangian: http://optalg.readthedocs.io/en/latest/opt_solver.html#augl
 .. _ipopt: http://optalg.readthedocs.io/en/latest/opt_solver.html#ipopt
