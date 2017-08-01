@@ -34,7 +34,7 @@ print(("branch %2d %.2e %.2e" %(branch.index,
                                branch.sens_P_l_bound)))
 
 # sensitivity to  gen limits
-gen = net.get_gen(2)
+gen = net.get_generator(2)
 print(("gen %2d %.2e %.2e" %(gen.index,
                             gen.sens_P_u_bound,
                             gen.sens_P_l_bound)))

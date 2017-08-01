@@ -11,9 +11,9 @@ import gridopt
 
 net = pfnet.ParserMAT().parse('../tests/resources/cases/ieee14.mat')
 
-method = gridopt.power_flow.new_method('NRPF')
+method = gridopt.power_flow.new_method('ACPF')
 
-method.set_parameters({'quiet': True, 'feastol': 1e-4})
+method.set_parameters({'optsolver': 'nr', 'quiet': True, 'feastol': 1e-4})
 
 method.solve(net)
 

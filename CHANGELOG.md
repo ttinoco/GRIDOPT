@@ -3,6 +3,13 @@ Targets
 
 Unreleased
 ----------
+* Added new OPTALG solver "inlp" to ACPF and ACOPF and updated documentation.
+
+Version 1.3.3
+-------------
+* Unified methods (ACPF, ACOPF, DCPF, DCOPF) with param "optsolver" for choosing optimization solver.
+* Added documentation for "gridopt" command-line utility.
+* Updated and re-enabled DCOPF unittests.
 
 Version 1.3.2
 -------------
