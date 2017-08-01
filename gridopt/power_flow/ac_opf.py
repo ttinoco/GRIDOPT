@@ -32,9 +32,11 @@ class ACOPF(PFmethod):
 
     parameters_ipopt = {}
 
+    parameters_inlp = {}
+
     def __init__(self):
 
-        from optalg.opt_solver import OptSolverAugL, OptSolverIpopt
+        from optalg.opt_solver import OptSolverAugL, OptSolverIpopt, OptSolverINLP
 
         # Parent init
         PFmethod.__init__(self)
@@ -44,9 +46,12 @@ class ACOPF(PFmethod):
         augl_params.update(self.parameters_augl)   # overwrite defaults
         ipopt_params = OptSolverIpopt.parameters.copy()
         ipopt_params.update(self.parameters_ipopt) # overwrite defaults
+        inlp_params = OptSolverINLP.parameters.copy()
+        inlp_params.update(self.parameters_inlp) # overwrite defaults
         self.parameters.update(ACOPF.parameters)
         self.parameters['optsolver_params'] = {'augl': augl_params,
-                                               'ipopt': ipopt_params}
+                                               'ipopt': ipopt_params,
+                                               'inlp': inlp_params}
                    
     def create_problem(self,net):
         
@@ -114,7 +119,7 @@ class ACOPF(PFmethod):
     def solve(self,net):
 
         from optalg.opt_solver import OptSolverError, OptTermination
-        from optalg.opt_solver import OptSolverAugL, OptSolverIpopt
+        from optalg.opt_solver import OptSolverAugL, OptSolverIpopt, OptSolverINLP
         
         # Parameters
         params = self.parameters
@@ -127,6 +132,8 @@ class ACOPF(PFmethod):
             optsolver = OptSolverAugL()
         elif optsolver_name == 'ipopt':
             optsolver = OptSolverIpopt()
+        elif optsolver_name == 'inlp':
+            optsolver = OptSolverINLP()
         else:
             raise PFmethodError_BadOptSolver(self)
         optsolver.set_parameters(optsolver_params[optsolver_name])

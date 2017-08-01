@@ -39,12 +39,14 @@ class ACPF(PFmethod):
                        'kappa' : 1e-5}
 
     parameters_ipopt = {}
+
+    parameters_inlp = {}
     
     parameters_nr = {}
                   
     def __init__(self):
 
-        from optalg.opt_solver import OptSolverAugL, OptSolverIpopt, OptSolverNR
+        from optalg.opt_solver import OptSolverAugL, OptSolverIpopt, OptSolverNR, OptSolverINLP
 
         # Parent init
         PFmethod.__init__(self)
@@ -54,12 +56,15 @@ class ACPF(PFmethod):
         augl_params.update(self.parameters_augl)   # overwrite defaults
         ipopt_params = OptSolverIpopt.parameters.copy()
         ipopt_params.update(self.parameters_ipopt) # overwrite defaults
+        inlp_params = OptSolverINLP.parameters.copy()
+        inlp_params.update(self.parameters_inlp)   # overwrite defaults
         nr_params = OptSolverNR.parameters.copy()
         nr_params.update(self.parameters_nr)       # overwrite defaults
         self.parameters.update(ACPF.parameters)
         self.parameters['optsolver_params'] = {'augl': augl_params,
                                                'ipopt': ipopt_params,
-                                               'nr': nr_params}
+                                               'nr': nr_params,
+                                               'inlp': inlp_params}
 
     def create_problem(self,net):
 
@@ -215,7 +220,7 @@ class ACPF(PFmethod):
     def solve(self,net):
 
         from optalg.opt_solver import OptSolverError, OptTermination, OptCallback
-        from optalg.opt_solver import OptSolverAugL, OptSolverIpopt, OptSolverNR
+        from optalg.opt_solver import OptSolverAugL, OptSolverIpopt, OptSolverNR, OptSolverINLP
         
         # Parameters
         params = self.parameters
@@ -231,6 +236,8 @@ class ACPF(PFmethod):
             optsolver = OptSolverAugL()
         elif optsolver_name == 'ipopt':
             optsolver = OptSolverIpopt()
+        elif optsolver_name == 'inlp':
+            optsolver = OptSolverINLP()
         elif optsolver_name == 'nr':
             optsolver = OptSolverNR()
         else:
