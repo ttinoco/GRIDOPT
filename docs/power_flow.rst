@@ -78,13 +78,13 @@ This method is represented by an object of type :class:`DCOPF <gridopt.power_flo
 
 The parameters of this method are the following:
 
-=========================== ============================================================= =========
-Name                        Description                                                   Default  
-=========================== ============================================================= =========
-``'thermal_limits'``        Flag for considering branch flow limits                       ``False``
-``'renewable_curtailment'`` Flag for allowing curtailment of renewable generators         ``False``
-``'optsolver'``             Name of OPTALG optimization solver ``{'iqp','augl','ipopt'}`` ``'iqp'``
-=========================== ============================================================= =========
+=========================== ===================================================== =========
+Name                        Description                                           Default  
+=========================== ===================================================== =========
+``'thermal_limits'``        Flag for considering branch flow limits               ``False``
+``'renewable_curtailment'`` Flag for allowing curtailment of renewable generators ``False``
+``'optsolver'``             OPTALG optimization solver ``{'iqp','augl','ipopt'}`` ``'iqp'``
+=========================== ===================================================== =========
 
 The following example illustrates how to solve a DC OPF problem and extract the optimal generation cost::
 
