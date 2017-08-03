@@ -140,7 +140,7 @@ Name              Description                                                  D
 ``'weight_pq'``   Weight for generator power regularization                    ``1e-3``
 ``'weight_t'``    Weight for transformer tap ratio regularization              ``1e-3``
 ``'weight_b'``    Weight for shunt susceptance regularization                  ``1e-3``
-``'limit_gens'``  Flag for enforcing generator reactive power limits (NR only) ``True``
+``'limit_gens'``  Flag for enforcing generator reactive power limits           ``True``
 ``'lock_taps'``   Flag for locking transformer tap ratios                      ``True``
 ``'lock_shunts'`` Flag for locking swtiched shunts                             ``True``
 ``'tap_step'``    Tap ratio acceleration factor (NR heuristics)                ``0.5``
