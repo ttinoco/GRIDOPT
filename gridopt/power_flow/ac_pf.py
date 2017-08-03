@@ -24,7 +24,7 @@ class ACPF(PFmethod):
                   'weight_pq': 1e-3,   # weight for gen powers penalty
                   'weight_t': 1e-3,    # weight for tap ratios penalty
                   'weight_b': 1e-3,    # weight for shunt susceptances penalty
-                  'limit_gens': True,  # flag for enforcing generator reactive power limits (NR only)
+                  'limit_gens': True,  # flag for enforcing generator reactive power limits
                   'lock_taps': True,   # flag for locking transformer tap ratios
                   'lock_shunts': True, # flag for locking swtiched shunts
                   'tap_step': 0.5,     # tap ratio acceleration factor (NR only)
@@ -93,7 +93,12 @@ class ACPF(PFmethod):
             net.set_flags('bus',
                           'variable',
                           'not slack',
-                          ['voltage magnitude','voltage angle'])
+                          ['voltage angle','voltage magnitude'])
+            if not limit_gens:
+                net.set_flags('bus',
+                              'fixed',
+                              'regulated by generator',
+                              'voltage magnitude')
             net.set_flags('generator',
                           'variable',
                           'slack',
@@ -126,6 +131,10 @@ class ACPF(PFmethod):
                 if not lock_shunts:
                     num_vars += net.get_num_switched_shunts()*net.num_periods
                 assert(net.num_vars == num_vars)
+                if limit_gens:
+                    assert(net.num_fixed == 0)
+                else:
+                    assert(net.num_fixed == net.get_num_buses_reg_by_gen()*net.num_periods)
             except AssertionError:
                 raise PFmethodError_BadProblem(self)  
             
@@ -134,10 +143,13 @@ class ACPF(PFmethod):
             problem.add_constraint(pfnet.Constraint('AC power balance',net))
             problem.add_constraint(pfnet.Constraint('generator active power participation',net))
             problem.add_constraint(pfnet.Constraint('generator reactive power participation',net))
-            problem.add_constraint(pfnet.Constraint('voltage regulation by generators',net))
             problem.add_function(pfnet.Function('voltage magnitude regularization',wm/max([net.num_buses,1.]),net))
             problem.add_function(pfnet.Function('voltage angle regularization',wa/max([net.num_buses,1.]),net))
             problem.add_function(pfnet.Function('generator powers regularization',wp/max([net.num_generators,1.]),net))
+            if limit_gens:
+                problem.add_constraint(pfnet.Constraint('voltage regulation by generators',net))
+            else:
+                problem.add_constraint(pfnet.Constraint('variable fixing',net))
             if not lock_taps:
                 problem.add_constraint(pfnet.Constraint('voltage regulation by transformers',net))
                 problem.add_function(pfnet.Function('tap ratio regularization',wt/max([net.get_num_tap_changers_v(),1.]),net))

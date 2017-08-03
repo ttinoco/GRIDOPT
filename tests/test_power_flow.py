@@ -50,10 +50,6 @@ class TestPowerFlow(unittest.TestCase):
                     if sol_data is None:
                         continue
                                           
-                    # Skip (no controls is not supported by augl,ipopt formulation
-                    if sol == 'sol1' and optsolver in ['augl','ipopt','inlp']:
-                        continue
-
                     # Set parameters
                     if sol == 'sol1':
                         method.set_parameters({'limit_gens': False})
