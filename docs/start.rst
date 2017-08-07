@@ -15,8 +15,8 @@ GRIDOPT has the following dependencies:
 
 * `Numpy <http://www.numpy.org>`_ (>=1.11.2)
 * `Scipy <http://www.scipy.org>`_ (>=0.18.1)
-* `OPTALG <http://optalg.readthedocs.io>`_ (== 1.1.3)
-* `PFNET`_ (== 1.3.0)
+* `OPTALG <http://optalg.readthedocs.io>`_ (== 1.1.4)
+* `PFNET`_ (== 1.3.1)
 
 .. _start_download:
 
@@ -56,7 +56,7 @@ The next example shows how to solve the power flow problem associated with a pow
   >>> print '%.2e %.2e' %(net.bus_P_mis,net.bus_Q_mis)
   3.54e-01 4.22e+00
 
-  >>> method = gridopt.power_flow.new_method('NRPF')
+  >>> method = gridopt.power_flow.new_method('ACPF')
 
   >>> method.set_parameters({'quiet': True})
 
@@ -71,7 +71,7 @@ The next example shows how to solve the power flow problem associated with a pow
 
   >>> # max mismatches (MW,MVAr)
   >>> print '%.2e %.2e' %(net.bus_P_mis,net.bus_Q_mis)
-  5.16e-04 5.67e-03
+  5.14e-04 5.70e-03
 
 In this example, it is assumed that the Python interpreter was started from the directory ``tests/resources/cases`` of the GRIDOPT package, where the sample case ``ieee14.mat`` is located.
 

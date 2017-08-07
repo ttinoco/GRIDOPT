@@ -13,7 +13,7 @@ net = pfnet.ParserMAT().parse('../tests/resources/cases/ieee14.mat')
 
 print(('%.2e %.2e' %(net.bus_P_mis,net.bus_Q_mis)))
 
-method = gridopt.power_flow.new_method('NRPF')
+method = gridopt.power_flow.new_method('ACPF')
 
 method.set_parameters({'quiet': True})
 

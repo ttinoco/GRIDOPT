@@ -18,16 +18,9 @@ Power Flow Method
 
 .. autoclass:: gridopt.power_flow.dc_opf.DCOPF
 
-.. autoclass:: gridopt.power_flow.nr_pf.NRPF
+.. autoclass:: gridopt.power_flow.ac_pf.ACPF
 
-.. autoclass:: gridopt.power_flow.augl_pf.AugLPF
-
-.. autoclass:: gridopt.power_flow.augl_opf.AugLOPF
-
-.. autoclass:: gridopt.power_flow.ipopt_opf.IpoptOPF
-
-.. autoclass:: gridopt.power_flow.method_error.PFmethodError
-   :members:
+.. autoclass:: gridopt.power_flow.ac_opf.ACOPF
 
 .. _ref_pf_error:
 
@@ -35,6 +28,7 @@ Error Exceptions
 ----------------
 
 .. autoclass:: gridopt.power_flow.method_error.PFmethodError
+   :members:
 
 .. autoclass:: gridopt.power_flow.method_error.PFmethodError_NoProblem
 
@@ -55,4 +49,4 @@ Error Exceptions
 References
 ==========
 
-.. [TTR2015] T\. Tinoco De Rubira, *Numerical Optimization and Modeling Techniques for Power System Operations and Planning*. PhD thesis, Stanford University, March 2015.
+.. [TTR2015] T\. Tinoco De Rubira, *Numerical Optimization and Modeling Techniques for Power System Operations and Planning*. PhD thesis, Stanford University, March 2015 (`link <https://ttinoco.github.io/papers/Phd_thesis_manuscript.pdf>`_).

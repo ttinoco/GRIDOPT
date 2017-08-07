@@ -155,34 +155,42 @@ class PFmethod:
                    Name-value pairs where value is a string
         """
 
+        dict_list = [self.parameters]
+        if 'optsolver_params' in self.parameters:
+            dict_list += list(self.parameters['optsolver_params'].values())
+
         if params:
             for key,value in list(params.items()):
-                if key in self.parameters:
-                    self.parameters[key] = value
-                else:
+                valid_key = False
+                for parameter_dict in dict_list:
+                    if key in parameter_dict:
+                        valid_key = True
+                        parameter_dict[key] = value
+                if not valid_key:
                     raise PFmethodError_BadParam(self,param=key)
         if strparams:
             for key,valuestr in list(strparams.items()):
-                if key in self.parameters:
-                    value = self.parameters[key]
-                    if type(value) is float:
-                        new_value = float(valuestr)
-                    elif type(value) is int:
-                        new_value = int(valuestr)
-                    elif type(value) is bool:
-                        if valuestr == 'True':
-                            new_value = True
-                        elif valuestr == 'False':
-                            new_value = False
+                valid_key = False
+                for parameter_dict in dict_list:
+                    if key in parameter_dict:
+                        valid_key = True
+                        value = parameter_dict[key]
+                        if type(value) is float:
+                            new_value = float(valuestr)
+                        elif type(value) is int:
+                            new_value = int(valuestr)
+                        elif type(value) is bool:
+                            if valuestr == 'True':
+                                new_value = True
+                            elif valuestr == 'False':
+                                new_value = False
+                            else:
+                                raise PFmethodError_ParamNotBool(self)
                         else:
-                            raise PFmethodError_ParamNotBool(self)
-                    elif type(value) is str:
-                        new_value = str(valuestr)
-                    else:
-                        raise PFmethodError_BadParam(self)
-                    self.parameters[key] = new_value
-                else:
-                    raise PFmethodError_BadParam(self)
+                            new_value = str(valuestr)
+                        parameter_dict[key] = new_value
+                if not valid_key:
+                    raise PFmethodError_BadParam(self,param=key)
 
     def set_results(self,results):
         """

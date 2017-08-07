@@ -36,6 +36,10 @@ class PFmethodError_BadParam(PFmethodError):
     def __init__(self,method,param=''):
         PFmethodError.__init__(self,method,'invalid method parameter %s' %param)
 
+class PFmethodError_BadOptSolver(PFmethodError):
+    def __init__(self,method,param=''):
+        PFmethodError.__init__(self,method,'invalid optimization solver %s' %param)
+
 class PFmethodError_ParamNotBool(PFmethodError):
     def __init__(self,method):
         PFmethodError.__init__(self,method,'parameter value must be True or False')
