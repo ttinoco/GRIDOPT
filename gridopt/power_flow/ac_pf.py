@@ -370,17 +370,11 @@ class ACPF(PFmethod):
                 if header:
                     print('{0:^5}'.format('vmax'), end=' ')
                     print('{0:^5}'.format('vmin'), end=' ')
-                    print('{0:^8}'.format('gvdev'), end=' ')
-                    print('{0:^8}'.format('gQvio'), end=' ')
-                    print('{0:^8}'.format('tvvio'), end=' ')
-                    print('{0:^8}'.format('svvio'))
+                    print('{0:^8}'.format('gvdev'))
                 else:
                     print('{0:^5.2f}'.format(np.average(net.bus_v_max)), end=' ')
                     print('{0:^5.2f}'.format(np.average(net.bus_v_min)), end=' ')
-                    print('{0:^8.1e}'.format(np.average(net.gen_v_dev)), end=' ')
-                    print('{0:^8.1e}'.format(np.average(net.gen_Q_vio)), end=' ')
-                    print('{0:^8.1e}'.format(np.average(net.tran_v_vio)), end=' ')
-                    print('{0:^8.1e}'.format(np.average(net.shunt_v_vio)))
+                    print('{0:^8.1e}'.format(np.average(net.gen_v_dev)))
             return info_printer
 
         # NR-based
