@@ -1,7 +1,7 @@
 #*****************************************************#
 # This file is part of GRIDOPT.                       #
 #                                                     #
-# Copyright (c) 2015-2017, Tomas Tinoco De Rubira.    #
+# Copyright (c) 2015, Tomas Tinoco De Rubira.         #
 #                                                     #
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
@@ -18,10 +18,12 @@ class ACOPF(PFmethod):
 
     name = 'ACOPF'
 
-    parameters = {'weight_cost': 1e0,      # weight for generation cost
-                  'weight_mag_reg': 0.,    # weight for voltage magnitude regularization
-                  'weight_ang_reg': 0.,    # weight for voltage angle regularization
-                  'weight_gen_reg': 0.,    # weight for generator power regularization
+    parameters = {'weight_cost' : 1e0,     # weight for generation cost
+                  'weight_vmag' : 0.,      # weight for voltage magnitude regularization
+                  'weight_vang' : 0.,      # weight for voltage angle regularization
+                  'weight_pq' : 0.,        # weight for generator power regularization
+                  'weight_t' : 0.,         # weight for tap ratios regularization
+                  'weight_b' : 0.,         # weight for shunt susceptances regularization
                   'thermal_limits': False, # flag for thermal limits
                   'vmin_thresh': 0.1,      # threshold for vmin termination
                   'optsolver': 'augl'}     # OPTALG optimization solver (augl,ipopt)
@@ -59,10 +61,12 @@ class ACOPF(PFmethod):
 
         # Parameters
         params = self.parameters
-        wc  = params['weight_cost']
-        wm  = params['weight_mag_reg']
-        wa = params['weight_ang_reg']
-        wg = params['weight_gen_reg']
+        wcost  = params['weight_cost']
+        wvmag  = params['weight_vmag']
+        wvang = params['weight_vang']
+        wpq = params['weight_pq']
+        wt = params['weight_t']
+        wb = params['weight_b']        
         th = params['thermal_limits']
         
         # Clear flags
@@ -104,13 +108,23 @@ class ACOPF(PFmethod):
             problem.add_constraint(pfnet.Constraint("AC branch flow limits",net))
 
         # Functions
-        problem.add_function(pfnet.Function('generation cost',wc/max([net.num_generators,1.]),net))
-        if wm:
-            problem.add_function(pfnet.Function('soft voltage magnitude limits',wm/max([net.num_buses,1.]),net))
-        if wa:
-            problem.add_function(pfnet.Function('voltage angle regularization',wa/max([net.num_buses,1.]),net))
-        if wg:
-            problem.add_function(pfnet.Function('generator powers regularization',wg/max([net.num_generators,1.]),net))
+        problem.add_function(pfnet.Function('generation cost',
+                                            wcost/max([net.num_generators,1.]),net))
+        if wvmag:
+            problem.add_function(pfnet.Function('soft voltage magnitude limits',
+                                                wvmag/max([net.num_buses,1.]),net))
+        if wvang:
+            problem.add_function(pfnet.Function('voltage angle regularization',
+                                                wvang/max([net.num_buses,1.]),net))
+        if wpq:
+            problem.add_function(pfnet.Function('generator powers regularization',
+                                                wpq/max([net.num_generators,1.]),net))
+        if wt:
+            problem.add_function(pfnet.Function('tap ratio regularization',
+                                                wt/max([net.get_num_tap_changers(),1.]),net))
+        if wb:
+            problem.add_function(pfnet.Function('susceptance regularization',
+                                                wb/max([net.get_num_switched_shunts(),1.]),net))
         problem.analyze()
         
         # Return
