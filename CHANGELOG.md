@@ -3,8 +3,8 @@ Targets
 
 Unreleased
 ----------
-* Reduced with of ACOPF output per iteration (done).
-* Update ACOPF regularization param names to be more consistent with those of ACPF (done).
+* Reduced width of ACOPF output per iteration (done).
+* Updated ACOPF regularization param names to be more consistent with those of ACPF (done).
 
 Version 1.3.3
 -------------
