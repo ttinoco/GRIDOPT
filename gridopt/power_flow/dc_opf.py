@@ -1,7 +1,7 @@
 #*****************************************************#
 # This file is part of GRIDOPT.                       #
 #                                                     #
-# Copyright (c) 2015-2017, Tomas Tinoco De Rubira.    #
+# Copyright (c) 2015, Tomas Tinoco De Rubira.         #
 #                                                     #
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
@@ -19,15 +19,15 @@ class DCOPF(PFmethod):
 
     name = 'DCOPF'
         
-    parameters = {'thermal_limits': False,
-                  'renewable_curtailment': False,
-                  'optsolver' : 'iqp'}
+    _parameters = {'thermal_limits': False,
+                   'renewable_curtailment': False,
+                   'optsolver' : 'iqp'}
 
-    parameters_iqp = {}
+    _parameters_iqp = {}
 
-    parameters_augl = {}
+    _parameters_augl = {}
 
-    parameters_ipopt = {}
+    _parameters_ipopt = {}
     
     def __init__(self):
 
@@ -38,22 +38,25 @@ class DCOPF(PFmethod):
         
         # Optsolver parameters
         iqp_params = OptSolverIQP.parameters.copy()
-        iqp_params.update(self.parameters_iqp)     # overwrite defaults
+        iqp_params.update(self._parameters_iqp)     # overwrite defaults
+
         augl_params = OptSolverAugL.parameters.copy()
-        augl_params.update(self.parameters_augl)   # overwrite defaults
+        augl_params.update(self._parameters_augl)   # overwrite defaults
+
         ipopt_params = OptSolverIpopt.parameters.copy()
-        ipopt_params.update(self.parameters_ipopt) # overwrite defaults
-        self.parameters.update(DCOPF.parameters)
-        self.parameters['optsolver_params'] = {'iqp': iqp_params,
-                                               'augl': augl_params,
-                                               'ipopt': ipopt_params}
+        ipopt_params.update(self._parameters_ipopt) # overwrite defaults
+
+        self._parameters.update(DCOPF._parameters)
+        self._parameters['optsolver_parameters'] = {'iqp': iqp_params,
+                                                    'augl': augl_params,
+                                                    'ipopt': ipopt_params}
 
     def create_problem(self,net):
 
         import pfnet
         
         # Parameters
-        params = self.parameters
+        params = self._parameters
         thermal_limits = params['thermal_limits']
         
         # Clear flags
@@ -108,9 +111,9 @@ class DCOPF(PFmethod):
         from optalg.opt_solver import OptSolverIQP, OptSolverAugL, OptSolverIpopt
         
         # Parameters
-        params = self.parameters
+        params = self._parameters
         optsolver_name = params['optsolver']
-        optsolver_params = params['optsolver_params']
+        optsolver_params = params['optsolver_parameters']
 
         # Opt solver
         if optsolver_name == 'iqp':

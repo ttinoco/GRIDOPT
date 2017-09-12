@@ -1,7 +1,7 @@
 #*****************************************************#
 # This file is part of GRIDOPT.                       #
 #                                                     #
-# Copyright (c) 2015-2017, Tomas Tinoco De Rubira.    #
+# Copyright (c) 2015, Tomas Tinoco De Rubira.         #
 #                                                     #
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
@@ -19,30 +19,30 @@ class ACPF(PFmethod):
 
     name = 'ACPF'
     
-    parameters = {'weight_vmag': 1e0,  # weight for reg voltage magnitude penalty
-                  'weight_vang': 1e0,  # weight for angle difference penalty
-                  'weight_pq': 1e-3,   # weight for gen powers penalty
-                  'weight_t': 1e-3,    # weight for tap ratios penalty
-                  'weight_b': 1e-3,    # weight for shunt susceptances penalty
-                  'limit_gens': True,  # flag for enforcing generator reactive power limits
-                  'lock_taps': True,   # flag for locking transformer tap ratios
-                  'lock_shunts': True, # flag for locking swtiched shunts
-                  'tap_step': 0.5,     # tap ratio acceleration factor (NR only)
-                  'shunt_step': 0.5,   # susceptance acceleration factor (NR only)
-                  'dtap': 1e-5,        # tap ratio perturbation (NR only)
-                  'dsus': 1e-5,        # susceptance perturbation (NR only)
-                  'vmin_thresh': 0.1,  # threshold for vmin
-                  'optsolver': 'augl'} # OPTALG optimization solver (augl,ipopt,nr)
+    _parameters = {'weight_vmag': 1e0,  # weight for reg voltage magnitude penalty
+                   'weight_vang': 1e0,  # weight for angle difference penalty
+                   'weight_pq': 1e-3,   # weight for gen powers penalty
+                   'weight_t': 1e-3,    # weight for tap ratios penalty
+                   'weight_b': 1e-3,    # weight for shunt susceptances penalty
+                   'limit_gens': True,  # flag for enforcing generator reactive power limits
+                   'lock_taps': True,   # flag for locking transformer tap ratios
+                   'lock_shunts': True, # flag for locking swtiched shunts
+                   'tap_step': 0.5,     # tap ratio acceleration factor (NR only)
+                   'shunt_step': 0.5,   # susceptance acceleration factor (NR only)
+                   'dtap': 1e-5,        # tap ratio perturbation (NR only)
+                   'dsus': 1e-5,        # susceptance perturbation (NR only)
+                   'vmin_thresh': 0.1,  # threshold for vmin
+                   'optsolver': 'augl'} # OPTALG optimization solver (augl,ipopt,nr)
 
-    parameters_augl = {'feastol' : 1e-4,
-                       'optol' : 1e-4,
-                       'kappa' : 1e-5}
+    _parameters_augl = {'feastol' : 1e-4,
+                        'optol' : 1e-4,
+                        'kappa' : 1e-5}
 
-    parameters_ipopt = {}
+    _parameters_ipopt = {}
 
-    parameters_inlp = {}
+    _parameters_inlp = {}
     
-    parameters_nr = {}
+    _parameters_nr = {}
                   
     def __init__(self):
 
@@ -53,25 +53,29 @@ class ACPF(PFmethod):
 
         # Optsolver params
         augl_params = OptSolverAugL.parameters.copy()
-        augl_params.update(self.parameters_augl)   # overwrite defaults
+        augl_params.update(self._parameters_augl)   # overwrite defaults
+
         ipopt_params = OptSolverIpopt.parameters.copy()
-        ipopt_params.update(self.parameters_ipopt) # overwrite defaults
+        ipopt_params.update(self._parameters_ipopt) # overwrite defaults
+
         inlp_params = OptSolverINLP.parameters.copy()
-        inlp_params.update(self.parameters_inlp)   # overwrite defaults
+        inlp_params.update(self._parameters_inlp)   # overwrite defaults
+
         nr_params = OptSolverNR.parameters.copy()
-        nr_params.update(self.parameters_nr)       # overwrite defaults
-        self.parameters.update(ACPF.parameters)
-        self.parameters['optsolver_params'] = {'augl': augl_params,
-                                               'ipopt': ipopt_params,
-                                               'nr': nr_params,
-                                               'inlp': inlp_params}
+        nr_params.update(self._parameters_nr)       # overwrite defaults
+
+        self._parameters.update(ACPF._parameters)
+        self._parameters['optsolver_parameters'] = {'augl': augl_params,
+                                                    'ipopt': ipopt_params,
+                                                    'nr': nr_params,
+                                                    'inlp': inlp_params}
 
     def create_problem(self,net):
 
         import pfnet
 
         # Parameters
-        params = self.parameters
+        params = self._parameters
         wm = params['weight_vang']
         wa = params['weight_vmag']
         wp = params['weight_pq']
@@ -143,19 +147,24 @@ class ACPF(PFmethod):
             problem.add_constraint(pfnet.Constraint('AC power balance',net))
             problem.add_constraint(pfnet.Constraint('generator active power participation',net))
             problem.add_constraint(pfnet.Constraint('generator reactive power participation',net))
-            problem.add_function(pfnet.Function('voltage magnitude regularization',wm/max([net.num_buses,1.]),net))
-            problem.add_function(pfnet.Function('voltage angle regularization',wa/max([net.num_buses,1.]),net))
-            problem.add_function(pfnet.Function('generator powers regularization',wp/max([net.num_generators,1.]),net))
+            problem.add_function(pfnet.Function('voltage magnitude regularization',
+                                                wm/max([net.num_buses,1.]),net))
+            problem.add_function(pfnet.Function('voltage angle regularization',
+                                                wa/max([net.num_buses,1.]),net))
+            problem.add_function(pfnet.Function('generator powers regularization',
+                                                wp/max([net.num_generators,1.]),net))
             if limit_gens:
                 problem.add_constraint(pfnet.Constraint('voltage regulation by generators',net))
             else:
                 problem.add_constraint(pfnet.Constraint('variable fixing',net))
             if not lock_taps:
                 problem.add_constraint(pfnet.Constraint('voltage regulation by transformers',net))
-                problem.add_function(pfnet.Function('tap ratio regularization',wt/max([net.get_num_tap_changers_v(),1.]),net))
+                problem.add_function(pfnet.Function('tap ratio regularization',
+                                                    wt/max([net.get_num_tap_changers_v(),1.]),net))
             if not lock_shunts:
                 problem.add_constraint(pfnet.Constraint('voltage regulation by shunts',net))
-                problem.add_function(pfnet.Function('susceptance regularization',wb/max([net.get_num_switched_shunts(),1.]),net))
+                problem.add_function(pfnet.Function('susceptance regularization',
+                                                    wb/max([net.get_num_switched_shunts(),1.]),net))
             problem.analyze()
         
             # Return
@@ -235,12 +244,12 @@ class ACPF(PFmethod):
         from optalg.opt_solver import OptSolverAugL, OptSolverIpopt, OptSolverNR, OptSolverINLP
         
         # Parameters
-        params = self.parameters
+        params = self._parameters
         lock_taps= params['lock_taps']
         lock_shunts = params['lock_shunts']
         vmin_thresh = params['vmin_thresh']
         optsolver_name = params['optsolver']
-        optsolver_params = params['optsolver_params']
+        optsolver_params = params['optsolver_parameters']
         feastol = optsolver_params['nr']['feastol']
 
         # Opt solver
@@ -318,7 +327,7 @@ class ACPF(PFmethod):
     def update_network(self,net):
 
         # Parameters
-        optsolver_name = self.parameters['optsolver']
+        optsolver_name = self._parameters['optsolver']
         
         # Get data
         problem = self.results['problem']
@@ -359,7 +368,7 @@ class ACPF(PFmethod):
     def get_info_printer(self):
 
         # Parameters
-        optsolver_name = self.parameters['optsolver']
+        optsolver_name = self._parameters['optsolver']
 
         # OPT-based
         ###########
@@ -407,8 +416,8 @@ class ACPF(PFmethod):
     def apply_shunt_v_regulation(self,solver):
 
         # Local variables
-        dsus = self.parameters['dsus']
-        step = self.parameters['shunt_step']
+        dsus = self._parameters['dsus']
+        step = self._parameters['shunt_step']
         p = solver.problem.wrapped_problem
         net = p.network
         x = solver.x
@@ -492,8 +501,8 @@ class ACPF(PFmethod):
     def apply_tran_v_regulation(self,solver):
         
         # Local variables
-        dtap = self.parameters['dtap']
-        step = self.parameters['tap_step']
+        dtap = self._parameters['dtap']
+        step = self._parameters['tap_step']
         p = solver.problem.wrapped_problem
         net = p.network
         x = solver.x

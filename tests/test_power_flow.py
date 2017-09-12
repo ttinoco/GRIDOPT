@@ -7,10 +7,11 @@
 #*****************************************************#
 
 from __future__ import print_function
-from . import utils
+import copy
 import unittest
 import numpy as np
 import pfnet as pf
+from . import utils
 import gridopt as gopt
 from numpy.linalg import norm
 
@@ -20,7 +21,74 @@ class TestPowerFlow(unittest.TestCase):
                     
         pass
 
-    def test_ACPF(self):
+    def test_ACOPF_parameters(self):
+
+        acopf = gopt.power_flow.ACOPF()
+
+        # Set parameters
+        acopf.set_parameters({'weight_cost': 1.1,
+                              'weight_vmag' : 1.2,
+                              'weight_vang' : 1.3,
+                              'weight_pq' : 1.4,
+                              'weight_t' : 1.5,
+                              'weight_b' : 1.6,
+                              'thermal_limits' : True,
+                              'vmin_thresh' : 0.123,
+                              'optsolver' : 'inlp',
+                              'beta_small' : 8.9,
+                              'hessian_approximation' : 'test',
+                              'maxiter': 432})
+
+        # Check exception for invalid param
+        self.assertRaises(gopt.power_flow.method_error.PFmethodError_BadParam,
+                          acopf.set_parameters,{'foo' : 'bar'})
+
+        # Get parameters
+        params = acopf.get_parameters()
+
+        # Check that set_parameters worked
+        self.assertEqual(params['weight_cost'],1.1)
+        self.assertEqual(params['weight_vmag'],1.2)
+        self.assertEqual(params['weight_vang'],1.3)
+        self.assertEqual(params['weight_pq'],1.4)
+        self.assertEqual(params['weight_t'],1.5)
+        self.assertEqual(params['weight_b'],1.6)
+        self.assertEqual(params['thermal_limits'],True)
+        self.assertEqual(params['vmin_thresh'],0.123)
+        self.assertEqual(params['optsolver'],'inlp')
+        self.assertEqual(params['optsolver_parameters']['augl']['beta_small'],8.9)
+        self.assertEqual(params['optsolver_parameters']['augl']['maxiter'],432)
+        self.assertEqual(params['optsolver_parameters']['inlp']['maxiter'],432)
+        self.assertEqual(params['optsolver_parameters']['ipopt']['hessian_approximation'],'test')
+
+        # Make a deep copy
+        new_params = copy.deepcopy(params)
+
+        # Set manually optsolver parametres
+        new_params['optsolver_parameters']['augl']['beta_small'] = 1.333e-5
+        new_params['optsolver_parameters']['inlp']['maxiter'] = 555
+        new_params['optsolver_parameters']['ipopt']['hessian_approximation'] = 'new test'
+
+        # Check that this is a separate params dictionary
+        self.assertNotEqual(new_params['optsolver_parameters']['augl']['beta_small'],
+                            params['optsolver_parameters']['augl']['beta_small'])
+        self.assertNotEqual(new_params['optsolver_parameters']['inlp']['maxiter'],
+                            params['optsolver_parameters']['inlp']['maxiter'])
+        self.assertNotEqual(new_params['optsolver_parameters']['ipopt']['hessian_approximation'],
+                            params['optsolver_parameters']['ipopt']['hessian_approximation'])
+
+        # Test setting parameters that specify optsolver parameters
+        acopf.set_parameters(new_params)
+
+        # Check that setting optsolver parameters worked
+        self.assertEqual(new_params['optsolver_parameters']['augl']['beta_small'],
+                         params['optsolver_parameters']['augl']['beta_small'])
+        self.assertEqual(new_params['optsolver_parameters']['inlp']['maxiter'],
+                         params['optsolver_parameters']['inlp']['maxiter'])
+        self.assertEqual(new_params['optsolver_parameters']['ipopt']['hessian_approximation'],
+                         params['optsolver_parameters']['ipopt']['hessian_approximation'])
+        
+    def test_ACPF_solutions(self):
 
         print('')
         
@@ -118,7 +186,7 @@ class TestPowerFlow(unittest.TestCase):
                     self.assertEqual(len(v_mag_error),counter*(T+1))
                     self.assertEqual(len(v_ang_error),counter*(T+1))
 
-    def test_ACOPF(self):
+    def test_ACOPF_solutions(self):
 
         print('')
         
@@ -191,7 +259,7 @@ class TestPowerFlow(unittest.TestCase):
             self.assertLess(np.abs(error),eps)
             self.assertNotEqual(p2,p3)
 
-    def test_DCOPF(self):
+    def test_DCOPF_solutions(self):
 
         T = 2
 

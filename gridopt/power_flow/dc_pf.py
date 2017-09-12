@@ -1,7 +1,7 @@
 #*****************************************************#
 # This file is part of GRIDOPT.                       #
 #                                                     #
-# Copyright (c) 2015-2017, Tomas Tinoco De Rubira.    #
+# Copyright (c) 2015, Tomas Tinoco De Rubira.         #
 #                                                     #
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
@@ -17,19 +17,19 @@ class DCPF(PFmethod):
 
     name = 'DCPF'
     
-    parameters = {'quiet': False}
+    _parameters = {'quiet': False}
     
     def __init__(self):
 
         PFmethod.__init__(self)
-        self.parameters = DCPF.parameters.copy()
+        self._parameters = DCPF._parameters.copy()
 
     def create_problem(self,net):
 
         import pfnet
 
         # Parameters
-        params = self.parameters
+        params = self._parameters
         
         # Clear flags
         net.clear_flags()
@@ -66,7 +66,7 @@ class DCPF(PFmethod):
         from optalg.lin_solver import new_linsolver
         
         # Parameters
-        params = self.parameters
+        params = self._parameters
         
         # Problem
         problem = self.create_problem(net)

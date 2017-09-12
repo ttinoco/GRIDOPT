@@ -1,7 +1,7 @@
 #*****************************************************#
 # This file is part of GRIDOPT.                       #
 #                                                     #
-# Copyright (c) 2015-2017, Tomas Tinoco De Rubira.    #
+# Copyright (c) 2015, Tomas Tinoco De Rubira.         #
 #                                                     #
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
@@ -16,7 +16,8 @@ class PFmethod:
         Power flow method class.
         """
         
-        #: Results (dictionary)
+        self._parameters = {}
+        
         self.results = {'status': 'unknown',              # solver status
                         'error msg': '',                  # solver error message
                         'iterations': 0,                  # solver iterations
@@ -24,9 +25,6 @@ class PFmethod:
                         'dual variables': 4*[None],       # dual variables
                         'net properties': {},             # network properties
                         'problem': None}                  # PFNET problem
-
-        #: Parameters (dictionary)
-        self.parameters = {}
 
     def create_problem(self,net):
         """
@@ -143,6 +141,17 @@ class PFmethod:
         
         self.results['problem'] = p
 
+    def get_parameters(self):
+        """
+        Gets method parameters.
+
+        Returns
+        -------
+        params : dict
+        """
+
+        return self._parameters
+
     def set_parameters(self,params=None,strparams=None):
         """
         Sets method parameters.
@@ -155,12 +164,19 @@ class PFmethod:
                    Name-value pairs where value is a string
         """
 
-        dict_list = [self.parameters]
-        if 'optsolver_params' in self.parameters:
-            dict_list += list(self.parameters['optsolver_params'].values())
+        OPTSOLVER_PARAMS = 'optsolver_parameters'
 
+        # Method and solver parameters
+        dict_list = [self._parameters]
+        if OPTSOLVER_PARAMS in self._parameters:
+            dict_list += list(self._parameters[OPTSOLVER_PARAMS].values())
+            
+        # Parameters
         if params:
+
             for key,value in list(params.items()):
+                if key == OPTSOLVER_PARAMS:
+                    continue
                 valid_key = False
                 for parameter_dict in dict_list:
                     if key in parameter_dict:
@@ -168,6 +184,14 @@ class PFmethod:
                         parameter_dict[key] = value
                 if not valid_key:
                     raise PFmethodError_BadParam(self,param=key)
+
+            if OPTSOLVER_PARAMS in params and OPTSOLVER_PARAMS in self._parameters:
+                optsolver_params = params[OPTSOLVER_PARAMS]
+                for solver_name in self._parameters[OPTSOLVER_PARAMS].keys():
+                    if solver_name in optsolver_params:
+                        self._parameters[OPTSOLVER_PARAMS][solver_name].update(optsolver_params[solver_name])
+                
+        # String-based parameters (from command-line utility)
         if strparams:
             for key,valuestr in list(strparams.items()):
                 valid_key = False
@@ -187,7 +211,7 @@ class PFmethod:
                             else:
                                 raise PFmethodError_ParamNotBool(self)
                         else:
-                            new_value = str(valuestr)
+                            new_value = valuestr
                         parameter_dict[key] = new_value
                 if not valid_key:
                     raise PFmethodError_BadParam(self,param=key)

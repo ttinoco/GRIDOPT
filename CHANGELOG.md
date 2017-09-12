@@ -5,6 +5,7 @@ Unreleased
 ----------
 * Reduced width of ACOPF output per iteration (done).
 * Updated ACOPF regularization param names to be more consistent with those of ACPF (done).
+* Hid internal param data structure from user in power flow methods, and allow saving/restoring params including optsolver parameters (done).
 
 Version 1.3.3
 -------------

@@ -18,49 +18,52 @@ class ACOPF(PFmethod):
 
     name = 'ACOPF'
 
-    parameters = {'weight_cost' : 1e0,     # weight for generation cost
-                  'weight_vmag' : 0.,      # weight for voltage magnitude regularization
-                  'weight_vang' : 0.,      # weight for voltage angle regularization
-                  'weight_pq' : 0.,        # weight for generator power regularization
-                  'weight_t' : 0.,         # weight for tap ratios regularization
-                  'weight_b' : 0.,         # weight for shunt susceptances regularization
-                  'thermal_limits': False, # flag for thermal limits
-                  'vmin_thresh': 0.1,      # threshold for vmin termination
-                  'optsolver': 'augl'}     # OPTALG optimization solver (augl,ipopt)
+    _parameters = {'weight_cost' : 1e0,     # weight for generation cost
+                   'weight_vmag' : 0.,      # weight for voltage magnitude regularization
+                   'weight_vang' : 0.,      # weight for voltage angle regularization
+                   'weight_pq' : 0.,        # weight for generator power regularization
+                   'weight_t' : 0.,         # weight for tap ratios regularization
+                   'weight_b' : 0.,         # weight for shunt susceptances regularization
+                   'thermal_limits': False, # flag for thermal limits
+                   'vmin_thresh': 0.1,      # threshold for vmin termination
+                   'optsolver': 'augl'}     # OPTALG optimization solver (augl,ipopt)
 
-    parameters_augl = {'feastol' : 1e-4,
-                       'optol' : 1e-4,
-                       'kappa' : 1e-2}
+    _parameters_augl = {'feastol' : 1e-4,
+                        'optol' : 1e-4,
+                        'kappa' : 1e-2}
 
-    parameters_ipopt = {}
+    _parameters_ipopt = {}
 
-    parameters_inlp = {}
+    _parameters_inlp = {}
 
     def __init__(self):
 
         from optalg.opt_solver import OptSolverAugL, OptSolverIpopt, OptSolverINLP
-
+        
         # Parent init
         PFmethod.__init__(self)
 
         # Optsolver params
         augl_params = OptSolverAugL.parameters.copy()
-        augl_params.update(self.parameters_augl)   # overwrite defaults
+        augl_params.update(self._parameters_augl)   # overwrite defaults
+
         ipopt_params = OptSolverIpopt.parameters.copy()
-        ipopt_params.update(self.parameters_ipopt) # overwrite defaults
+        ipopt_params.update(self._parameters_ipopt) # overwrite defaults
+
         inlp_params = OptSolverINLP.parameters.copy()
-        inlp_params.update(self.parameters_inlp) # overwrite defaults
-        self.parameters.update(ACOPF.parameters)
-        self.parameters['optsolver_params'] = {'augl': augl_params,
-                                               'ipopt': ipopt_params,
-                                               'inlp': inlp_params}
+        inlp_params.update(self._parameters_inlp)   # overwrite defaults
+
+        self._parameters.update(ACOPF._parameters)
+        self._parameters['optsolver_parameters'] = {'augl': augl_params,
+                                                    'ipopt': ipopt_params,
+                                                    'inlp': inlp_params}
                    
     def create_problem(self,net):
         
         import pfnet
 
         # Parameters
-        params = self.parameters
+        params = self._parameters
         wcost  = params['weight_cost']
         wvmag  = params['weight_vmag']
         wvang = params['weight_vang']
@@ -111,7 +114,7 @@ class ACOPF(PFmethod):
         problem.add_function(pfnet.Function('generation cost',
                                             wcost/max([net.num_generators,1.]),net))
         if wvmag:
-            problem.add_function(pfnet.Function('soft voltage magnitude limits',
+            problem.add_function(pfnet.Function('voltage magnitude regularization',
                                                 wvmag/max([net.num_buses,1.]),net))
         if wvang:
             problem.add_function(pfnet.Function('voltage angle regularization',
@@ -136,10 +139,10 @@ class ACOPF(PFmethod):
         from optalg.opt_solver import OptSolverAugL, OptSolverIpopt, OptSolverINLP
         
         # Parameters
-        params = self.parameters
+        params = self._parameters
         vmin_thresh = params['vmin_thresh']
         optsolver_name = params['optsolver']
-        optsolver_params = params['optsolver_params']
+        optsolver_params = params['optsolver_parameters']
 
         # Opt solver
         if optsolver_name == 'augl':
