@@ -1,7 +1,7 @@
 #*****************************************************#
 # This file is part of GRIDOPT.                       #
 #                                                     #
-# Copyright (c) 2015-2017, Tomas Tinoco De Rubira.    #
+# Copyright (c) 2015, Tomas Tinoco De Rubira.         #
 #                                                     #
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
@@ -87,7 +87,7 @@ class TestPowerFlow(unittest.TestCase):
                          params['optsolver_parameters']['inlp']['maxiter'])
         self.assertEqual(new_params['optsolver_parameters']['ipopt']['hessian_approximation'],
                          params['optsolver_parameters']['ipopt']['hessian_approximation'])
-        
+
     def test_ACPF_solutions(self):
 
         print('')
@@ -135,19 +135,19 @@ class TestPowerFlow(unittest.TestCase):
                     except ImportError:
                         continue # no ipopt
                     results = method.get_results()
-                    self.assertEqual(results['status'],'solved')
+                    self.assertEqual(results['solver status'],'solved')
                     self.assertEqual(net.bus_P_mis,bus_P_mis)
-                    self.assertNotEqual(results['net properties']['bus_P_mis'],bus_P_mis)
+                    self.assertNotEqual(results['network snapshot'].bus_P_mis,bus_P_mis)
                     method.update_network(net)
 
                     method.solve(netMP)
                     resultsMP = method.get_results()
-                    self.assertEqual(resultsMP['status'],'solved')
+                    self.assertEqual(resultsMP['solver status'],'solved')
                     method.update_network(netMP)
 
-                    self.assertLess(norm(resultsMP['net properties']['bus_P_mis']-netMP.bus_P_mis,np.inf),1e-10)
-                    self.assertLess(norm(resultsMP['net properties']['bus_Q_mis']-netMP.bus_Q_mis,np.inf),1e-10)
-                    self.assertLess(norm(resultsMP['net properties']['gen_P_cost']-netMP.gen_P_cost,np.inf),1e-10)
+                    self.assertLess(norm(resultsMP['network snapshot'].bus_P_mis-netMP.bus_P_mis,np.inf),1e-10)
+                    self.assertLess(norm(resultsMP['network snapshot'].bus_Q_mis-netMP.bus_Q_mis,np.inf),1e-10)
+                    self.assertLess(norm(resultsMP['network snapshot'].gen_P_cost-netMP.gen_P_cost,np.inf),1e-10)
 
                     v_mag_tol = sol_data['v_mag_tol']
                     v_ang_tol = sol_data['v_ang_tol']
@@ -182,7 +182,7 @@ class TestPowerFlow(unittest.TestCase):
                         print("%s\t%s\t%s\t%d" %(case.split('/')[-1],
                                                  sol_types[sol],
                                                  optsolver,
-                                                 results['iterations']))
+                                                 results['solver iterations']))
                     self.assertEqual(len(v_mag_error),counter*(T+1))
                     self.assertEqual(len(v_ang_error),counter*(T+1))
 
@@ -216,12 +216,12 @@ class TestPowerFlow(unittest.TestCase):
                 gen_P_cost = net.gen_P_cost
                 method_ipopt.solve(net)
                 has_ipopt = True
-                self.assertEqual(method_ipopt.results['status'],'solved')
+                self.assertEqual(method_ipopt.results['solver status'],'solved')
                 self.assertEqual(net.gen_P_cost,gen_P_cost)
-                self.assertNotEqual(method_ipopt.results['net properties']['gen_P_cost'],gen_P_cost)
-                x1 = method_ipopt.get_results()['primal variables']
-                i1 = method_ipopt.get_results()['iterations']
-                p1 = method_ipopt.get_results()['net properties']['gen_P_cost']
+                self.assertNotEqual(method_ipopt.results['network snapshot'].gen_P_cost,gen_P_cost)
+                x1 = method_ipopt.get_results()['solver primal variables']
+                i1 = method_ipopt.get_results()['solver iterations']
+                p1 = method_ipopt.get_results()['network snapshot'].gen_P_cost
                 print("%s\t%s\t%d" %(case.split('/')[-1],'ipopt',i1))
             except ImportError:
                 has_ipopt = False
@@ -230,24 +230,24 @@ class TestPowerFlow(unittest.TestCase):
             net.update_properties()
             gen_P_cost = net.gen_P_cost
             method_inlp.solve(net)
-            self.assertEqual(method_inlp.results['status'],'solved')
+            self.assertEqual(method_inlp.results['solver status'],'solved')
             self.assertEqual(net.gen_P_cost,gen_P_cost)
-            self.assertNotEqual(method_inlp.results['net properties']['gen_P_cost'],gen_P_cost)
-            x2 = method_inlp.get_results()['primal variables']
-            i2 = method_inlp.get_results()['iterations']
-            p2 = method_inlp.get_results()['net properties']['gen_P_cost']
+            self.assertNotEqual(method_inlp.results['network snapshot'].gen_P_cost,gen_P_cost)
+            x2 = method_inlp.get_results()['solver primal variables']
+            i2 = method_inlp.get_results()['solver iterations']
+            p2 = method_inlp.get_results()['network snapshot'].gen_P_cost
             print("%s\t%s\t%d" %(case.split('/')[-1],'inlp',i2))
 
             # AUGL
             net.update_properties()
             gen_P_cost = net.gen_P_cost
             method_augl.solve(net)
-            self.assertEqual(method_augl.results['status'],'solved')
+            self.assertEqual(method_augl.results['solver status'],'solved')
             self.assertEqual(net.gen_P_cost,gen_P_cost)
-            self.assertNotEqual(method_augl.results['net properties']['gen_P_cost'],gen_P_cost)
-            x3 = method_augl.get_results()['primal variables']
-            i3 = method_augl.get_results()['iterations']
-            p3 = method_augl.get_results()['net properties']['gen_P_cost']
+            self.assertNotEqual(method_augl.results['network snapshot'].gen_P_cost,gen_P_cost)
+            x3 = method_augl.get_results()['solver primal variables']
+            i3 = method_augl.get_results()['solver iterations']
+            p3 = method_augl.get_results()['network snapshot'].gen_P_cost
             print("%s\t%s\t%d" %(case.split('/')[-1],'augl',i3))
 
             # Checks
@@ -291,28 +291,28 @@ class TestPowerFlow(unittest.TestCase):
                 net.update_properties()
                 gen_P_cost = net.gen_P_cost
                 method.solve(net)
-                self.assertEqual(method.results['status'],'solved')
+                self.assertEqual(method.results['solver status'],'solved')
                 self.assertTrue(np.all(net.gen_P_cost == gen_P_cost))
-                self.assertTrue(np.all(method.results['net properties']['gen_P_cost'] != gen_P_cost))
+                self.assertTrue(np.all(method.results['network snapshot'].gen_P_cost != gen_P_cost))
             except gopt.power_flow.PFmethodError:
                 self.assertTrue(case.split('/')[-1] in infcases)
-                self.assertEqual(method.results['status'],'error')
+                self.assertEqual(method.results['solver status'],'error')
                 
             results = method.get_results()
                 
             method.update_network(net)
            
-            self.assertLess(norm(results['net properties']['bus_P_mis']-net.bus_P_mis,np.inf),1e-10)
-            self.assertLess(norm(results['net properties']['bus_Q_mis']-net.bus_Q_mis,np.inf),1e-10)
-            self.assertLess(norm(results['net properties']['gen_P_cost']-net.gen_P_cost,np.inf),1e-10)
+            self.assertLess(norm(results['network snapshot'].bus_P_mis-net.bus_P_mis,np.inf),1e-10)
+            self.assertLess(norm(results['network snapshot'].bus_Q_mis-net.bus_Q_mis,np.inf),1e-10)
+            self.assertLess(norm(results['network snapshot'].gen_P_cost-net.gen_P_cost,np.inf),1e-10)
 
             gen_P_cost0 = net.gen_P_cost
             load_P_util0 = net.load_P_util
             self.assertTupleEqual(gen_P_cost0.shape,(T,))
             self.assertTupleEqual(load_P_util0.shape,(T,))
             
-            x = results['primal variables']
-            lam0,nu0,mu0,pi0 = results['dual variables']
+            x = results['solver primal variables']
+            lam0,nu0,mu0,pi0 = results['solver dual variables']
 
             self.assertTupleEqual(x.shape,((net.num_buses-
                                             net.get_num_slack_buses()+
@@ -343,12 +343,12 @@ class TestPowerFlow(unittest.TestCase):
             # No thermal limits
             method.set_parameters({'thermal_limits':False})
             method.solve(net)
-            self.assertEqual(method.results['status'],'solved')
+            self.assertEqual(method.results['solver status'],'solved')
             results = method.get_results()
             method.update_network(net)
             gen_P_cost1 = net.gen_P_cost
             load_P_util1 = net.load_P_util
-            lam1,nu1,mu1,pi1 = results['dual variables']
+            lam1,nu1,mu1,pi1 = results['solver dual variables']
             self.assertTupleEqual(mu1.shape,(net.num_vars,))
             self.assertTupleEqual(pi1.shape,(net.num_vars,))
 
@@ -363,15 +363,18 @@ class TestPowerFlow(unittest.TestCase):
                 self.assertTrue(np.all(load.P_min < load.P_max))
             method.solve(net)
             for load in net.loads:
-                self.assertTrue(load.has_flags('variable','active power'))
-                self.assertTrue(load.has_flags('bounded','active power'))
-            self.assertEqual(method.results['status'],'solved')
+                self.assertFalse(load.has_flags('variable','active power'))
+                self.assertFalse(load.has_flags('bounded','active power'))
             results = method.get_results()
             method.update_network(net)
+            for load in net.loads:
+                self.assertTrue(load.has_flags('variable','active power'))
+                self.assertTrue(load.has_flags('bounded','active power'))
+            self.assertEqual(method.results['solver status'],'solved')
             self.assertTrue(np.all(net.gen_P_cost-net.load_P_util < gen_P_cost1-load_P_util1))
 
-            x = results['primal variables']
-            lam2,nu2,mu2,pi2 = results['dual variables']
+            x = results['solver primal variables']
+            lam2,nu2,mu2,pi2 = results['solver dual variables']
 
             self.assertTupleEqual(x.shape,((net.get_num_P_adjust_loads()+
                                             net.num_buses-

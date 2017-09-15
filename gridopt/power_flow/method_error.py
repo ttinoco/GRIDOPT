@@ -1,49 +1,42 @@
 #*****************************************************#
 # This file is part of GRIDOPT.                       #
 #                                                     #
-# Copyright (c) 2015-2016, Tomas Tinoco De Rubira.    #
+# Copyright (c) 2015, Tomas Tinoco De Rubira.         #
 #                                                     #
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
 
 class PFmethodError(Exception):
-    
-    def __init__(self,method,msg):
-        method.set_status('error')
-        method.set_error_msg(msg)
-        self.value = msg
-            
-    def __str__(self):
-        return str(self.value)
+    pass
 
 class PFmethodError_NoProblem(PFmethodError):    
-    def __init__(self,method):
-        PFmethodError.__init__(self,method,'no problem solved')
+    def __init__(self):
+        PFmethodError.__init__(self, 'no problem solved')
 
 class PFmethodError_BadProblem(PFmethodError):    
-    def __init__(self,method):
-        PFmethodError.__init__(self,method,'error while creating PF problem')
+    def __init__(self):
+        PFmethodError.__init__(self, 'error while creating PF problem')
 
 class PFmethodError_BadFlowLimits(PFmethodError):
-    def __init__(self,method):
-        PFmethodError.__init__(self,method,'invalid flow limits')
+    def __init__(self):
+        PFmethodError.__init__(self, 'invalid flow limits')
 
 class PFmethodError_BadVarLimits(PFmethodError):
-    def __init__(self,method):
-        PFmethodError.__init__(self,method,'invalid variable limits')
+    def __init__(self):
+        PFmethodError.__init__(self, 'invalid variable limits')
 
 class PFmethodError_BadParam(PFmethodError):
-    def __init__(self,method,param=''):
-        PFmethodError.__init__(self,method,'invalid method parameter %s' %param)
+    def __init__(self, param=''):
+        PFmethodError.__init__(self, 'invalid method parameter %s' %param)
 
 class PFmethodError_BadOptSolver(PFmethodError):
-    def __init__(self,method,param=''):
-        PFmethodError.__init__(self,method,'invalid optimization solver %s' %param)
+    def __init__(self, param=''):
+        PFmethodError.__init__(self, 'invalid optimization solver %s' %param)
 
 class PFmethodError_ParamNotBool(PFmethodError):
-    def __init__(self,method):
-        PFmethodError.__init__(self,method,'parameter value must be True or False')
+    def __init__(self):
+        PFmethodError.__init__(self, 'parameter value must be True or False')
 
 class PFmethodError_SolverError(PFmethodError):
-    def __init__(self,method,msg):
-        PFmethodError.__init__(self,method,msg)
+    def __init__(self, msg):
+        PFmethodError.__init__(self, msg)

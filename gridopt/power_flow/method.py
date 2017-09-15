@@ -18,13 +18,15 @@ class PFmethod:
         
         self._parameters = {}
         
-        self.results = {'status': 'unknown',              # solver status
-                        'error msg': '',                  # solver error message
-                        'iterations': 0,                  # solver iterations
-                        'primal variables': np.zeros(0),  # primal variables
-                        'dual variables': 4*[None],       # dual variables
-                        'net properties': {},             # network properties
-                        'problem': None}                  # PFNET problem
+        self.results = {'solver status': 'unknown',
+                        'solver message': '',
+                        'solver iterations': 0,
+                        'solver time': np.nan,
+                        'solver primal variables': None,
+                        'solver dual variables': None,
+                        'problem' : None,
+                        'problem time' : np.nan,
+                        'network snapshot' : None}
 
     def create_problem(self,net):
         """
@@ -64,82 +66,104 @@ class PFmethod:
 
         return self.results
 
-    def set_status(self,status):
+    def set_solver_status(self, status):
         """
-        Sets method status.
+        Sets solver status.
 
         Parameters
         ----------
         status : string
         """
         
-        self.results['status'] = status
+        self.results['solver status'] = status
 
-    def set_error_msg(self,msg):
+    def set_solver_message(self, msg):
         """
-        Sets method error message.
+        Sets solver message.
 
         Parameters
         ----------
         msg : string
         """
         
-        self.results['error msg'] = msg
+        self.results['solver message'] = msg
 
-    def set_iterations(self,k):
+    def set_solver_iterations(self, k):
         """
-        Sets method iterations.
+        Sets solver iterations.
 
         Parameters
         ----------
         k : int
         """
         
-        self.results['iterations'] = k
+        self.results['solver iterations'] = k
 
-    def set_primal_variables(self,x):
+    def set_solver_time(self, t):
         """
-        Sets primal variables.
+        Sets solver time in seconds.
+
+        Parameters
+        ----------
+        t : float
+        """
+        
+        self.results['solver time'] = t
+
+    def set_solver_primal_variables(self, x):
+        """
+        Sets solver primal variables.
 
         Parameters
         ----------
         x : vector
         """
         
-        self.results['primal variables'] = x
+        self.results['solver primal variables'] = x
 
-    def set_dual_variables(self,d):
+    def set_solver_dual_variables(self, d):
         """
-        Sets dual variables.
+        Sets solver dual variables.
 
         Parameters
         ----------
         d : list
         """
         
-        self.results['dual variables'] = d
+        self.results['solver dual variables'] = d
 
-    def set_net_properties(self,np):
-        """
-        Sets network properties.
-
-        Parameters
-        ----------
-        np : dictionary
-        """
-        
-        self.results['net properties'] = np
-
-    def set_problem(self,p):
+    def set_problem(self, p):
         """
         Sets problem.
+         
+        Parameters
+        ----------
+        p : PFNET problem.
+        """
+
+        self.results['problem'] = p
+
+    def set_problem_time(self, t):
+        """
+        Sets problem construction time in seconds.
 
         Parameters
         ----------
-        p : PFNET problem
+        t : float
         """
         
-        self.results['problem'] = p
+        self.results['problem time'] = t
+
+    def set_network_snapshot(self, net):
+        """
+        Sets network snapshot.
+
+        Parameters
+        ----------
+        net : PFNET network
+        """
+        
+        self.results['network snapshot'] = net
 
     def get_parameters(self):
         """
@@ -183,7 +207,7 @@ class PFmethod:
                         valid_key = True
                         parameter_dict[key] = value
                 if not valid_key:
-                    raise PFmethodError_BadParam(self,param=key)
+                    raise PFmethodError_BadParam(param=key)
 
             if OPTSOLVER_PARAMS in params and OPTSOLVER_PARAMS in self._parameters:
                 optsolver_params = params[OPTSOLVER_PARAMS]
@@ -209,12 +233,12 @@ class PFmethod:
                             elif valuestr == 'False':
                                 new_value = False
                             else:
-                                raise PFmethodError_ParamNotBool(self)
+                                raise PFmethodError_ParamNotBool()
                         else:
                             new_value = valuestr
                         parameter_dict[key] = new_value
                 if not valid_key:
-                    raise PFmethodError_BadParam(self,param=key)
+                    raise PFmethodError_BadParam(param=key)
 
     def set_results(self,results):
         """
@@ -247,4 +271,7 @@ class PFmethod:
         net : PFNET Network
         """
 
-        pass
+        if self.results['network snapshot'] is not None:
+            net.copy_from_network(self.results['network snapshot'])
+            net.update_properties()
+

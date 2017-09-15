@@ -6,6 +6,8 @@
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
 
+from __future__ import print_function
+import time
 import numpy as np
 from .method_error import *
 from .method import PFmethod
@@ -50,7 +52,7 @@ class DCPF(PFmethod):
         try:
             assert(net.num_vars == net.num_buses-1+net.get_num_slack_gens())
         except AssertionError:
-            raise PFmethodError_BadProblem(self)
+            raise PFmethodError_BadProblem()
 
         # Set up problem
         problem = pfnet.Problem(net)
@@ -67,14 +69,21 @@ class DCPF(PFmethod):
         
         # Parameters
         params = self._parameters
+
+        # Copy network
+        net = net.get_copy()
         
         # Problem
+        t0 = time.time()
         problem = self.create_problem(net)
+        problem_time = time.time()-t0
+        
         A = problem.A
         b = problem.b
         x = problem.x
 
         # Solve
+        t0 = time.time()
         try:
             assert(A.shape[0] == A.shape[1])
             linsolver = new_linsolver('default','unsymmetric')
@@ -83,46 +92,21 @@ class DCPF(PFmethod):
             net.update_properties(x)
             self.set_status('solved')
         except Exception as e:
-            raise PFmethodError_SolverError(self,e)
+            raise PFmethodError_SolverError(e)
         finally:
             
-            # Update net properties
-            net.update_properties(x)
-
-            # Get results
-            self.set_iterations(1)
-            self.set_primal_variables(x)
-            self.set_dual_variables(4*[None])
-            self.set_net_properties(net.get_properties())
-            self.set_problem(problem)
-
-            # Restore net properties
+            # Update network
+            net.set_var_values(x)
             net.update_properties()
+            net.clear_sensitivities()
 
-    def update_network(self,net):
-        
-        # Get data
-        problem = self.results['problem']
-        x = self.results['primal variables']
-        lam,nu,mu,pi = self.results['dual variables']
-       
-        # No problem
-        if problem is None:
-            raise PFmethodError_NoProblem(self)
- 
-        # Checks
-        assert(problem.x.shape == x.shape)
-        assert(net.num_vars == x.size)
-        assert(lam is None or not lam.size)
-        assert(nu is None or not nu.size)
-        assert(mu is None or not mu.size)
-        assert(pi is None or not pi.size)
-
-        # Network quantities
-        net.set_var_values(x)
-
-        # Network properties
-        net.update_properties()
-        
-        # Network sensitivities
-        net.clear_sensitivities()
+            # Save results
+            self.set_solver_status('solved')
+            self.set_solver_message('')
+            self.set_solver_iterations(1)
+            self.set_solver_time(time.time()-t0)
+            self.set_solver_primal_variables(x)
+            self.set_solver_dual_variables(4*[None])
+            self.set_problem(None) # skip for now
+            self.set_problem_time(problem_time)
+            self.set_network_snapshot(net)

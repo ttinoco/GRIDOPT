@@ -7,6 +7,7 @@
 #*****************************************************#
 
 from __future__ import print_function
+import time
 import numpy as np
 from .method_error import *
 from .method import PFmethod
@@ -99,7 +100,7 @@ class ACOPF(PFmethod):
             assert(net.num_bounded == (2*net.get_num_gens_not_on_outage() +
                                        net.num_buses)*net.num_periods)
         except AssertionError:
-            raise PFmethodError_BadProblem(self)
+            raise PFmethodError_BadProblem()
                                     
         # Problem
         problem = pfnet.Problem(net)
@@ -152,11 +153,16 @@ class ACOPF(PFmethod):
         elif optsolver_name == 'inlp':
             optsolver = OptSolverINLP()
         else:
-            raise PFmethodError_BadOptSolver(self)
+            raise PFmethodError_BadOptSolver()
         optsolver.set_parameters(optsolver_params[optsolver_name])
+
+        # Copy network
+        net = net.get_copy()
         
         # Problem
+        t0 = time.time()
         problem = self.create_problem(net)
+        problem_time = time.time()-t0
 
         # Termination
         def t1(s):
@@ -171,52 +177,29 @@ class ACOPF(PFmethod):
         optsolver.set_info_printer(info_printer)
         
         # Solve
+        t0 = time.time()
         try:
             optsolver.solve(problem)
         except OptSolverError as e:
-            raise PFmethodError_SolverError(self,e)
+            raise PFmethodError_SolverError(e)
         finally:
             
-            # Get results
-            self.set_status(optsolver.get_status())
-            self.set_error_msg(optsolver.get_error_msg())
-            self.set_iterations(optsolver.get_iterations())
-            self.set_primal_variables(optsolver.get_primal_variables())
-            self.set_dual_variables(optsolver.get_dual_variables())
-            self.set_net_properties(net.get_properties())
-            self.set_problem(problem)
-
-            # Restors net properties
+            # Update network
+            net.set_var_values(optsolver.get_primal_variables()[:net.num_vars])
             net.update_properties()
+            net.clear_sensitivities()
+            problem.store_sensitivities(*optsolver.get_dual_variables())
 
-    def update_network(self,net):
-        
-        # Get data
-        problem = self.results['problem']
-        x = self.results['primal variables']
-        lam,nu,mu,pi = self.results['dual variables']
-       
-        # No problem
-        if problem is None:
-            raise PFmethodError_NoProblem(self)
-
-        # Checks
-        assert(problem.x.shape == x.shape)
-        assert(net.num_vars+problem.num_extra_vars == x.size)
-        assert(problem.A.shape[0] == lam.size)
-        assert(problem.f.shape[0] == nu.size)
-        assert(problem.G.shape[0] == mu.size)
-        assert(problem.G.shape[0] == pi.size)
-
-        # Network quantities
-        net.set_var_values(x[:net.num_vars])
-
-        # Network properties
-        net.update_properties()
-        
-        # Network sensitivities
-        net.clear_sensitivities()
-        problem.store_sensitivities(lam,nu,mu,pi)
+            # Save results
+            self.set_solver_status(optsolver.get_status())
+            self.set_solver_message(optsolver.get_error_msg())
+            self.set_solver_iterations(optsolver.get_iterations())
+            self.set_solver_time(time.time()-t0)
+            self.set_solver_primal_variables(optsolver.get_primal_variables())
+            self.set_solver_dual_variables(optsolver.get_dual_variables())
+            self.set_problem(None) # skip for now
+            self.set_problem_time(problem_time)
+            self.set_network_snapshot(net)
 
     def get_info_printer(self):
 
