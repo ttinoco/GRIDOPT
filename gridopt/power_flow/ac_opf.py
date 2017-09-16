@@ -188,6 +188,7 @@ class ACOPF(PFmethod):
             net.set_var_values(optsolver.get_primal_variables()[:net.num_vars])
             net.update_properties()
             net.clear_sensitivities()
+            print(net.num_buses,optsolver_name,[d.shape for d in optsolver.get_dual_variables()])
             problem.store_sensitivities(*optsolver.get_dual_variables())
 
             # Save results
