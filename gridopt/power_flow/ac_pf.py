@@ -312,19 +312,24 @@ class ACPF(PFmethod):
         optsolver.set_info_printer(info_printer)
         
         # Solve
+        update = True
         t0 = time.time()
         try:
             optsolver.solve(problem)
         except OptSolverError as e:
             raise PFmethodError_SolverError(e)
+        except Exception as e:
+            update = False
+            raise e
         finally:
             
             # Update network
-            net.set_var_values(optsolver.get_primal_variables()[:net.num_vars])
-            net.update_properties()
-            net.clear_sensitivities()
-            if optsolver_name != 'nr':
-                problem.store_sensitivities(*optsolver.get_dual_variables())
+            if update:
+                net.set_var_values(optsolver.get_primal_variables()[:net.num_vars])
+                net.update_properties()
+                net.clear_sensitivities()
+                if optsolver_name != 'nr':
+                    problem.store_sensitivities(*optsolver.get_dual_variables())
 
             # Save results
             self.set_solver_status(optsolver.get_status())

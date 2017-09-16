@@ -83,25 +83,26 @@ class DCPF(PFmethod):
         x = problem.x
 
         # Solve
+        update = True
         t0 = time.time()
         try:
             assert(A.shape[0] == A.shape[1])
             linsolver = new_linsolver('default','unsymmetric')
             linsolver.analyze(A)
             x = linsolver.factorize_and_solve(A,b)
-            net.update_properties(x)
-            self.set_status('solved')
         except Exception as e:
+            update = False
             raise PFmethodError_SolverError(e)
         finally:
             
             # Update network
-            net.set_var_values(x)
-            net.update_properties()
-            net.clear_sensitivities()
+            if update:
+                net.set_var_values(x)
+                net.update_properties()
+                net.clear_sensitivities()
 
             # Save results
-            self.set_solver_status('solved')
+            self.set_solver_status('solved' if update else 'error')
             self.set_solver_message('')
             self.set_solver_iterations(1)
             self.set_solver_time(time.time()-t0)
