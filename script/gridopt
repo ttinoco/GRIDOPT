@@ -3,7 +3,7 @@
 #*****************************************************#
 # This file is part of GRIDOPT.                       #
 #                                                     #
-# Copyright (c) 2015-2017, Tomas Tinoco De Rubira.    #
+# Copyright (c) 2015, Tomas Tinoco De Rubira.         #
 #                                                     #
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
@@ -86,9 +86,9 @@ def main():
             # Solve
             try:
                 method.solve(net)
-                print(method.results['status'])
-            except gridopt.power_flow.PFmethodError:
-                print(method.results['error msg'])
+                print(method.results['solver status'])
+            except gridopt.power_flow.PFmethodError as e:
+                print(e)
             
             # Update
             method.update_network(net)

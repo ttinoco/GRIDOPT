@@ -213,10 +213,10 @@ class ACPF(PFmethod):
                 assert(net.num_vars == (2*(net.num_buses-net.get_num_slack_buses()) +
                                         net.get_num_slack_gens() +
                                         net.get_num_reg_gens() +
-                                        net.get_num_tap_changers() +
+                                        net.get_num_tap_changers_v() +
                                         net.get_num_switched_shunts())*net.num_periods)
                 assert(net.num_fixed == (net.get_num_buses_reg_by_gen() +
-                                         net.get_num_tap_changers() +
+                                         net.get_num_tap_changers_v() +
                                          net.get_num_switched_shunts())*net.num_periods)
             except AssertionError:
                 raise PFmethodError_BadProblem()

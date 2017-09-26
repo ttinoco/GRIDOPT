@@ -111,12 +111,12 @@ class TestPowerFlow(unittest.TestCase):
                     self.assertEqual(net.num_periods,1)
                     self.assertEqual(netMP.num_periods,T)
 
+                    # Only small
+                    if net.num_buses > 3000:
+                        continue
+                    
                     sol_file = utils.get_pf_solution_file(case,sol)
                     sol_data = utils.read_pf_solution_file(sol_file)
-
-                    # No sol
-                    if sol_data is None:
-                        continue
                                           
                     # Set parameters
                     if sol == 'sol1':
@@ -137,7 +137,7 @@ class TestPowerFlow(unittest.TestCase):
                     results = method.get_results()
                     self.assertEqual(results['solver status'],'solved')
                     self.assertEqual(net.bus_P_mis,bus_P_mis)
-                    self.assertNotEqual(results['network snapshot'].bus_P_mis,bus_P_mis)
+                    self.assertLessEqual(results['network snapshot'].bus_P_mis,bus_P_mis)
                     method.update_network(net)
 
                     method.solve(netMP)
@@ -148,6 +148,15 @@ class TestPowerFlow(unittest.TestCase):
                     self.assertLess(norm(resultsMP['network snapshot'].bus_P_mis-netMP.bus_P_mis,np.inf),1e-10)
                     self.assertLess(norm(resultsMP['network snapshot'].bus_Q_mis-netMP.bus_Q_mis,np.inf),1e-10)
                     self.assertLess(norm(resultsMP['network snapshot'].gen_P_cost-netMP.gen_P_cost,np.inf),1e-10)
+
+                    print("%s\t%s\t%s\t%d" %(case.split('/')[-1],
+                                             sol_types[sol],
+                                             optsolver,
+                                             results['solver iterations']))
+
+                    # No sol
+                    if sol_data is None:
+                        continue
 
                     v_mag_tol = sol_data['v_mag_tol']
                     v_ang_tol = sol_data['v_ang_tol']
@@ -179,10 +188,6 @@ class TestPowerFlow(unittest.TestCase):
                     if len(v_mag_error) > 0:
                         self.assertLessEqual(np.max(v_mag_error),v_mag_tol)
                         self.assertLessEqual(np.max(v_ang_error),v_ang_tol)
-                        print("%s\t%s\t%s\t%d" %(case.split('/')[-1],
-                                                 sol_types[sol],
-                                                 optsolver,
-                                                 results['solver iterations']))
                     self.assertEqual(len(v_mag_error),counter*(T+1))
                     self.assertEqual(len(v_ang_error),counter*(T+1))
 
@@ -207,6 +212,10 @@ class TestPowerFlow(unittest.TestCase):
                 continue
 
             net = pf.Parser(case).parse(case)
+
+            # Only small
+            if net.num_buses > 3000:
+                continue
             
             self.assertEqual(net.num_periods,1)
 
