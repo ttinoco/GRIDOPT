@@ -15,6 +15,7 @@ before_install:
 
 install:
 
+- sudo pip install numpy
 - sudo -E pip install -i https://testpypi.python.org/pypi pfnet
 
 - git clone -b dev https://github.com/ttinoco/OPTALG.git
