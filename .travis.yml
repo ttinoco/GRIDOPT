@@ -15,8 +15,7 @@ before_install:
 
 install:
 
-- sudo pip install --upgrade pip
-- sudo pip install numpy cython
+- sudo pip install numpy cython scipy nose # to help pip from testpypi
 
 - sudo -E pip install -i https://testpypi.python.org/pypi pfnet
 
