@@ -9,7 +9,8 @@ Unreleased
 * Changed method results and mechanism for storing solution and updating network (done).
 * Moved location of command-line unitlity (done).
 * Fixed bug in NR ACPF related to tap_changers vs tap_changers_v (done).
-* Add unittests for command-line utility (todo).	
+* Changed travis to pfnet from testpypi (done).
+* Add unittests for command-line utility (todo).
 
 Version 1.3.3
 -------------
