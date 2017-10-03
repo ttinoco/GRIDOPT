@@ -15,11 +15,7 @@ before_install:
 
 install:
 
-- git clone -b dev https://github.com/ttinoco/PFNET.git
-- cd PFNET/python
-- sudo pip install -r requirements.txt
-- sudo -E python setup.py install
-- cd ../../
+- sudo -E pip install -i https://testpypi.python.org/pypi pfnet
 
 - git clone -b dev https://github.com/ttinoco/OPTALG.git
 - cd OPTALG
