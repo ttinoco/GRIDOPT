@@ -135,6 +135,7 @@ class TestPowerFlow(unittest.TestCase):
                     except ImportError:
                         continue # no ipopt
                     results = method.get_results()
+                    self.assertEqual(results['solver name'], optsolver)
                     self.assertEqual(results['solver status'],'solved')
                     self.assertEqual(net.bus_P_mis,bus_P_mis)
                     self.assertLessEqual(results['network snapshot'].bus_P_mis,bus_P_mis)
@@ -228,6 +229,7 @@ class TestPowerFlow(unittest.TestCase):
                 self.assertEqual(method_ipopt.results['solver status'],'solved')
                 self.assertEqual(net.gen_P_cost,gen_P_cost)
                 self.assertNotEqual(method_ipopt.results['network snapshot'].gen_P_cost,gen_P_cost)
+                self.assertEqual(method_ipopt.results['solver name'], 'ipopt')
                 x1 = method_ipopt.get_results()['solver primal variables']
                 i1 = method_ipopt.get_results()['solver iterations']
                 p1 = method_ipopt.get_results()['network snapshot'].gen_P_cost
@@ -242,6 +244,7 @@ class TestPowerFlow(unittest.TestCase):
             self.assertEqual(method_inlp.results['solver status'],'solved')
             self.assertEqual(net.gen_P_cost,gen_P_cost)
             self.assertNotEqual(method_inlp.results['network snapshot'].gen_P_cost,gen_P_cost)
+            self.assertEqual(method_inlp.results['solver name'], 'inlp')
             x2 = method_inlp.get_results()['solver primal variables']
             i2 = method_inlp.get_results()['solver iterations']
             p2 = method_inlp.get_results()['network snapshot'].gen_P_cost
@@ -254,6 +257,7 @@ class TestPowerFlow(unittest.TestCase):
             self.assertEqual(method_augl.results['solver status'],'solved')
             self.assertEqual(net.gen_P_cost,gen_P_cost)
             self.assertNotEqual(method_augl.results['network snapshot'].gen_P_cost,gen_P_cost)
+            self.assertEqual(method_augl.results['solver name'], 'augl')
             x3 = method_augl.get_results()['solver primal variables']
             i3 = method_augl.get_results()['solver iterations']
             p3 = method_augl.get_results()['network snapshot'].gen_P_cost
@@ -301,6 +305,7 @@ class TestPowerFlow(unittest.TestCase):
                 gen_P_cost = net.gen_P_cost
                 method.solve(net)
                 self.assertEqual(method.results['solver status'],'solved')
+                self.assertEqual(method.results['solver name'], 'iqp')
                 self.assertTrue(np.all(net.gen_P_cost == gen_P_cost))
                 self.assertTrue(np.all(method.results['network snapshot'].gen_P_cost != gen_P_cost))
             except gopt.power_flow.PFmethodError:

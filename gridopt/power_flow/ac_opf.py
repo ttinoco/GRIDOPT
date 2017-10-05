@@ -196,6 +196,7 @@ class ACOPF(PFmethod):
                 problem.store_sensitivities(*optsolver.get_dual_variables())
 
             # Save results
+            self.set_solver_name(optsolver_name)
             self.set_solver_status(optsolver.get_status())
             self.set_solver_message(optsolver.get_error_msg())
             self.set_solver_iterations(optsolver.get_iterations())

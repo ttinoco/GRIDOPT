@@ -102,6 +102,7 @@ class DCPF(PFmethod):
                 net.clear_sensitivities()
 
             # Save results
+            self.set_solver_name(linsolver.name)
             self.set_solver_status('solved' if update else 'error')
             self.set_solver_message('')
             self.set_solver_iterations(1)

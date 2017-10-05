@@ -18,7 +18,8 @@ class PFmethod:
         
         self._parameters = {}
         
-        self.results = {'solver status': 'unknown',
+        self.results = {'solver name': 'unknown',
+                        'solver status': 'unknown',
                         'solver message': '',
                         'solver iterations': 0,
                         'solver time': np.nan,
@@ -65,6 +66,17 @@ class PFmethod:
         """
 
         return self.results
+
+    def set_solver_name(self, name):
+        """
+        Sets solver name.
+
+        Parameters
+        ----------
+        name : string
+        """
+        
+        self.results['solver name'] = name
 
     def set_solver_status(self, status):
         """
