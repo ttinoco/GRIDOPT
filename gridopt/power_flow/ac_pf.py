@@ -320,7 +320,7 @@ class ACPF(PFmethod):
             raise PFmethodError_SolverError(e)
         except Exception as e:
             update = False
-            raise PFmethodError(e)
+            raise e
         finally:
             
             # Update network
