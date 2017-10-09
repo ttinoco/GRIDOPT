@@ -11,7 +11,7 @@ Unreleased
 * Fixed bug in NR ACPF related to tap_changers vs tap_changers_v (done).
 * Changed travis to pfnet from testpypi (done).
 * Added "solver name" to method results (done).
-* Change "optsolver" to "solver" (todo).	
+* Changed "optsolver" to "solver" (done).
 * Add unittests for command-line utility (todo).
 
 Version 1.3.3

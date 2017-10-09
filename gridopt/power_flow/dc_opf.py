@@ -22,7 +22,7 @@ class DCOPF(PFmethod):
         
     _parameters = {'thermal_limits': False,
                    'renewable_curtailment': False,
-                   'optsolver' : 'iqp'}
+                   'solver' : 'iqp'}
 
     _parameters_iqp = {}
 
@@ -37,7 +37,7 @@ class DCOPF(PFmethod):
         # Parent init
         PFmethod.__init__(self)
         
-        # Optsolver parameters
+        # Solver parameters
         iqp_params = OptSolverIQP.parameters.copy()
         iqp_params.update(self._parameters_iqp)     # overwrite defaults
 
@@ -48,9 +48,9 @@ class DCOPF(PFmethod):
         ipopt_params.update(self._parameters_ipopt) # overwrite defaults
 
         self._parameters.update(DCOPF._parameters)
-        self._parameters['optsolver_parameters'] = {'iqp': iqp_params,
-                                                    'augl': augl_params,
-                                                    'ipopt': ipopt_params}
+        self._parameters['solver_parameters'] = {'iqp': iqp_params,
+                                                 'augl': augl_params,
+                                                 'ipopt': ipopt_params}
 
     def create_problem(self,net):
 
@@ -113,19 +113,19 @@ class DCOPF(PFmethod):
         
         # Parameters
         params = self._parameters
-        optsolver_name = params['optsolver']
-        optsolver_params = params['optsolver_parameters']
+        solver_name = params['solver']
+        solver_params = params['solver_parameters']
 
-        # Opt solver
-        if optsolver_name == 'iqp':
-            optsolver = OptSolverIQP()
-        elif optsolver_name == 'augl':
-            optsolver = OptSolverAugL()
-        elif optsolver_name == 'ipopt':
-            optsolver = OptSolverIpopt()
+        # Solver
+        if solver_name == 'iqp':
+            solver = OptSolverIQP()
+        elif solver_name == 'augl':
+            solver = OptSolverAugL()
+        elif solver_name == 'ipopt':
+            solver = OptSolverIpopt()
         else:
             raise PFmethodError_BadOptSolver()
-        optsolver.set_parameters(optsolver_params[optsolver_name])
+        solver.set_parameters(solver_params[solver_name])
 
         # Copy network
         net = net.get_copy()
@@ -134,16 +134,12 @@ class DCOPF(PFmethod):
         t0 = time.time()
         problem = self.create_problem(net)
         problem_time = time.time()-t0
-        
-        # Set up solver
-        solver = OptSolverIQP()
-        solver.set_parameters(params)
-        
+                
         # Solve
         update = True
         t0 = time.time()
         try:
-            optsolver.solve(problem)
+            solver.solve(problem)
         except OptSolverError as e:
             raise PFmethodError_SolverError(e)
         except Exception as e:
@@ -153,19 +149,19 @@ class DCOPF(PFmethod):
 
             # Update network
             if update:
-                net.set_var_values(optsolver.get_primal_variables()[:net.num_vars])
+                net.set_var_values(solver.get_primal_variables()[:net.num_vars])
                 net.update_properties()
                 net.clear_sensitivities()
-                problem.store_sensitivities(*optsolver.get_dual_variables())
+                problem.store_sensitivities(*solver.get_dual_variables())
 
             # Save results
-            self.set_solver_name(optsolver_name)
-            self.set_solver_status(optsolver.get_status())
-            self.set_solver_message(optsolver.get_error_msg())
-            self.set_solver_iterations(optsolver.get_iterations())
+            self.set_solver_name(solver_name)
+            self.set_solver_status(solver.get_status())
+            self.set_solver_message(solver.get_error_msg())
+            self.set_solver_iterations(solver.get_iterations())
             self.set_solver_time(time.time()-t0)
-            self.set_solver_primal_variables(optsolver.get_primal_variables())
-            self.set_solver_dual_variables(optsolver.get_dual_variables())
+            self.set_solver_primal_variables(solver.get_primal_variables())
+            self.set_solver_dual_variables(solver.get_dual_variables())
             self.set_problem(None) # skip for now
             self.set_problem_time(problem_time)
             self.set_network_snapshot(net)

@@ -34,7 +34,7 @@ class TestPowerFlow(unittest.TestCase):
                               'weight_b' : 1.6,
                               'thermal_limits' : True,
                               'vmin_thresh' : 0.123,
-                              'optsolver' : 'inlp',
+                              'solver' : 'inlp',
                               'beta_small' : 8.9,
                               'hessian_approximation' : 'test',
                               'maxiter': 432})
@@ -55,38 +55,38 @@ class TestPowerFlow(unittest.TestCase):
         self.assertEqual(params['weight_b'],1.6)
         self.assertEqual(params['thermal_limits'],True)
         self.assertEqual(params['vmin_thresh'],0.123)
-        self.assertEqual(params['optsolver'],'inlp')
-        self.assertEqual(params['optsolver_parameters']['augl']['beta_small'],8.9)
-        self.assertEqual(params['optsolver_parameters']['augl']['maxiter'],432)
-        self.assertEqual(params['optsolver_parameters']['inlp']['maxiter'],432)
-        self.assertEqual(params['optsolver_parameters']['ipopt']['hessian_approximation'],'test')
+        self.assertEqual(params['solver'],'inlp')
+        self.assertEqual(params['solver_parameters']['augl']['beta_small'],8.9)
+        self.assertEqual(params['solver_parameters']['augl']['maxiter'],432)
+        self.assertEqual(params['solver_parameters']['inlp']['maxiter'],432)
+        self.assertEqual(params['solver_parameters']['ipopt']['hessian_approximation'],'test')
 
         # Make a deep copy
         new_params = copy.deepcopy(params)
 
-        # Set manually optsolver parametres
-        new_params['optsolver_parameters']['augl']['beta_small'] = 1.333e-5
-        new_params['optsolver_parameters']['inlp']['maxiter'] = 555
-        new_params['optsolver_parameters']['ipopt']['hessian_approximation'] = 'new test'
+        # Set manually solver parametres
+        new_params['solver_parameters']['augl']['beta_small'] = 1.333e-5
+        new_params['solver_parameters']['inlp']['maxiter'] = 555
+        new_params['solver_parameters']['ipopt']['hessian_approximation'] = 'new test'
 
         # Check that this is a separate params dictionary
-        self.assertNotEqual(new_params['optsolver_parameters']['augl']['beta_small'],
-                            params['optsolver_parameters']['augl']['beta_small'])
-        self.assertNotEqual(new_params['optsolver_parameters']['inlp']['maxiter'],
-                            params['optsolver_parameters']['inlp']['maxiter'])
-        self.assertNotEqual(new_params['optsolver_parameters']['ipopt']['hessian_approximation'],
-                            params['optsolver_parameters']['ipopt']['hessian_approximation'])
+        self.assertNotEqual(new_params['solver_parameters']['augl']['beta_small'],
+                            params['solver_parameters']['augl']['beta_small'])
+        self.assertNotEqual(new_params['solver_parameters']['inlp']['maxiter'],
+                            params['solver_parameters']['inlp']['maxiter'])
+        self.assertNotEqual(new_params['solver_parameters']['ipopt']['hessian_approximation'],
+                            params['solver_parameters']['ipopt']['hessian_approximation'])
 
-        # Test setting parameters that specify optsolver parameters
+        # Test setting parameters that specify solver parameters
         acopf.set_parameters(new_params)
 
-        # Check that setting optsolver parameters worked
-        self.assertEqual(new_params['optsolver_parameters']['augl']['beta_small'],
-                         params['optsolver_parameters']['augl']['beta_small'])
-        self.assertEqual(new_params['optsolver_parameters']['inlp']['maxiter'],
-                         params['optsolver_parameters']['inlp']['maxiter'])
-        self.assertEqual(new_params['optsolver_parameters']['ipopt']['hessian_approximation'],
-                         params['optsolver_parameters']['ipopt']['hessian_approximation'])
+        # Check that setting solver parameters worked
+        self.assertEqual(new_params['solver_parameters']['augl']['beta_small'],
+                         params['solver_parameters']['augl']['beta_small'])
+        self.assertEqual(new_params['solver_parameters']['inlp']['maxiter'],
+                         params['solver_parameters']['inlp']['maxiter'])
+        self.assertEqual(new_params['solver_parameters']['ipopt']['hessian_approximation'],
+                         params['solver_parameters']['ipopt']['hessian_approximation'])
 
     def test_ACPF_solutions(self):
 
@@ -100,10 +100,10 @@ class TestPowerFlow(unittest.TestCase):
         
         for case in utils.test_cases:
             for sol in list(sol_types.keys()):
-                for optsolver in ['nr','augl','ipopt', 'inlp']:
+                for solver in ['nr','augl','ipopt', 'inlp']:
                     
                     method = gopt.power_flow.new_method('ACPF')
-                    method.set_parameters(params={'optsolver':optsolver})
+                    method.set_parameters(params={'solver': solver})
                     
                     net = pf.Parser(case).parse(case)
                     netMP = pf.Parser(case).parse(case,T)
@@ -135,7 +135,7 @@ class TestPowerFlow(unittest.TestCase):
                     except ImportError:
                         continue # no ipopt
                     results = method.get_results()
-                    self.assertEqual(results['solver name'], optsolver)
+                    self.assertEqual(results['solver name'], solver)
                     self.assertEqual(results['solver status'],'solved')
                     self.assertEqual(net.bus_P_mis,bus_P_mis)
                     self.assertLessEqual(results['network snapshot'].bus_P_mis,bus_P_mis)
@@ -152,7 +152,7 @@ class TestPowerFlow(unittest.TestCase):
 
                     print("%s\t%s\t%s\t%d" %(case.split('/')[-1],
                                              sol_types[sol],
-                                             optsolver,
+                                             solver,
                                              results['solver iterations']))
 
                     # No sol
@@ -199,11 +199,11 @@ class TestPowerFlow(unittest.TestCase):
         eps = 0.5 # %
         
         method_ipopt = gopt.power_flow.new_method('ACOPF')
-        method_ipopt.set_parameters(params={'optsolver':'ipopt','quiet': True})
+        method_ipopt.set_parameters(params={'solver':'ipopt','quiet': True})
         method_augl = gopt.power_flow.new_method('ACOPF')
-        method_augl.set_parameters(params={'optsolver':'augl','quiet': True})
+        method_augl.set_parameters(params={'solver':'augl','quiet': True})
         method_inlp = gopt.power_flow.new_method('ACOPF')
-        method_inlp.set_parameters(params={'optsolver':'inlp','quiet': True})
+        method_inlp.set_parameters(params={'solver':'inlp','quiet': True})
 
         skipcases = ['aesoSL2014.raw','case3012wp.mat','case9241.mat','case32.art']
             

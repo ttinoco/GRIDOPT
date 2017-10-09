@@ -33,7 +33,7 @@ class ACPF(PFmethod):
                    'dtap': 1e-5,        # tap ratio perturbation (NR only)
                    'dsus': 1e-5,        # susceptance perturbation (NR only)
                    'vmin_thresh': 0.1,  # threshold for vmin
-                   'optsolver': 'augl'} # OPTALG optimization solver (augl,ipopt,nr)
+                   'solver': 'augl'}    # OPTALG optimization solver (augl, ipopt, nr, inlp)
 
     _parameters_augl = {'feastol' : 1e-4,
                         'optol' : 1e-4,
@@ -52,7 +52,7 @@ class ACPF(PFmethod):
         # Parent init
         PFmethod.__init__(self)
 
-        # Optsolver params
+        # Solver params
         augl_params = OptSolverAugL.parameters.copy()
         augl_params.update(self._parameters_augl)   # overwrite defaults
 
@@ -66,10 +66,10 @@ class ACPF(PFmethod):
         nr_params.update(self._parameters_nr)       # overwrite defaults
 
         self._parameters.update(ACPF._parameters)
-        self._parameters['optsolver_parameters'] = {'augl': augl_params,
-                                                    'ipopt': ipopt_params,
-                                                    'nr': nr_params,
-                                                    'inlp': inlp_params}
+        self._parameters['solver_parameters'] = {'augl': augl_params,
+                                                 'ipopt': ipopt_params,
+                                                 'nr': nr_params,
+                                                 'inlp': inlp_params}
 
     def create_problem(self,net):
 
@@ -85,14 +85,14 @@ class ACPF(PFmethod):
         limit_gens = params['limit_gens']
         lock_taps = params['lock_taps']
         lock_shunts = params['lock_shunts']
-        optsolver_name = params['optsolver']
+        solver_name = params['solver']
         
         # Clear flags
         net.clear_flags()
 
         # OPT-based
         ###########
-        if optsolver_name != 'nr':
+        if solver_name != 'nr':
             
             # Set up variables
             net.set_flags('bus',
@@ -173,7 +173,7 @@ class ACPF(PFmethod):
 
         # NR-based
         ##########
-        elif optsolver_name == 'nr':
+        elif solver_name == 'nr':
 
             # Voltages
             net.set_flags('bus',
@@ -249,22 +249,22 @@ class ACPF(PFmethod):
         lock_taps= params['lock_taps']
         lock_shunts = params['lock_shunts']
         vmin_thresh = params['vmin_thresh']
-        optsolver_name = params['optsolver']
-        optsolver_params = params['optsolver_parameters']
-        feastol = optsolver_params['nr']['feastol']
+        solver_name = params['solver']
+        solver_params = params['solver_parameters']
+        feastol = solver_params['nr']['feastol']
 
         # Opt solver
-        if optsolver_name == 'augl':
-            optsolver = OptSolverAugL()
-        elif optsolver_name == 'ipopt':
-            optsolver = OptSolverIpopt()
-        elif optsolver_name == 'inlp':
-            optsolver = OptSolverINLP()
-        elif optsolver_name == 'nr':
-            optsolver = OptSolverNR()
+        if solver_name == 'augl':
+            solver = OptSolverAugL()
+        elif solver_name == 'ipopt':
+            solver = OptSolverIpopt()
+        elif solver_name == 'inlp':
+            solver = OptSolverINLP()
+        elif solver_name == 'nr':
+            solver = OptSolverNR()
         else:
             raise PFmethodError_BadOptSolver()
-        optsolver.set_parameters(optsolver_params[optsolver_name])
+        solver.set_parameters(solver_params[solver_name])
 
         # Copy network
         net = net.get_copy()
@@ -294,10 +294,10 @@ class ACPF(PFmethod):
                 s.problem.A = prob.A
                 s.problem.b = prob.b
 
-        if optsolver_name == 'nr':
-            optsolver.add_callback(OptCallback(c1))
-            optsolver.add_callback(OptCallback(c2))
-            optsolver.add_callback(OptCallback(c3))
+        if solver_name == 'nr':
+            solver.add_callback(OptCallback(c1))
+            solver.add_callback(OptCallback(c2))
+            solver.add_callback(OptCallback(c3))
                 
         # Termination
         def t1(s):
@@ -305,17 +305,17 @@ class ACPF(PFmethod):
                 return True
             else:
                 return False
-        optsolver.add_termination(OptTermination(t1,'low voltage'))
+        solver.add_termination(OptTermination(t1,'low voltage'))
             
         # Info printer
         info_printer = self.get_info_printer()
-        optsolver.set_info_printer(info_printer)
+        solver.set_info_printer(info_printer)
         
         # Solve
         update = True
         t0 = time.time()
         try:
-            optsolver.solve(problem)
+            solver.solve(problem)
         except OptSolverError as e:
             raise PFmethodError_SolverError(e)
         except Exception as e:
@@ -325,20 +325,20 @@ class ACPF(PFmethod):
             
             # Update network
             if update:
-                net.set_var_values(optsolver.get_primal_variables()[:net.num_vars])
+                net.set_var_values(solver.get_primal_variables()[:net.num_vars])
                 net.update_properties()
                 net.clear_sensitivities()
-                if optsolver_name != 'nr':
-                    problem.store_sensitivities(*optsolver.get_dual_variables())
+                if solver_name != 'nr':
+                    problem.store_sensitivities(*solver.get_dual_variables())
 
             # Save results
-            self.set_solver_name(optsolver_name)
-            self.set_solver_status(optsolver.get_status())
-            self.set_solver_message(optsolver.get_error_msg())
-            self.set_solver_iterations(optsolver.get_iterations())
+            self.set_solver_name(solver_name)
+            self.set_solver_status(solver.get_status())
+            self.set_solver_message(solver.get_error_msg())
+            self.set_solver_iterations(solver.get_iterations())
             self.set_solver_time(time.time()-t0)
-            self.set_solver_primal_variables(optsolver.get_primal_variables())
-            self.set_solver_dual_variables(optsolver.get_dual_variables())
+            self.set_solver_primal_variables(solver.get_primal_variables())
+            self.set_solver_dual_variables(solver.get_dual_variables())
             self.set_problem(None) # skip for now
             self.set_problem_time(problem_time)
             self.set_network_snapshot(net)
@@ -346,11 +346,11 @@ class ACPF(PFmethod):
     def get_info_printer(self):
 
         # Parameters
-        optsolver_name = self._parameters['optsolver']
+        solver_name = self._parameters['solver']
 
         # OPT-based
         ###########
-        if optsolver_name != 'nr':
+        if solver_name != 'nr':
         
             def info_printer(solver,header):
                 net = solver.problem.wrapped_problem.network
@@ -366,7 +366,7 @@ class ACPF(PFmethod):
 
         # NR-based
         ##########
-        elif optsolver_name == 'nr':
+        elif solver_name == 'nr':
 
             def info_printer(solver,header):
                 net = solver.problem.wrapped_problem.network

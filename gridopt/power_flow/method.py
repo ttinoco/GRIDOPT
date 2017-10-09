@@ -200,18 +200,17 @@ class PFmethod:
                    Name-value pairs where value is a string
         """
 
-        OPTSOLVER_PARAMS = 'optsolver_parameters'
+        SOLVER_PARAMS = 'solver_parameters'
 
-        # Method and solver parameters
+        # List of method/solver parameter dictionaries
         dict_list = [self._parameters]
-        if OPTSOLVER_PARAMS in self._parameters:
-            dict_list += list(self._parameters[OPTSOLVER_PARAMS].values())
+        if SOLVER_PARAMS in self._parameters:
+            dict_list += list(self._parameters[SOLVER_PARAMS].values())
             
         # Parameters
         if params:
-
             for key,value in list(params.items()):
-                if key == OPTSOLVER_PARAMS:
+                if key == SOLVER_PARAMS:
                     continue
                 valid_key = False
                 for parameter_dict in dict_list:
@@ -220,12 +219,11 @@ class PFmethod:
                         parameter_dict[key] = value
                 if not valid_key:
                     raise PFmethodError_BadParam(param=key)
-
-            if OPTSOLVER_PARAMS in params and OPTSOLVER_PARAMS in self._parameters:
-                optsolver_params = params[OPTSOLVER_PARAMS]
-                for solver_name in self._parameters[OPTSOLVER_PARAMS].keys():
-                    if solver_name in optsolver_params:
-                        self._parameters[OPTSOLVER_PARAMS][solver_name].update(optsolver_params[solver_name])
+            if SOLVER_PARAMS in params and SOLVER_PARAMS in self._parameters:
+                solver_params = params[SOLVER_PARAMS]
+                for solver_name in self._parameters[SOLVER_PARAMS].keys():
+                    if solver_name in solver_params:
+                        self._parameters[SOLVER_PARAMS][solver_name].update(solver_params[solver_name])
                 
         # String-based parameters (from command-line utility)
         if strparams:
