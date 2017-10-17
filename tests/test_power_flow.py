@@ -88,6 +88,23 @@ class TestPowerFlow(unittest.TestCase):
         self.assertEqual(new_params['solver_parameters']['ipopt']['hessian_approximation'],
                          params['solver_parameters']['ipopt']['hessian_approximation'])
 
+    def test_DCPF(self):
+
+        for case in utils.test_cases:
+
+            method = gopt.power_flow.new_method('DCPF')
+            self.assertTrue(isinstance(method, gopt.power_flow.DCPF))
+
+            net = pf.Parser(case).parse(case)
+
+            method.solve(net)
+
+            results = method.get_results()
+
+            self.assertEqual(results['solver status'], 'solved')
+            self.assertTrue(results['solver name'] in ['mumps','superlu'])
+            self.assertTrue(isinstance(results['network snapshot'], pf.Network))
+
     def test_ACPF_solutions(self):
 
         print('')
