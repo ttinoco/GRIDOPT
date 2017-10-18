@@ -37,6 +37,16 @@ class PFmethodError_ParamNotBool(PFmethodError):
     def __init__(self):
         PFmethodError.__init__(self, 'parameter value must be True or False')
 
+class PFmethodError_TranVReg(PFmethodError):
+        def __init__(self, msg):
+            PFmethodError.__init__(self, 'error in transformer voltage regulation :%s' %msg)
+
+class PFmethodError_ShuntVReg(PFmethodError):
+        def __init__(self, msg):
+            PFmethodError.__init__(self, 'error in shunt voltage regulation: %s' %msg)
+
 class PFmethodError_SolverError(PFmethodError):
     def __init__(self, msg):
         PFmethodError.__init__(self, msg)
+
+

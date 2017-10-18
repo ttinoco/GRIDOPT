@@ -277,15 +277,19 @@ class ACPF(PFmethod):
         # Callbacks
         def c1(s):
             if (s.k != 0 and
-                (not lock_taps) and 
-                norm(s.problem.f,np.inf) < 100.*feastol):
-                self.apply_tran_v_regulation(s)
+                (not lock_taps) and norm(s.problem.f,np.inf) < 100.*feastol):
+                try:
+                    self.apply_tran_v_regulation(s)
+                except Exception as e:
+                    raise PFmethodError_TranVReg(e)
             
         def c2(s):
             if (s.k != 0 and
-                (not lock_shunts) and 
-                norm(s.problem.f,np.inf) < 100.*feastol):
-                self.apply_shunt_v_regulation(s)
+                (not lock_shunts) and norm(s.problem.f,np.inf) < 100.*feastol):
+                try:
+                    self.apply_shunt_v_regulation(s)
+                except Exception as e:
+                    raise PFmethodError_ShuntVReg(e)                
 
         def c3(s):
             if s.k > 0:
@@ -450,6 +454,7 @@ class ACPF(PFmethod):
                             # Fix constr index
                             k = int(np.where(A.col == reg_shunt.index_b[t])[0])
                             i = A.row[k]
+                            
                             assert(np.abs(b[i]-x[reg_shunt.index_b[t]]) < eps)
                             assert(A.data[k] == 1.)
                             
