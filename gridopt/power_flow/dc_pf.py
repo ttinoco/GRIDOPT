@@ -19,12 +19,16 @@ class DCPF(PFmethod):
 
     name = 'DCPF'
     
-    _parameters = {'quiet': False}
+    _parameters = {'quiet': False,
+                   'solver' : 'superlu'}
     
     def __init__(self):
 
         PFmethod.__init__(self)
+
         self._parameters = DCPF._parameters.copy()
+        self._parameters['solver_parameters'] = {'superlu': {},
+                                                 'mumps': {}}
 
     def create_problem(self,net):
 
@@ -69,6 +73,7 @@ class DCPF(PFmethod):
         
         # Parameters
         params = self._parameters
+        solver_name = params['solver']
 
         # Copy network
         net = net.get_copy()
@@ -87,7 +92,7 @@ class DCPF(PFmethod):
         t0 = time.time()
         try:
             assert(A.shape[0] == A.shape[1])
-            linsolver = new_linsolver('default','unsymmetric')
+            linsolver = new_linsolver(solver_name,'unsymmetric')
             linsolver.analyze(A)
             x = linsolver.factorize_and_solve(A,b)
         except Exception as e:
@@ -102,7 +107,7 @@ class DCPF(PFmethod):
                 net.clear_sensitivities()
 
             # Save results
-            self.set_solver_name(linsolver.name)
+            self.set_solver_name(solver_name)
             self.set_solver_status('solved' if update else 'error')
             self.set_solver_message('')
             self.set_solver_iterations(1)

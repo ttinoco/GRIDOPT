@@ -95,6 +95,9 @@ class TestPowerFlow(unittest.TestCase):
             method = gopt.power_flow.new_method('DCPF')
             self.assertTrue(isinstance(method, gopt.power_flow.DCPF))
 
+            method.set_parameters({'solver' : 'superlu'})
+            self.assertTrue('solver_parameters' in method.get_parameters().keys())
+
             net = pf.Parser(case).parse(case)
 
             method.solve(net)

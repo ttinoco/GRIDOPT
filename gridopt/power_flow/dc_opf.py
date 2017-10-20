@@ -47,7 +47,7 @@ class DCOPF(PFmethod):
         ipopt_params = OptSolverIpopt.parameters.copy()
         ipopt_params.update(self._parameters_ipopt) # overwrite defaults
 
-        self._parameters.update(DCOPF._parameters)
+        self._parameters = DCOPF._parameters.copy()
         self._parameters['solver_parameters'] = {'iqp': iqp_params,
                                                  'augl': augl_params,
                                                  'ipopt': ipopt_params}

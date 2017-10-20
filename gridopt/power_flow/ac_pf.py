@@ -65,7 +65,7 @@ class ACPF(PFmethod):
         nr_params = OptSolverNR.parameters.copy()
         nr_params.update(self._parameters_nr)       # overwrite defaults
 
-        self._parameters.update(ACPF._parameters)
+        self._parameters = ACPF._parameters.copy()
         self._parameters['solver_parameters'] = {'augl': augl_params,
                                                  'ipopt': ipopt_params,
                                                  'nr': nr_params,

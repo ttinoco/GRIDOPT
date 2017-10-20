@@ -54,7 +54,7 @@ class ACOPF(PFmethod):
         inlp_params = OptSolverINLP.parameters.copy()
         inlp_params.update(self._parameters_inlp)   # overwrite defaults
 
-        self._parameters.update(ACOPF._parameters)
+        self._parameters = ACOPF._parameters.copy()
         self._parameters['solver_parameters'] = {'augl': augl_params,
                                                  'ipopt': ipopt_params,
                                                  'inlp': inlp_params}
