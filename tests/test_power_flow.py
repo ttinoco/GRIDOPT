@@ -192,8 +192,8 @@ class TestPowerFlow(unittest.TestCase):
                         v_ang = val['v_ang']
                         
                         try:
-                            busMP = netMP.get_bus_by_number(bus_num)
-                            bus = net.get_bus_by_number(bus_num)
+                            busMP = netMP.get_bus_from_number(bus_num)
+                            bus = net.get_bus_from_number(bus_num)
                         except pf.NetworkError:
                             continue
                                                        
