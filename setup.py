@@ -27,4 +27,5 @@ setup(name='GRIDOPT',
                         'numpy>=1.11.2',
                         'scipy>=0.18.1',
                         'pfnet>=1.3.2rc1',
-                        'optalg>=1.1.5rc1'])
+                        'optalg>=1.1.5rc1',
+                        'nose'])
