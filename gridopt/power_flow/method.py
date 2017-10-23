@@ -200,6 +200,8 @@ class PFmethod:
                    Name-value pairs where value is a string
         """
 
+        invalid_params = []
+
         SOLVER_PARAMS = 'solver_parameters'
 
         # List of method/solver parameter dictionaries
@@ -218,7 +220,8 @@ class PFmethod:
                         valid_key = True
                         parameter_dict[key] = value
                 if not valid_key:
-                    raise PFmethodError_BadParam(param=key)
+                    invalid_params.append(key)
+                    
             if SOLVER_PARAMS in params and SOLVER_PARAMS in self._parameters:
                 solver_params = params[SOLVER_PARAMS]
                 for solver_name in self._parameters[SOLVER_PARAMS].keys():
@@ -248,8 +251,12 @@ class PFmethod:
                             new_value = valuestr
                         parameter_dict[key] = new_value
                 if not valid_key:
-                    raise PFmethodError_BadParam(param=key)
+                    invalid_params.append(key)
 
+        # Invalid params
+        if invalid_params:
+            raise PFmethodError_BadParams(invalid_params)
+                
     def set_results(self,results):
         """
         Sets method results.

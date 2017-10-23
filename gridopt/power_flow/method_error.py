@@ -25,9 +25,9 @@ class PFmethodError_BadVarLimits(PFmethodError):
     def __init__(self):
         PFmethodError.__init__(self, 'invalid variable limits')
 
-class PFmethodError_BadParam(PFmethodError):
-    def __init__(self, param=''):
-        PFmethodError.__init__(self, 'invalid method parameter %s' %param)
+class PFmethodError_BadParams(PFmethodError):
+    def __init__(self, keys):
+        PFmethodError.__init__(self, 'invalid method parameters: {}'.format(keys))
 
 class PFmethodError_BadOptSolver(PFmethodError):
     def __init__(self, param=''):

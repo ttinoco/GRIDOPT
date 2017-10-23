@@ -40,7 +40,7 @@ class TestPowerFlow(unittest.TestCase):
                               'maxiter': 432})
 
         # Check exception for invalid param
-        self.assertRaises(gopt.power_flow.method_error.PFmethodError_BadParam,
+        self.assertRaises(gopt.power_flow.method_error.PFmethodError_BadParams,
                           acopf.set_parameters,{'foo' : 'bar'})
 
         # Get parameters
