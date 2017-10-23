@@ -14,8 +14,8 @@ before_install:
   fi
 
 install:
-- sudo pip install -r requirements.txt
+- sudo pip install cython numpy
+- sudo pip install optalg pfnet
 
 script: 
-- sudo python setup.py install
 - nosetests -s -v
