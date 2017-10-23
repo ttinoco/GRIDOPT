@@ -1,22 +1,24 @@
 #*****************************************************#
 # This file is part of GRIDOPT.                       #
 #                                                     #
-# Copyright (c) 2015-2017, Tomas Tinoco De Rubira.    #
+# Copyright (c) 2015, Tomas Tinoco De Rubira.         #
 #                                                     #
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
 
 import sys
+sys.path.append('.')
+
 import pfnet
 import gridopt
 
-net = pfnet.ParserMAT().parse('../tests/resources/cases/ieee14.mat')
+net = pfnet.Parser(sys.argv[1]).parse(sys.argv[1])
 
 method = gridopt.power_flow.new_method('DCOPF')
 
 method.solve(net)
 
-print((method.results['status']))
+print((method.results['solver status']))
 
 method.update_network(net)
 

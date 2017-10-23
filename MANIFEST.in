@@ -1,0 +1,15 @@
+include clean.sh
+include LICENSE.md
+recursive-include docs *
+recursive-include examples *
+recursive-include tests *
+global-include README.md
+global-include COPYING
+global-include *.pxd
+global-include *.pyx
+global-exclude *.pyc
+global-exclude __pycache__
+global-exclude *.c
+global-exclude *~
+global-exclude *.raw
+global-exclude *.art

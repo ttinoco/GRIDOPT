@@ -1,3 +1,5 @@
+.. include:: defs.hrst
+
 .. _reference:
 
 *************
@@ -40,8 +42,14 @@ Error Exceptions
 
 .. autoclass:: gridopt.power_flow.method_error.PFmethodError_BadParam
 
+.. autoclass:: gridopt.power_flow.method_error.PFmethodError_BadOptSolver			      
+
 .. autoclass:: gridopt.power_flow.method_error.PFmethodError_ParamNotBool
 
+.. autoclass:: gridopt.power_flow.method_error.PFmethodError_TranVReg
+
+.. autoclass:: gridopt.power_flow.method_error.PFmethodError_ShuntVReg
+			      
 .. autoclass:: gridopt.power_flow.method_error.PFmethodError_SolverError
   
 .. _ref_references:

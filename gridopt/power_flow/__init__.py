@@ -1,7 +1,7 @@
 #*****************************************************#
 # This file is part of GRIDOPT.                       #
 #                                                     #
-# Copyright (c) 2015-2017, Tomas Tinoco De Rubira.    #
+# Copyright (c) 2015, Tomas Tinoco De Rubira.         #
 #                                                     #
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
@@ -21,7 +21,7 @@ def new_method(name):
     
     Parameters
     ----------
-    name : {'DCPF','DCOPF','ACPF','ACOPF'}
+    name : {``'DCPF'``, ``'DCOPF'``, ``'ACPF'``, ``'ACOPF'``}
     """
     
     try:

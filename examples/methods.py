@@ -1,32 +1,32 @@
 #*****************************************************#
 # This file is part of GRIDOPT.                       #
 #                                                     #
-# Copyright (c) 2015-2017, Tomas Tinoco De Rubira.    #
+# Copyright (c) 2015, Tomas Tinoco De Rubira.         #
 #                                                     #
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
 
+import sys
+sys.path.append('.')
+
 import pfnet
 import gridopt
 
-net = pfnet.ParserMAT().parse('../tests/resources/cases/ieee14.mat')
+net = pfnet.Parser(sys.argv[1]).parse(sys.argv[1])
 
 method = gridopt.power_flow.new_method('ACPF')
 
-method.set_parameters({'optsolver': 'nr', 'quiet': True, 'feastol': 1e-4})
+method.set_parameters({'solver': 'nr', 'quiet': True, 'feastol': 1e-4})
 
 method.solve(net)
 
 results = method.get_results()
 
-print((results['status']))
+print((results['solver status']))
 
-print((results['iterations']))
+print((results['solver iterations']))
 
-problem = results['problem']
-problem.show()
-
-print((results['net properties']['bus_v_max']))
+print((results['network snapshot'].bus_v_max))
 
 method.update_network(net)
 

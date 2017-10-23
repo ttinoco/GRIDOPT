@@ -1,3 +1,5 @@
+.. include:: defs.hrst
+
 .. _start:
 
 ***************
@@ -13,39 +15,42 @@ Dependencies
 
 GRIDOPT has the following dependencies:
 
-* `Numpy <http://www.numpy.org>`_ (>=1.11.2)
-* `Scipy <http://www.scipy.org>`_ (>=0.18.1)
-* `OPTALG <http://optalg.readthedocs.io>`_ (== 1.1.4)
-* `PFNET`_ (== 1.3.1)
-
-.. _start_download:
-
-Download
-========
-
-The latest version of GRIDOPT can be downloaded from `<https://github.com/ttinoco/GRIDOPT>`_.
+* |Cython| (>=0.20.1)
+* |Numpy| (>=1.11.2)
+* |Scipy| (>=0.18.1)
+* |OPTALG| (>= 1.1.5r1)
+* |PFNET| (>= 1.3.2r1)
 
 .. _start_installation:
 
 Installation
 ============
 
-The GRIDOPT Python module can be installed using::
+In order to install the GRIDOPT, the following tools are needed:
 
-  sudo python setup.py install
+* Linux and Mac OS X: a C compiler, |Make|, |Python| and |pip|.
+* Windows : |Anaconda|, |CMake|, |7-Zip|, and |MinGW|.
 
-from the root directory of the package.
+After getting these tools, the GRIDOPT Python module can be easily installed by executing the following commands on the terminal or Anaconda prompt::
 
-The module can be tested using `nose <https://nose.readthedocs.org/en/latest/>`_ as follows::
+  pip install numpy cython
+  pip install gridopt
 
-  nosetests -v -s
+To install the module from source, the code can be obtained from `<https://github.com/ttinoco/GRIDOPT>`_, and then the following commands can be executed on the terminal or Anaconda prompt from the root directory of the package::
+
+    pip install numpy cython
+    python setup.py install
+
+Running the unit tests can be done with::
+
+    nosetests -s -v
 
 .. _start_example:
 
 Example
 =======
 
-The next example shows how to solve the power flow problem associated with a power grid using GRIDOPT::
+The following example shows how to solve the power flow problem associated with a power grid using GRIDOPT::
 
   >>> import pfnet
   >>> import gridopt
@@ -64,7 +69,7 @@ The next example shows how to solve the power flow problem associated with a pow
 
   >>> results = method.get_results()
 
-  >>> print results['status']
+  >>> print results['solver status']
   solved
 
   >>> method.update_network(net)
@@ -73,6 +78,4 @@ The next example shows how to solve the power flow problem associated with a pow
   >>> print '%.2e %.2e' %(net.bus_P_mis,net.bus_Q_mis)
   5.14e-04 5.70e-03
 
-In this example, it is assumed that the Python interpreter was started from the directory ``tests/resources/cases`` of the GRIDOPT package, where the sample case ``ieee14.mat`` is located.
-
-.. _PFNET: http://pfnet-python.readthedocs.io/
+In this example, it is assumed that the Python interpreter was started from a directory where the sample case |ieee14| is located.

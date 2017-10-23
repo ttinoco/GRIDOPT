@@ -6,7 +6,7 @@
 GRIDOPT Documentation
 =====================
 
-Welcome! This is the documentation for GRIDOPT, last updated |today|.
+Welcome! This is the documentation for GRIDOPT version |version|, last updated |today|.
 
 **What is GRIDOPT?**
 
@@ -16,7 +16,7 @@ GRIDOPT is a Python package that provides methods for solving power grid optimiz
 
 GRIDOPT is released under the BSD 2-clause license.
 
-**Documentation Contents**
+**Contents**
 
 .. module:: gridopt
 
@@ -32,7 +32,7 @@ GRIDOPT is released under the BSD 2-clause license.
 **Contributors (alphabetical)**
 
 * Martin Baltzinger
-* `Tomas Tinoco De Rubira <https://ttinoco.github.io/>`_
+* `Tomas Tinoco De Rubira <http://ttinoco.github.io/>`_
 
 Indices and tables
 ==================

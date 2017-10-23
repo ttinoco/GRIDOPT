@@ -3,16 +3,18 @@ Targets
 
 Unreleased
 ----------
-* Reduced width of ACOPF output per iteration (done).
-* Updated ACOPF regularization param names to be more consistent with those of ACPF (done).
-* Hid internal param data structure from user in power flow methods, and allowed saving/restoring params including optsolver parameters (done).
-* Changed method results and mechanism for storing solution and updating network (done).
-* Moved location of command-line unitlity (done).
-* Fixed bug in NR ACPF related to tap_changers vs tap_changers_v (done).
-* Changed travis to pfnet from testpypi (done).
-* Added "solver name" to method results (done).
-* Changed "optsolver" to "solver" and added "solver" to DCPF (done).
-* Add unittests for command-line utility (todo).
+
+Version 1.3.4
+-------------
+* Reduced width of ACOPF output per iteration.
+* Updated ACOPF regularization param names to be more consistent with those of ACPF.
+* Hid internal param data structure from user in power flow methods, and allowed saving/restoring params including optsolver parameters.
+* Changed method results and mechanism for storing solution and updating network.
+* Moved location of command-line unitlity.
+* Fixed bug in NR ACPF related to tap_changers vs tap_changers_v.
+* Changed travis to get pfnet and optalg from pypi.
+* Added "solver name" to method results.
+* Changed "optsolver" to "solver" and added "solver" to DCPF.
 
 Version 1.3.3
 -------------

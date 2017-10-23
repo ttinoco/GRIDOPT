@@ -25,7 +25,7 @@ The command-line utility ``gridopt`` can be used to load a network data file, an
 
 .. option:: case 
 
-            Name of a `power network data file`_.
+            Name of a power network data file.
 
 .. option:: method
 
@@ -50,8 +50,4 @@ Example
 
 The following example shows how to use the command-line utility to solve an AC power flow problem using the Newton-Raphson algorithm with a feasibility tolerance of ``1e-5`` per unit system MVA::
 
-  gridopt ieee14.mat ACPF --params feastol=1e-5 optsolver=nr
-
-For this sample command, it is assumed that the current directory is the directory ``tests/resources/cases`` of the GRIDOPT package.
-  
-.. _power network data file: http://pfnet-python.readthedocs.io/en/latest/parsers.html
+  gridopt ieee14.mat ACPF --params feastol=1e-5 solver=nr

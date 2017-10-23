@@ -35,11 +35,11 @@ class PFmethod:
 
         Parameters
         ----------
-        net : PFNET Network
+        net : |Network|
 
         Returns
         -------
-        prob : PFNET Problem
+        prob : |Problem|
         """
         
         return None
@@ -150,7 +150,7 @@ class PFmethod:
          
         Parameters
         ----------
-        p : PFNET problem.
+        p : |Problem|
         """
 
         self.results['problem'] = p
@@ -172,7 +172,7 @@ class PFmethod:
 
         Parameters
         ----------
-        net : PFNET network
+        net : |Network|
         """
         
         self.results['network snapshot'] = net
@@ -267,7 +267,7 @@ class PFmethod:
         
         Parameters
         ----------
-        net : PFNET Network
+        net : |Network|
         """        
         
         pass
@@ -278,7 +278,7 @@ class PFmethod:
 
         Parameters
         ----------
-        net : PFNET Network
+        net : |Network|
         """
 
         if self.results['network snapshot'] is not None:

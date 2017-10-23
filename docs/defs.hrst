@@ -1,0 +1,124 @@
+.. _Python: https://www.python.org/
+.. |Python| replace:: `Python`_
+
+.. _pip: https://pip.pypa.io/en/stable/
+.. |pip| replace:: `pip`_
+
+.. _Make: https://www.gnu.org/software/make/
+.. |Make| replace:: `Make`_
+
+.. _Anaconda: https://www.anaconda.com/
+.. |Anaconda| replace:: `Anaconda`_
+
+.. _CMake: https://cmake.org/
+.. |CMake| replace:: `CMake`_
+
+.. _7-Zip: http://www.7-zip.org/
+.. |7-Zip| replace:: `7-Zip`_
+
+.. _MinGW: https://anaconda.org/carlkl/mingwpy
+.. |MinGW| replace:: `MinGW`_
+
+.. _ieee14: https://github.com/ttinoco/GRIDOPT/tree/master/tests/resources/cases
+.. |ieee14| replace:: `ieee14`_
+
+.. _ARTERE: http://www.montefiore.ulg.ac.be/~vct/software.html
+.. |ARTERE| replace:: `ARTERE`_
+
+.. _MATLAB: http://www.mathworks.com/products/matlab/
+.. |MATLAB| replace:: `MATLAB`_
+
+.. _JSON: http://www.json.org/
+.. |JSON| replace:: `JSON`_
+
+.. _MATPOWER: http://www.pserc.cornell.edu//matpower/
+.. |MATPOWER| replace:: `MATPOWER`_
+
+.. _Cython: http://cython.org
+.. |Cython| replace:: `Cython`_
+
+.. _Graphviz: http://www.graphviz.org/Documentation.php
+.. _Graphviz Output Formats: http://www.graphviz.org/content/output-formats
+.. |Graphviz| replace:: `Graphviz`_
+.. |GraphvizOutputFormats| replace:: `Graphviz Output Formats`_
+
+.. _Numpy: http://docs.scipy.org/doc/numpy/
+.. |Numpy| replace:: `Numpy`_
+.. |Array| replace:: :class:`ndarray <numpy.ndarray>`
+
+.. _Scipy: http://docs.scipy.org/doc/scipy/reference/
+.. |Scipy| replace:: `Scipy`_
+.. |CooMatrix| replace:: :class:`coo_matrix <scipy.sparse.coo_matrix>`
+
+.. |TrueFalse| replace:: {``True``, ``False``}
+
+.. _OPTALG: http://optalg.readthedocs.io
+.. |OPTALG| replace:: `OPTALG`_
+.. |LinSolvers| replace:: :ref:`ref_lin_solver`
+.. |IQP| replace:: :ref:`opt_solver_iqp`
+.. |NR| replace:: :ref:`opt_solver_nr`
+.. |AUGL| replace:: :ref:`opt_solver_inlp`
+.. |INLP| replace:: :ref:`opt_solver_augl`
+.. |IPOPT| replace:: :ref:`opt_solver_ipopt`
+
+.. _PFNET: http://pfnet-python.readthedocs.io
+.. |PFNET| replace:: `PFNET`_
+.. |ParserBase| replace:: :class:`ParserBase <pfnet.ParserBase>`
+.. |Parser| replace:: :class:`Parser <pfnet.Parser>`
+.. |ParserJSON| replace:: :class:`ParserJSON <pfnet.ParserJSON>`
+.. |ParserMAT| replace:: :class:`ParserMAT <pfnet.ParserMAT>`
+.. |ParserART| replace:: :class:`ParserART <pfnet.ParserART>`
+.. |ParserRAW| replace:: :class:`ParserRAW <pfnet.ParserRAW>`
+.. |Network| replace:: :class:`Network <pfnet.Network>`
+.. |Bus| replace:: :class:`Bus <pfnet.Bus>`
+.. |Branch| replace:: :class:`Branch <pfnet.Branch>`
+.. |Generator| replace:: :class:`Generator <pfnet.Generator>`
+.. |Shunt| replace:: :class:`Shunt <pfnet.Shunt>`
+.. |Load| replace:: :class:`Load <pfnet.Load>`
+.. |VarGenerator| replace:: :class:`VarGenerator <pfnet.VarGenerator>`
+.. |Battery| replace:: :class:`Battery <pfnet.Battery>`
+.. |Contingency| replace:: :class:`Contingency <pfnet.Contingency>`
+.. |FunctionBase| replace:: :class:`FunctionBase <pfnet.FunctionBase>`
+.. |CustomFunction| replace:: :class:`CustomFunction <pfnet.CustomFunction>`
+.. |ConstraintBase| replace:: :class:`ConstraintBase <pfnet.ConstraintBase>`
+.. |CustomConstraint| replace:: :class:`CustomConstraint <pfnet.CustomConstraint>`
+.. |Problem| replace:: :class:`Problem <pfnet.Problem>`
+
+.. |RefObjects| replace:: :ref:`ref_net_obj`
+
+.. |RefFlags| replace:: :ref:`ref_net_flag`
+
+.. |RefBatteryQuantities| replace:: :ref:`ref_bat_q`
+.. |RefBranchQuantities| replace:: :ref:`ref_branch_q`
+.. |RefBusQuantities| replace:: :ref:`ref_bus_q`
+.. |RefGeneratorQuantities| replace:: :ref:`ref_gen_q`
+.. |RefLoadQuantities| replace:: :ref:`ref_load_q`
+.. |RefShuntQuantities| replace:: :ref:`ref_shunt_q`
+.. |RefVarGeneratorQuantities| replace:: :ref:`ref_vargen_q`
+.. |RefQuantities| replace:: |RefBusQuantities|, |RefBranchQuantities|, |RefGeneratorQuantities|, |RefShuntQuantities|, |RefLoadQuantities|, |RefVarGeneratorQuantities|, |RefBatteryQuantities|
+
+.. |RefBatteryProperties| replace:: :ref:`ref_bat_prop`
+.. |RefBranchProperties| replace:: :ref:`ref_branch_prop`
+.. |RefBusProperties| replace:: :ref:`ref_bus_prop`
+.. |RefGeneratorProperties| replace:: :ref:`ref_gen_prop`
+.. |RefLoadProperties| replace:: :ref:`ref_load_prop`
+.. |RefShuntProperties| replace:: :ref:`ref_shunt_prop`
+.. |RefVarGeneratorProperties| replace:: :ref:`ref_vargen_prop`
+.. |RefProperties| replace:: |RefBusProperties|, |RefBranchProperties|, |RefGeneratorProperties|,  |RefShuntProperties|, |RefLoadProperties|, |RefVarGeneratorProperties|, |RefBatteryProperties| 
+
+.. |RefBusSensitivities| replace:: :ref:`ref_bus_sens`
+.. |RefBusMismatches| replace:: :ref:`ref_bus_mis`
+
+.. |RefVarValueOptions| replace:: :ref:`ref_var_values`
+
+.. |FunctionGEN_COST| replace:: :ref:`prob_func_GEN_COST`
+.. |FunctionLOAD_UTIL| replace:: :ref:`prob_func_LOAD_UTIL`
+
+.. |ConstraintDCPF| replace:: :ref:`prob_constr_DCPF`
+.. |ConstraintACPF| replace:: :ref:`prob_constr_ACPF`
+.. |ConstraintAC_FLOW_LIM| replace:: :ref:`prob_constr_AC_FLOW_LIM`
+.. |ConstraintDC_FLOW_LIM| replace:: :ref:`prob_constr_DC_FLOW_LIM`
+.. |ConstraintBOUND| replace:: :ref:`prob_constr_BOUND`
+.. |ConstraintREG_GEN| replace:: :ref:`prob_constr_REG_GEN`
+.. |ConstraintREG_TRAN| replace:: :ref:`prob_constr_REG_TRAN`
+.. |ConstraintREG_SHUNT| replace:: :ref:`prob_constr_REG_SHUNT`
