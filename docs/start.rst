@@ -34,11 +34,13 @@ In order to install the GRIDOPT, the following tools are needed:
 After getting these tools, the GRIDOPT Python module can be easily installed by executing the following commands on the terminal or Anaconda prompt::
 
   pip install numpy cython
+  pip install optalg pfnet
   pip install gridopt
 
 To install the module from source, the code can be obtained from `<https://github.com/ttinoco/GRIDOPT>`_, and then the following commands can be executed on the terminal or Anaconda prompt from the root directory of the package::
 
     pip install numpy cython
+    pip install optalg pfnet
     python setup.py install
 
 Running the unit tests can be done with::
