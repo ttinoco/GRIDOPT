@@ -10,7 +10,7 @@ from setuptools import setup
 
 setup(name='GRIDOPT',
       zip_safe=False,
-      version='1.3.4rc1',
+      version='1.3.4rc2',
       description='Power Grid Optimization Library',
       url='https://github.com/ttinoco/GRIDOPT',
       author='Tomas Tinoco De Rubira',
@@ -26,6 +26,6 @@ setup(name='GRIDOPT',
       install_requires=['cython>=0.20.1',
                         'numpy>=1.11.2',
                         'scipy>=0.18.1',
-                        'pfnet>=1.3.2rc1',
-                        'optalg>=1.1.5rc1',
+                        'pfnet==1.3.2rc2',
+                        'optalg==1.1.5rc2',
                         'nose'])
