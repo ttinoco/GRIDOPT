@@ -8,6 +8,7 @@
 
 from __future__ import print_function
 import time
+import pfnet
 import numpy as np
 from .method_error import *
 from .method import PFmethod
@@ -20,20 +21,21 @@ class ACPF(PFmethod):
 
     name = 'ACPF'
     
-    _parameters = {'weight_vmag': 1e0,  # weight for reg voltage magnitude penalty
-                   'weight_vang': 1e0,  # weight for angle difference penalty
-                   'weight_pq': 1e-3,   # weight for gen powers penalty
-                   'weight_t': 1e-3,    # weight for tap ratios penalty
-                   'weight_b': 1e-3,    # weight for shunt susceptances penalty
-                   'limit_gens': True,  # flag for enforcing generator reactive power limits
-                   'lock_taps': True,   # flag for locking transformer tap ratios
-                   'lock_shunts': True, # flag for locking swtiched shunts
-                   'tap_step': 0.5,     # tap ratio acceleration factor (NR only)
-                   'shunt_step': 0.5,   # susceptance acceleration factor (NR only)
-                   'dtap': 1e-5,        # tap ratio perturbation (NR only)
-                   'dsus': 1e-5,        # susceptance perturbation (NR only)
-                   'vmin_thresh': 0.1,  # threshold for vmin
-                   'solver': 'augl'}    # OPTALG optimization solver (augl, ipopt, nr, inlp)
+    _parameters = {'weight_vmag': 1e0,         # weight for reg voltage magnitude penalty
+                   'weight_vang': 1e0,         # weight for angle difference penalty
+                   'weight_pq': 1e-3,          # weight for gen powers penalty
+                   'weight_t': 1e-3,           # weight for tap ratios penalty
+                   'weight_b': 1e-3,           # weight for shunt susceptances penalty
+                   'limit_gens': True,         # flag for enforcing generator reactive power limits
+                   'lock_taps': True,          # flag for locking transformer tap ratios
+                   'lock_shunts': True,        # flag for locking swtiched shunts
+                   'tap_step': 0.5,            # tap ratio acceleration factor (NR only)
+                   'shunt_step': 0.5,          # susceptance acceleration factor (NR only)
+                   'dtap': 1e-5,               # tap ratio perturbation (NR only)
+                   'dsus': 1e-5,               # susceptance perturbation (NR only)
+                   'vmin_thresh': 0.1,         # threshold for vmin
+                   'Q_participation': 'range', # type of Q regulation participation (range or fraction) 
+                   'solver': 'augl'}           # OPTALG optimization solver (augl, ipopt, nr, inlp)
 
     _parameters_augl = {'feastol' : 1e-4,
                         'optol' : 1e-4,
@@ -86,6 +88,7 @@ class ACPF(PFmethod):
         lock_taps = params['lock_taps']
         lock_shunts = params['lock_shunts']
         solver_name = params['solver']
+        Q_par = params['Q_participation']
         
         # Clear flags
         net.clear_flags()
@@ -147,7 +150,14 @@ class ACPF(PFmethod):
             problem = pfnet.Problem(net)
             problem.add_constraint(pfnet.Constraint('AC power balance',net))
             problem.add_constraint(pfnet.Constraint('generator active power participation',net))
-            problem.add_constraint(pfnet.Constraint('generator reactive power participation',net))
+            Q_par_constr = pfnet.Constraint('generator reactive power participation',net)
+            if Q_par == 'range':
+                Q_par_constr.set_parameter('type', pfnet.CONSTR_PAR_GEN_Q_TYPE_RANGE)
+            elif Q_par == 'fraction':
+                Q_par_constr.set_parameter('type', pfnet.CONSTR_PAR_GEN_Q_TYPE_FRACTION)
+            else:
+                raise ValueError('invalid Q participation parameter')
+            problem.add_constraint(Q_par_constr)
             problem.add_function(pfnet.Function('voltage magnitude regularization',
                                                 wm/max([net.num_buses,1.]),net))
             problem.add_function(pfnet.Function('voltage angle regularization',
@@ -225,7 +235,14 @@ class ACPF(PFmethod):
             problem = pfnet.Problem(net)
             problem.add_constraint(pfnet.Constraint('AC power balance',net))
             problem.add_constraint(pfnet.Constraint('generator active power participation',net))
-            problem.add_constraint(pfnet.Constraint('generator reactive power participation',net))
+            Q_par_constr = pfnet.Constraint('generator reactive power participation',net)
+            if Q_par == 'range':
+                Q_par_constr.set_parameter('type', pfnet.CONSTR_PAR_GEN_Q_TYPE_RANGE)
+            elif Q_par == 'fraction':
+                Q_par_constr.set_parameter('type', pfnet.CONSTR_PAR_GEN_Q_TYPE_FRACTION)
+            else:
+                raise ValueError('invalid Q participation parameter')
+            problem.add_constraint(Q_par_constr)
             problem.add_constraint(pfnet.Constraint('variable fixing',net))
             if limit_gens:
                 problem.add_heuristic(pfnet.HEUR_TYPE_PVPQ)

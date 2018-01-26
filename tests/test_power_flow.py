@@ -108,6 +108,40 @@ class TestPowerFlow(unittest.TestCase):
             self.assertTrue(results['solver name'] in ['mumps','superlu'])
             self.assertTrue(isinstance(results['network snapshot'], pf.Network))
 
+    def test_ACPF_nr_Q_participations(self):
+
+        for case in utils.test_cases:
+
+            net = pf.Parser(case).parse(case)
+
+            for Q_par in ['range', 'fraction']:
+
+                method = gopt.power_flow.new_method('ACPF')
+                method.set_parameters(params={'solver': 'nr',
+                                              'quiet': True,
+                                              'Q_participation': Q_par})
+
+                method.solve(net)
+
+                results = method.get_results()
+
+                net_snap = results['network snapshot']
+                self.assertLess(np.abs(net_snap.bus_P_mis), 1e-2) # MW
+                self.assertLess(np.abs(net_snap.bus_Q_mis), 1e-2) # MVAr
+
+                for bus in net_snap.buses:
+                    if bus.is_regulated_by_gen():
+                        gen1 = bus.reg_generators[0]
+                        for gen2 in bus.reg_generators[1:]:
+                            if Q_par == 'range':
+                                a = (gen1.Q-gen1.Q_min)/np.maximum(gen1.Q_max-gen1.Q_min,1e-4)
+                                b = (gen2.Q-gen2.Q_min)/np.maximum(gen2.Q_max-gen2.Q_min,1e-4)
+                                self.assertLess(np.abs(a-b),1e-4)
+                            if Q_par == 'fraction':
+                                a = gen1.Q/np.maximum(gen1.Q_par,1e-4)
+                                b = gen2.Q/np.maximum(gen2.Q_par,1e-4)
+                                self.assertLess(np.abs(a-b),1e-4)
+                                
     def test_ACPF_solutions(self):
 
         print('')

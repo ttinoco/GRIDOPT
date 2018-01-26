@@ -3,6 +3,7 @@ Targets
 
 Unreleased
 ----------
+* Added ACPF Q participation option and unittests.
 
 Version 1.3.4
 -------------
