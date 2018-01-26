@@ -139,6 +139,7 @@ class ACPF(PFmethod):
                 if not lock_shunts:
                     num_vars += net.get_num_switched_shunts()*net.num_periods
                 assert(net.num_vars == num_vars)
+                assert(net.num_bounded == 0)
                 if limit_gens:
                     assert(net.num_fixed == 0)
                 else:
@@ -148,36 +149,27 @@ class ACPF(PFmethod):
             
             # Set up problem
             problem = pfnet.Problem(net)
-            problem.add_constraint(pfnet.Constraint('AC power balance',net))
-            problem.add_constraint(pfnet.Constraint('generator active power participation',net))
-            Q_par_constr = pfnet.Constraint('generator reactive power participation',net)
-            if Q_par == 'range':
-                Q_par_constr.set_parameter('type', pfnet.CONSTR_PAR_GEN_Q_TYPE_RANGE)
-            elif Q_par == 'fraction':
-                Q_par_constr.set_parameter('type', pfnet.CONSTR_PAR_GEN_Q_TYPE_FRACTION)
-            else:
-                raise ValueError('invalid Q participation parameter')
-            problem.add_constraint(Q_par_constr)
+            problem.add_constraint(pfnet.Constraint('AC power balance', net))
             problem.add_function(pfnet.Function('voltage magnitude regularization',
-                                                wm/max([net.num_buses,1.]),net))
+                                                wm/max([net.num_buses,1.]), net))
             problem.add_function(pfnet.Function('voltage angle regularization',
                                                 wa/max([net.num_buses,1.]),net))
             problem.add_function(pfnet.Function('generator powers regularization',
-                                                wp/max([net.num_generators,1.]),net))
+                                                wp/max([net.num_generators,1.]), net))
             if limit_gens:
-                problem.add_constraint(pfnet.Constraint('voltage regulation by generators',net))
+                problem.add_constraint(pfnet.Constraint('voltage regulation by generators', net))
             else:
-                problem.add_constraint(pfnet.Constraint('variable fixing',net))
+                problem.add_constraint(pfnet.Constraint('variable fixing', net))
             if not lock_taps:
-                problem.add_constraint(pfnet.Constraint('voltage regulation by transformers',net))
+                problem.add_constraint(pfnet.Constraint('voltage regulation by transformers', net))
                 problem.add_function(pfnet.Function('tap ratio regularization',
-                                                    wt/max([net.get_num_tap_changers_v(),1.]),net))
+                                                    wt/max([net.get_num_tap_changers_v(),1.]), net))
             if not lock_shunts:
-                problem.add_constraint(pfnet.Constraint('voltage regulation by shunts',net))
+                problem.add_constraint(pfnet.Constraint('voltage regulation by shunts', net))
                 problem.add_function(pfnet.Function('susceptance regularization',
-                                                    wb/max([net.get_num_switched_shunts(),1.]),net))
+                                                    wb/max([net.get_num_switched_shunts(),1.]), net))
             problem.analyze()
-        
+            
             # Return
             return problem
 
@@ -378,11 +370,13 @@ class ACPF(PFmethod):
                 if header:
                     print('{0:^5}'.format('vmax'), end=' ')
                     print('{0:^5}'.format('vmin'), end=' ')
-                    print('{0:^8}'.format('gvdev'))
+                    print('{0:^8}'.format('gvdev'), end=' ')
+                    print('{0:^8}'.format('gQvio'))
                 else:
                     print('{0:^5.2f}'.format(np.average(net.bus_v_max)), end=' ')
                     print('{0:^5.2f}'.format(np.average(net.bus_v_min)), end=' ')
-                    print('{0:^8.1e}'.format(np.average(net.gen_v_dev)))
+                    print('{0:^8.1e}'.format(np.average(net.gen_v_dev)), end=' ')
+                    print('{0:^8.1e}'.format(np.average(net.gen_Q_vio)))
             return info_printer
 
         # NR-based
