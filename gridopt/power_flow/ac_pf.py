@@ -33,8 +33,8 @@ class ACPF(PFmethod):
                    'shunt_step': 0.5,          # susceptance acceleration factor (NR only)
                    'dtap': 1e-5,               # tap ratio perturbation (NR only)
                    'dsus': 1e-5,               # susceptance perturbation (NR only)
+                   'pvpq_start_k': 0,          # start iteration number for PVPQ switching heuristics
                    'vmin_thresh': 0.1,         # threshold for vmin
-                   'Q_participation': 'range', # type of Q regulation participation (range or fraction) 
                    'solver': 'augl'}           # OPTALG optimization solver (augl, ipopt, nr, inlp)
 
     _parameters_augl = {'feastol' : 1e-4,
@@ -88,7 +88,6 @@ class ACPF(PFmethod):
         lock_taps = params['lock_taps']
         lock_shunts = params['lock_shunts']
         solver_name = params['solver']
-        Q_par = params['Q_participation']
         
         # Clear flags
         net.clear_flags()
@@ -182,10 +181,6 @@ class ACPF(PFmethod):
                           'variable',
                           'not slack',
                           ['voltage magnitude','voltage angle'])
-            net.set_flags('bus',
-                          'fixed',
-                          'regulated by generator',
-                          'voltage magnitude')
 
             # Gen active powers
             net.set_flags('generator',
@@ -217,8 +212,7 @@ class ACPF(PFmethod):
                                         net.get_num_reg_gens() +
                                         net.get_num_tap_changers_v() +
                                         net.get_num_switched_shunts())*net.num_periods)
-                assert(net.num_fixed == (net.get_num_buses_reg_by_gen() +
-                                         net.get_num_tap_changers_v() +
+                assert(net.num_fixed == (net.get_num_tap_changers_v() +
                                          net.get_num_switched_shunts())*net.num_periods)
             except AssertionError:
                 raise PFmethodError_BadProblem()
@@ -226,16 +220,9 @@ class ACPF(PFmethod):
             # Set up problem
             problem = pfnet.Problem(net)
             problem.add_constraint(pfnet.Constraint('AC power balance',net))
-            problem.add_constraint(pfnet.Constraint('generator active power participation',net))
-            Q_par_constr = pfnet.Constraint('generator reactive power participation',net)
-            if Q_par == 'range':
-                Q_par_constr.set_parameter('type', pfnet.CONSTR_PAR_GEN_Q_TYPE_RANGE)
-            elif Q_par == 'fraction':
-                Q_par_constr.set_parameter('type', pfnet.CONSTR_PAR_GEN_Q_TYPE_FRACTION)
-            else:
-                raise ValueError('invalid Q participation parameter')
-            problem.add_constraint(Q_par_constr)
-            problem.add_constraint(pfnet.Constraint('variable fixing',net))
+            problem.add_constraint(pfnet.Constraint('generator active power participation', net))
+            problem.add_constraint(pfnet.Constraint('PVPQ switching', net))
+            problem.add_constraint(pfnet.Constraint('variable fixing', net))
             if limit_gens:
                 problem.add_heuristic(pfnet.HEUR_TYPE_PVPQ)
             problem.analyze()
@@ -261,6 +248,7 @@ class ACPF(PFmethod):
         solver_name = params['solver']
         solver_params = params['solver_parameters']
         feastol = solver_params['nr']['feastol']
+        pvpq_start_k = params['pvpq_start_k']
 
         # Opt solver
         if solver_name == 'augl':
@@ -301,7 +289,7 @@ class ACPF(PFmethod):
                     raise PFmethodError_ShuntVReg(e)                
 
         def c3(s):
-            if s.k > 0:
+            if s.k >= pvpq_start_k:
                 prob = s.problem.wrapped_problem
                 prob.apply_heuristics(s.x)
                 s.problem.A = prob.A

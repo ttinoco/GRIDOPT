@@ -3,7 +3,8 @@ Targets
 
 Unreleased
 ----------
-* Added ACPF Q participation option and unittests.
+* Changed ACPF based on NR to use new PVPQ switching constraint from PFNET.
+* Added pvpq_start_k parameter to ACPF to control start iteration of PVPQ switching heuristics.
 
 Version 1.3.4
 -------------

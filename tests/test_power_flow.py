@@ -108,7 +108,7 @@ class TestPowerFlow(unittest.TestCase):
             self.assertTrue(results['solver name'] in ['mumps','superlu'])
             self.assertTrue(isinstance(results['network snapshot'], pf.Network))
 
-    def test_ACPF_nr_Q_participations(self):
+    def test_ACPF_nr_heuristics(self):
 
         for case in utils.test_cases:
 
@@ -118,9 +118,7 @@ class TestPowerFlow(unittest.TestCase):
 
                 method = gopt.power_flow.new_method('ACPF')
                 method.set_parameters(params={'solver': 'nr',
-                                              'quiet': True,
-                                              'Q_participation': Q_par})
-
+                                              'quiet': True})
                 method.solve(net)
 
                 results = method.get_results()
@@ -129,18 +127,28 @@ class TestPowerFlow(unittest.TestCase):
                 self.assertLess(np.abs(net_snap.bus_P_mis), 1e-2) # MW
                 self.assertLess(np.abs(net_snap.bus_Q_mis), 1e-2) # MVAr
 
+                eps = 1e-4
                 for bus in net_snap.buses:
-                    if bus.is_regulated_by_gen():
-                        gen1 = bus.reg_generators[0]
-                        for gen2 in bus.reg_generators[1:]:
-                            if Q_par == 'range':
-                                a = (gen1.Q-gen1.Q_min)/np.maximum(gen1.Q_max-gen1.Q_min,1e-4)
-                                b = (gen2.Q-gen2.Q_min)/np.maximum(gen2.Q_max-gen2.Q_min,1e-4)
-                                self.assertLess(np.abs(a-b),1e-4)
-                            if Q_par == 'fraction':
-                                a = gen1.Q/np.maximum(gen1.Q_par,1e-4)
-                                b = gen2.Q/np.maximum(gen2.Q_par,1e-4)
-                                self.assertLess(np.abs(a-b),1e-4)
+                    if bus.is_regulated_by_gen() and not bus.is_slack():
+                        for gen in bus.reg_generators:
+                            self.assertLessEqual(gen.Q, gen.Q_max+1e-10)
+                            self.assertGreaterEqual(gen.Q, gen.Q_min-1e-10)
+                        if np.abs(bus.v_mag-bus.v_set) < eps: # v at set
+                            Qtotal = 0.
+                            norm = 0.
+                            for gen in bus.reg_generators:
+                                if np.abs(gen.Q-gen.Q_max) > eps and np.abs(gen.Q-gen.Q_min) > eps:
+                                    Qtotal += gen.Q
+                                    norm += gen.Q_par
+                            for gen in bus.reg_generators:
+                                if np.abs(gen.Q-gen.Q_max) > eps and np.abs(gen.Q-gen.Q_min) > eps:
+                                    self.assertLess(np.abs(gen.Q-gen.Q_par*Qtotal/norm), eps)
+                        else: # v not at set
+                            num = 0
+                            for gen in bus.reg_generators:
+                                if np.abs(gen.Q-gen.Q_max) <= eps or np.abs(gen.Q-gen.Q_min) <= eps:
+                                    num += 1
+                            self.assertGreaterEqual(num, 1)                                
                                 
     def test_ACPF_solutions(self):
 
