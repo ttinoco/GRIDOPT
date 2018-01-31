@@ -35,7 +35,8 @@ class ACPF(PFmethod):
                    'dsus': 1e-5,               # susceptance perturbation (NR only)
                    'pvpq_start_k': 0,          # start iteration number for PVPQ switching heuristics
                    'vmin_thresh': 0.1,         # threshold for vmin
-                   'solver': 'augl'}           # OPTALG optimization solver (augl, ipopt, nr, inlp)
+                   'solver': 'augl',           # OPTALG optimization solver (augl, ipopt, nr, inlp)
+                   'v_reg_by_gens': 'normal'}  # voltage regulation by generators (normal, extended)
 
     _parameters_augl = {'feastol' : 1e-4,
                         'optol' : 1e-4,
@@ -79,8 +80,8 @@ class ACPF(PFmethod):
 
         # Parameters
         params = self._parameters
-        wm = params['weight_vang']
-        wa = params['weight_vmag']
+        wm = params['weight_vmag']
+        wa = params['weight_vang']
         wp = params['weight_pq']
         wt = params['weight_t']
         wb = params['weight_b']
@@ -88,6 +89,7 @@ class ACPF(PFmethod):
         lock_taps = params['lock_taps']
         lock_shunts = params['lock_shunts']
         solver_name = params['solver']
+        v_reg_by_gens = params['v_reg_by_gens']
         
         # Clear flags
         net.clear_flags()
@@ -156,7 +158,12 @@ class ACPF(PFmethod):
             problem.add_function(pfnet.Function('generator powers regularization',
                                                 wp/max([net.num_generators,1.]), net))
             if limit_gens:
-                problem.add_constraint(pfnet.Constraint('voltage regulation by generators', net))
+                if v_reg_by_gens == 'normal':
+                    problem.add_constraint(pfnet.Constraint('voltage regulation by generators', net))
+                elif v_reg_by_gens == 'extended':
+                    problem.add_constraint(pfnet.Constraint('extended voltage regulation by generators', net))
+                else:
+                    raise ValueError('invalid type of voltage regulation by generators')
             else:
                 problem.add_constraint(pfnet.Constraint('variable fixing', net))
             if not lock_taps:

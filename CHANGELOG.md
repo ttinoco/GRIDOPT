@@ -5,6 +5,7 @@ Unreleased
 ----------
 * Changed ACPF based on NR to use new PVPQ switching constraint from PFNET.
 * Added pvpq_start_k parameter to ACPF to control start iteration of PVPQ switching heuristics.
+* Added v_reg_by_gens parameter (normal, extended).
 
 Version 1.3.4
 -------------
