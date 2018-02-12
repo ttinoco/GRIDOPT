@@ -247,8 +247,6 @@ class ACPF(PFmethod):
         vmin_thresh = params['vmin_thresh']
         solver_name = params['solver']
         solver_params = params['solver_parameters']
-        feastol = solver_params['nr']['feastol']
-        pvpq_start_k = params['pvpq_start_k']
 
         # Opt solver
         if solver_name == 'augl':
@@ -274,7 +272,7 @@ class ACPF(PFmethod):
         # Callbacks
         def c1(s):
             if (s.k != 0 and
-                (not lock_taps) and norm(s.problem.f,np.inf) < 100.*feastol):
+                (not lock_taps) and norm(s.problem.f,np.inf) < 100.*solver_params['nr']['feastol']):
                 try:
                     self.apply_tran_v_regulation(s)
                 except Exception as e:
@@ -282,14 +280,14 @@ class ACPF(PFmethod):
             
         def c2(s):
             if (s.k != 0 and
-                (not lock_shunts) and norm(s.problem.f,np.inf) < 100.*feastol):
+                (not lock_shunts) and norm(s.problem.f,np.inf) < 100.*solver_params['nr']['feastol']):
                 try:
                     self.apply_shunt_v_regulation(s)
                 except Exception as e:
                     raise PFmethodError_ShuntVReg(e)                
 
         def c3(s):
-            if s.k >= pvpq_start_k:
+            if s.k >= params['pvpq_start_k']:
                 prob = s.problem.wrapped_problem
                 prob.apply_heuristics(s.x)
                 s.problem.A = prob.A
