@@ -96,8 +96,8 @@ class ACOPF(PFmethod):
 
         try:
             assert(net.num_vars == (2*net.num_buses-net.get_num_slack_buses() +
-                                    2*net.get_num_gens_not_on_outage())*net.num_periods)
-            assert(net.num_bounded == (2*net.get_num_gens_not_on_outage() +
+                                    2*net.get_num_generators_not_on_outage())*net.num_periods)
+            assert(net.num_bounded == (2*net.get_num_generators_not_on_outage() +
                                        net.num_buses)*net.num_periods)
         except AssertionError:
             raise PFmethodError_BadProblem()

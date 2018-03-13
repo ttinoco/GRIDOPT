@@ -26,6 +26,6 @@ setup(name='GRIDOPT',
       install_requires=['cython>=0.20.1',
                         'numpy>=1.11.2',
                         'scipy>=0.18.1',
-                        'pfnet==1.3.2rc2',
+                        'pfnet==1.3.3rc1',
                         'optalg==1.1.5rc2',
                         'nose'])
