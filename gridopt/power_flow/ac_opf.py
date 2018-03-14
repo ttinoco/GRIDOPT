@@ -19,15 +19,15 @@ class ACOPF(PFmethod):
 
     name = 'ACOPF'
 
-    _parameters = {'weight_cost' : 1e0,     # weight for generation cost
-                   'weight_vmag' : 0.,      # weight for voltage magnitude regularization
-                   'weight_vang' : 0.,      # weight for voltage angle regularization
-                   'weight_pq' : 0.,        # weight for generator power regularization
-                   'weight_t' : 0.,         # weight for tap ratios regularization
-                   'weight_b' : 0.,         # weight for shunt susceptances regularization
-                   'thermal_limits': False, # flag for thermal limits
-                   'vmin_thresh': 0.1,      # threshold for vmin termination
-                   'solver': 'augl'}        # OPTALG optimization solver (augl, ipopt, inlp)
+    _parameters = {'weight_cost' : 1e0,      # weight for generation cost
+                   'weight_vmag' : 0.,       # weight for voltage magnitude regularization
+                   'weight_vang' : 0.,       # weight for voltage angle regularization
+                   'weight_pq' : 0.,         # weight for generator power regularization
+                   'weight_t' : 0.,          # weight for tap ratios regularization
+                   'weight_b' : 0.,          # weight for shunt susceptances regularization
+                   'thermal_limits': 'none', # none, linear, nonlinear
+                   'vmin_thresh': 0.1,       # threshold for vmin termination
+                   'solver': 'augl'}         # OPTALG optimization solver (augl, ipopt, inlp)
 
     _parameters_augl = {'feastol' : 1e-4,
                         'optol' : 1e-4,
@@ -108,8 +108,14 @@ class ACOPF(PFmethod):
         # Constraints
         problem.add_constraint(pfnet.Constraint('AC power balance',net))
         problem.add_constraint(pfnet.Constraint('variable bounds',net))
-        if th:
+        if th == 'nonlinear':
             problem.add_constraint(pfnet.Constraint("AC branch flow limits",net))
+        elif th == 'linear':
+            problem.add_constraint(pfnet.Constraint("linearized AC branch flow limits",net))
+        elif th == 'none':
+            pass
+        else:
+            raise PFmethodError_BadParamValue('thermal_limits')
 
         # Functions
         problem.add_function(pfnet.Function('generation cost',

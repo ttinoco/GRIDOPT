@@ -29,6 +29,10 @@ class PFmethodError_BadParams(PFmethodError):
     def __init__(self, keys):
         PFmethodError.__init__(self, 'invalid method parameters: {}'.format(keys))
 
+class PFmethodError_BadParamValue(PFmethodError):
+    def __init__(self, key):
+        PFmethodError.__init__(self, 'invalid value for parameter {}'.format(key))
+
 class PFmethodError_BadOptSolver(PFmethodError):
     def __init__(self, param=''):
         PFmethodError.__init__(self, 'invalid optimization solver %s' %param)
