@@ -1,21 +1,24 @@
-language: c
+language: python
 
-os:
-- osx
-- linux
-
-before_install:
-- if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then 
-    sudo apt-get update;
-    sudo apt-get -y purge libgraphviz-dev; 
-  fi
-- if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then 
-    brew update;
-  fi
+matrix:
+  include:
+    - os: linux
+      python: 2.7
+    - os: linux
+      python: 3.5
+    - os: osx
+      osx_image: xcode7.3
+      language: generic
 
 install:
-- sudo pip install cython numpy
-- sudo pip install optalg pfnet
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then 
+      sudo apt-get -y purge libgraphviz-dev;
+    fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+      sudo easy_install nose;
+    fi
+  - sudo pip install cython numpy
+  - sudo pip install "optalg==1.1.6rc1" "pfnet==1.3.3rc1" --verbose
 
 script: 
 - nosetests -s -v

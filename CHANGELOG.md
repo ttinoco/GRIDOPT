@@ -3,6 +3,9 @@ Targets
 
 Unreleased
 ----------
+
+Version 1.3.5
+-------------
 * Changed ACPF based on NR to use new PVPQ switching constraint from PFNET.
 * Added pvpq_start_k parameter to ACPF to control start iteration of PVPQ switching heuristics.
 * Updated ACPF method class to work as a parent method class.
