@@ -263,11 +263,11 @@ class TestPowerFlow(unittest.TestCase):
         method_ipopt = gopt.power_flow.new_method('ACOPF')
         method_ipopt.set_parameters(params={'solver':'ipopt','quiet': True})
         method_augl = gopt.power_flow.new_method('ACOPF')
-        method_augl.set_parameters(params={'solver':'augl','quiet': True, 'kappa': 1e-4, 'lam_reg':1e-6})
+        method_augl.set_parameters(params={'solver':'augl','quiet': True})
         method_inlp = gopt.power_flow.new_method('ACOPF')
         method_inlp.set_parameters(params={'solver':'inlp','quiet': True})
 
-        skipcases = ['aesoSL2014.raw','case3012wp.mat','case9241.mat','case32.art']
+        skipcases = ['aesoSL2014.raw','case2869.mat','case9241.mat','case32.art']
             
         for case in utils.test_cases:
 
@@ -277,7 +277,7 @@ class TestPowerFlow(unittest.TestCase):
             net = pf.Parser(case).parse(case)
 
             # Only small
-            if net.num_buses > 3000:
+            if net.num_buses > 3300:
                 continue
             
             self.assertEqual(net.num_periods,1)
