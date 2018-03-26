@@ -263,7 +263,7 @@ class TestPowerFlow(unittest.TestCase):
         method_ipopt = gopt.power_flow.new_method('ACOPF')
         method_ipopt.set_parameters(params={'solver':'ipopt','quiet': True})
         method_augl = gopt.power_flow.new_method('ACOPF')
-        method_augl.set_parameters(params={'solver':'augl','quiet': True})
+        method_augl.set_parameters(params={'solver':'augl','quiet': True, 'kappa': 1e-4, 'lam_reg': 1e-2})
         method_inlp = gopt.power_flow.new_method('ACOPF')
         method_inlp.set_parameters(params={'solver':'inlp','quiet': True})
 
