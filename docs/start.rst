@@ -18,8 +18,8 @@ GRIDOPT has the following dependencies:
 * |Cython| (>=0.20.1)
 * |Numpy| (>=1.11.2)
 * |Scipy| (>=0.18.1)
-* |OPTALG| (>= 1.1.5r1)
-* |PFNET| (>= 1.3.2r1)
+* |OPTALG| (== 1.1.6r1)
+* |PFNET| (== 1.3.3r1)
 
 .. _start_installation:
 
