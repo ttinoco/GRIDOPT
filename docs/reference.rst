@@ -40,7 +40,7 @@ Error Exceptions
 
 .. autoclass:: gridopt.power_flow.method_error.PFmethodError_BadVarLimits
 
-.. autoclass:: gridopt.power_flow.method_error.PFmethodError_BadParam
+.. autoclass:: gridopt.power_flow.method_error.PFmethodError_BadParams
 
 .. autoclass:: gridopt.power_flow.method_error.PFmethodError_BadOptSolver			      
 
