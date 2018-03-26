@@ -131,8 +131,8 @@ class TestPowerFlow(unittest.TestCase):
                 for bus in net_snap.buses:
                     if bus.is_regulated_by_gen() and not bus.is_slack():
                         for gen in bus.reg_generators:
-                            self.assertLessEqual(gen.Q, gen.Q_max+1e-10)
-                            self.assertGreaterEqual(gen.Q, gen.Q_min-1e-10)
+                            self.assertLessEqual(gen.Q, gen.Q_max+eps)
+                            self.assertGreaterEqual(gen.Q, gen.Q_min-eps)
                         if np.abs(bus.v_mag-bus.v_set) < eps: # v at set
                             Qtotal = 0.
                             norm = 0.
@@ -263,7 +263,7 @@ class TestPowerFlow(unittest.TestCase):
         method_ipopt = gopt.power_flow.new_method('ACOPF')
         method_ipopt.set_parameters(params={'solver':'ipopt','quiet': True})
         method_augl = gopt.power_flow.new_method('ACOPF')
-        method_augl.set_parameters(params={'solver':'augl','quiet': True, 'kappa': 1e-4})
+        method_augl.set_parameters(params={'solver':'augl','quiet': True, 'kappa': 1e-4, 'lam_reg':1e-2})
         method_inlp = gopt.power_flow.new_method('ACOPF')
         method_inlp.set_parameters(params={'solver':'inlp','quiet': True})
 
