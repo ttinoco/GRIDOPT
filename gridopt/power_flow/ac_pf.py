@@ -149,6 +149,7 @@ class ACPF(PFmethod):
             # Set up problem
             problem = pfnet.Problem(net)
             problem.add_constraint(pfnet.Constraint('AC power balance', net))
+            problem.add_constraint(pfnet.Constraint('generator active power participation', net))
             problem.add_function(pfnet.Function('voltage magnitude regularization',
                                                 wm/max([net.num_buses,1.]), net))
             problem.add_function(pfnet.Function('voltage angle regularization',
