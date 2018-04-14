@@ -225,7 +225,7 @@ class ACPF(PFmethod):
             problem.add_constraint(pfnet.Constraint('PVPQ switching', net))
             problem.add_constraint(pfnet.Constraint('variable fixing', net))
             if limit_gens:
-                problem.add_heuristic(pfnet.HEUR_TYPE_PVPQ)
+                problem.add_heuristic(pfnet.Heuristic('PVPQ switching', net))
             problem.analyze()
 
             # Return

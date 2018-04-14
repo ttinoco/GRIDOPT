@@ -4,6 +4,7 @@ Targets
 Unreleased
 ----------
 * Added slack P participation to non-nr acpf for consistency.
+* Updated to modular heuristic.
 
 Version 1.3.5
 -------------
