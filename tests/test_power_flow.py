@@ -7,6 +7,7 @@
 #*****************************************************#
 
 from __future__ import print_function
+import os
 import copy
 import unittest
 import numpy as np
@@ -174,7 +175,7 @@ class TestPowerFlow(unittest.TestCase):
                     self.assertEqual(netMP.num_periods,T)
 
                     # Only small
-                    if net.num_buses > 3000:
+                    if net.num_buses > 4000:
                         continue
                     
                     sol_file = utils.get_pf_solution_file(case,sol)
@@ -212,47 +213,50 @@ class TestPowerFlow(unittest.TestCase):
                     self.assertLess(norm(resultsMP['network snapshot'].bus_Q_mis-netMP.bus_Q_mis,np.inf),1e-10)
                     self.assertLess(norm(resultsMP['network snapshot'].gen_P_cost-netMP.gen_P_cost,np.inf),1e-10)
 
-                    print("%s\t%s\t%s\t%d" %(case.split('/')[-1],
-                                             sol_types[sol],
-                                             solver,
-                                             results['solver iterations']))
+                    # Sol validation
+                    validated = ''
+                    if sol_data is not None:
 
-                    # No sol
-                    if sol_data is None:
-                        continue
+                        v_mag_tol = sol_data['v_mag_tol']
+                        v_ang_tol = sol_data['v_ang_tol']
+                        bus_data = sol_data['bus_data']
 
-                    v_mag_tol = sol_data['v_mag_tol']
-                    v_ang_tol = sol_data['v_ang_tol']
-                    bus_data = sol_data['bus_data']
-
-                    counter = 0
-                    v_mag_error = []
-                    v_ang_error = []
-                    for bus_num,val in list(bus_data.items()):
+                        counter = 0
+                        v_mag_error = []
+                        v_ang_error = []
+                        for bus_num,val in list(bus_data.items()):
                         
-                        v_mag = val['v_mag']
-                        v_ang = val['v_ang']
+                            v_mag = val['v_mag']
+                            v_ang = val['v_ang']
                         
-                        try:
-                            busMP = netMP.get_bus_from_number(bus_num)
-                            bus = net.get_bus_from_number(bus_num)
-                        except pf.NetworkError:
-                            continue
+                            try:
+                                busMP = netMP.get_bus_from_number(bus_num)
+                                bus = net.get_bus_from_number(bus_num)
+                            except pf.NetworkError:
+                                continue
                                                        
-                        for t in range(T):
-                            v_mag_error.append(np.abs(busMP.v_mag[t]-v_mag))
-                            v_ang_error.append(np.abs(busMP.v_ang[t]*180./np.pi-v_ang))
-                        v_mag_error.append(np.abs(bus.v_mag-v_mag))
-                        v_ang_error.append(np.abs(bus.v_ang*180./np.pi-v_ang))
+                            for t in range(T):
+                                v_mag_error.append(np.abs(busMP.v_mag[t]-v_mag))
+                                v_ang_error.append(np.abs(busMP.v_ang[t]*180./np.pi-v_ang))
+                            v_mag_error.append(np.abs(bus.v_mag-v_mag))
+                            v_ang_error.append(np.abs(bus.v_ang*180./np.pi-v_ang))
                        
-                        counter += 1
+                            counter += 1
 
-                    self.assertEqual(len(v_mag_error),len(v_ang_error))
-                    if len(v_mag_error) > 0:
-                        self.assertLessEqual(np.max(v_mag_error),v_mag_tol)
-                        self.assertLessEqual(np.max(v_ang_error),v_ang_tol)
-                    self.assertEqual(len(v_mag_error),counter*(T+1))
-                    self.assertEqual(len(v_ang_error),counter*(T+1))
+                        self.assertEqual(len(v_mag_error),len(v_ang_error))
+                        if len(v_mag_error) > 0:
+                            validated = 'validated'
+                            self.assertLessEqual(np.max(v_mag_error),v_mag_tol)
+                            self.assertLessEqual(np.max(v_ang_error),v_ang_tol)
+                        self.assertEqual(len(v_mag_error),counter*(T+1))
+                        self.assertEqual(len(v_ang_error),counter*(T+1))
+
+                    # Show
+                    print("%s\t%s\t%s\t%d\t%s" %(case.split(os.sep)[-1],
+                                                 sol_types[sol],
+                                                 solver,
+                                                 results['solver iterations'],
+                                                 validated))
 
     def test_ACOPF_solutions(self):
 
@@ -271,7 +275,7 @@ class TestPowerFlow(unittest.TestCase):
             
         for case in utils.test_cases:
 
-            if case.split('/')[-1] in skipcases:
+            if case.split(os.sep)[-1] in skipcases:
                 continue
 
             net = pf.Parser(case).parse(case)
@@ -295,7 +299,7 @@ class TestPowerFlow(unittest.TestCase):
                 x1 = method_ipopt.get_results()['solver primal variables']
                 i1 = method_ipopt.get_results()['solver iterations']
                 p1 = method_ipopt.get_results()['network snapshot'].gen_P_cost
-                print("%s\t%s\t%d" %(case.split('/')[-1],'ipopt',i1))
+                print("%s\t%s\t%d" %(case.split(os.sep)[-1],'ipopt',i1))
             except ImportError:
                 has_ipopt = False
 
@@ -310,7 +314,7 @@ class TestPowerFlow(unittest.TestCase):
             x2 = method_inlp.get_results()['solver primal variables']
             i2 = method_inlp.get_results()['solver iterations']
             p2 = method_inlp.get_results()['network snapshot'].gen_P_cost
-            print("%s\t%s\t%d" %(case.split('/')[-1],'inlp',i2))
+            print("%s\t%s\t%d" %(case.split(os.sep)[-1],'inlp',i2))
 
             # AUGL
             net.update_properties()
@@ -323,7 +327,7 @@ class TestPowerFlow(unittest.TestCase):
             x3 = method_augl.get_results()['solver primal variables']
             i3 = method_augl.get_results()['solver iterations']
             p3 = method_augl.get_results()['network snapshot'].gen_P_cost
-            print("%s\t%s\t%d" %(case.split('/')[-1],'augl',i3))
+            print("%s\t%s\t%d" %(case.split(os.sep)[-1],'augl',i3))
 
             # Checks
             if has_ipopt:
@@ -347,7 +351,7 @@ class TestPowerFlow(unittest.TestCase):
 
         for case in utils.test_cases:
 
-            if case.split('/')[-1] in skipcases:
+            if case.split(os.sep)[-1] in skipcases:
                 continue
         
             net = pf.Parser(case).parse(case,T)
@@ -371,7 +375,7 @@ class TestPowerFlow(unittest.TestCase):
                 self.assertTrue(np.all(net.gen_P_cost == gen_P_cost))
                 self.assertTrue(np.all(method.results['network snapshot'].gen_P_cost != gen_P_cost))
             except gopt.power_flow.PFmethodError:
-                self.assertTrue(case.split('/')[-1] in infcases)
+                self.assertTrue(case.split(os.sep)[-1] in infcases)
                 self.assertEqual(method.results['solver status'],'error')
                 
             results = method.get_results()

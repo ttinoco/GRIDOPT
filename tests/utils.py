@@ -6,17 +6,18 @@
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
 
+import os
 import csv
 from os import listdir
 from os.path import join
 
-DIR = './tests/resources'
-test_cases = [join(DIR+'/cases',f) for f in listdir(DIR+'/cases')]
+DIR = join('.', 'tests', 'resources')
+test_cases = [join(DIR, 'cases', f) for f in listdir(join(DIR, 'cases'))]
 test_cases.sort()
 
 def get_pf_solution_file(case,sol):
 
-    return join(DIR+'/pf_solutions',case.split('/')[-1]+'.'+sol)
+    return join(DIR, 'pf_solutions', case.split(os.sep)[-1]+'.'+sol)
 
 def read_pf_solution_file(sol_file):
 

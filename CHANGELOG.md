@@ -12,6 +12,7 @@ Version 1.3.5
 * Added pvpq_start_k parameter to ACPF to control start iteration of PVPQ switching heuristics.
 * Updated ACPF method class to work as a parent method class.
 * Made thermal_limits param for ACOPF take on values 'none', 'nonlinear', and 'linear' (lineflow).
+* Made unittests' handling of test cases and solution files cross-platform.
 
 Version 1.3.4
 -------------
