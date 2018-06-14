@@ -178,7 +178,7 @@ class TestPowerFlow(unittest.TestCase):
                     if net.num_buses > 4000:
                         continue
                     
-                    sol_file = utils.get_pf_solution_file(case,sol)
+                    sol_file = utils.get_pf_solution_file(case, utils.DIR_PFSOL, sol)
                     sol_data = utils.read_pf_solution_file(sol_file)
                                           
                     # Set parameters

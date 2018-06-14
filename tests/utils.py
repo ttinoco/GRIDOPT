@@ -11,15 +11,41 @@ import csv
 from os import listdir
 from os.path import join
 
-DIR = join('.', 'tests', 'resources')
-test_cases = [join(DIR, 'cases', f) for f in listdir(join(DIR, 'cases'))]
+DIR_CASES = join('.', 'tests', 'resources', 'cases')
+DIR_PFSOL = join('.', 'tests', 'resources', 'pf_solutions')
+
+test_cases = [join(DIR_CASES, f) for f in listdir(DIR_CASES)]
 test_cases.sort()
 
-def get_pf_solution_file(case,sol):
+def get_pf_solution_file(case_file, dir, sol):
+    """
+    Gets power flow solution file path.
 
-    return join(DIR, 'pf_solutions', case.split(os.sep)[-1]+'.'+sol)
+    Parameters
+    ----------
+    case_file : path to case file (string)
+    dir : path to solution file directory (string)
+    sol : solution code extension (string)
+
+    Returns
+    -------
+    sol_file : path to solution file (string)
+    """
+
+    return join(dir, case_file.split(os.sep)[-1]+'.'+sol)
 
 def read_pf_solution_file(sol_file):
+    """
+    Reads contents of power flow solution file.
+    
+    Parameters
+    ----------
+    sol_file : path to solution file.
+
+    Returns
+    -------
+    sol_data : solution data (dictionary)
+    """
 
     try:
 
