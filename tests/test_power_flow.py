@@ -405,20 +405,22 @@ class TestPowerFlow(unittest.TestCase):
 
             # Network update (vars and sensitivities)
             xx = x[:net.num_vars]
+            row = 0
             for t in range(T):
                 for bus in net.buses:
                     if not bus.is_slack():
                         self.assertEqual(bus.v_ang[t],xx[bus.index_v_ang[t]])
                         self.assertEqual(bus.sens_v_ang_u_bound[t],mu0[bus.index_v_ang[t]])
                         self.assertEqual(bus.sens_v_ang_l_bound[t],pi0[bus.index_v_ang[t]])
+                    for branch in bus.branches_k:
+                        self.assertEqual(branch.sens_P_u_bound[t],mu0[net.num_vars+row])
+                        self.assertEqual(branch.sens_P_l_bound[t],pi0[net.num_vars+row])
+                        row += 1
                 for gen in net.generators:
                     if gen.is_P_adjustable():
                         self.assertEqual(gen.P[t],xx[gen.index_P[t]])
                         self.assertEqual(gen.sens_P_u_bound[t],mu0[gen.index_P[t]])
                         self.assertEqual(gen.sens_P_l_bound[t],pi0[gen.index_P[t]])
-                for branch in net.branches:
-                    self.assertEqual(branch.sens_P_u_bound[t],mu0[net.num_vars+branch.index+t*net.num_branches])
-                    self.assertEqual(branch.sens_P_l_bound[t],pi0[net.num_vars+branch.index+t*net.num_branches])
 
             # No thermal limits
             method.set_parameters({'thermal_limits':False})
