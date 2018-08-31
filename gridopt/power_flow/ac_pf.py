@@ -136,7 +136,7 @@ class ACPF(PFmethod):
                 if not lock_taps:
                     num_vars += net.get_num_tap_changers_v()*net.num_periods
                 if not lock_shunts:
-                    num_vars += net.get_num_switched_shunts()*net.num_periods
+                    num_vars += net.get_num_switched_v_shunts()*net.num_periods
                 assert(net.num_vars == num_vars)
                 assert(net.num_bounded == 0)
                 if limit_gens:
@@ -167,7 +167,7 @@ class ACPF(PFmethod):
             if not lock_shunts:
                 problem.add_constraint(pfnet.Constraint('voltage regulation by shunts', net))
                 problem.add_function(pfnet.Function('susceptance regularization',
-                                                    wb/max([net.get_num_switched_shunts(),1.]), net))
+                                                    wb/max([net.get_num_switched_v_shunts(),1.]), net))
             problem.analyze()
             
             # Return
@@ -212,9 +212,9 @@ class ACPF(PFmethod):
                                         net.get_num_slack_gens() +
                                         net.get_num_reg_gens() +
                                         net.get_num_tap_changers_v() +
-                                        net.get_num_switched_shunts())*net.num_periods)
+                                        net.get_num_switched_v_shunts())*net.num_periods)
                 assert(net.num_fixed == (net.get_num_tap_changers_v() +
-                                         net.get_num_switched_shunts())*net.num_periods)
+                                         net.get_num_switched_v_shunts())*net.num_periods)
             except AssertionError:
                 raise PFmethodError_BadProblem()
 
