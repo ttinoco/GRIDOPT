@@ -115,41 +115,43 @@ class TestPowerFlow(unittest.TestCase):
 
             net = pf.Parser(case).parse(case)
 
-            for Q_par in ['range', 'fraction']:
+            # Skip
+            if net.num_csc_converters > 0:
+                continue
 
-                method = gopt.power_flow.new_method('ACPF')
-                method.set_parameters(params={'solver': 'nr',
-                                              'quiet': True})
-                method.solve(net)
-
-                results = method.get_results()
-
-                net_snap = results['network snapshot']
-                self.assertLess(np.abs(net_snap.bus_P_mis), 1e-2) # MW
-                self.assertLess(np.abs(net_snap.bus_Q_mis), 1e-2) # MVAr
-
-                eps = 1e-4
-                for bus in net_snap.buses:
-                    if bus.is_regulated_by_gen() and not bus.is_slack():
+            method = gopt.power_flow.new_method('ACPF')
+            method.set_parameters(params={'solver': 'nr',
+                                          'quiet': True})
+            method.solve(net)
+            
+            results = method.get_results()
+            
+            net_snap = results['network snapshot']
+            self.assertLess(np.abs(net_snap.bus_P_mis), 1e-2) # MW
+            self.assertLess(np.abs(net_snap.bus_Q_mis), 1e-2) # MVAr
+            
+            eps = 1e-4
+            for bus in net_snap.buses:
+                if bus.is_regulated_by_gen() and not bus.is_slack():
+                    for gen in bus.reg_generators:
+                        self.assertLessEqual(gen.Q, gen.Q_max+eps)
+                        self.assertGreaterEqual(gen.Q, gen.Q_min-eps)
+                    if np.abs(bus.v_mag-bus.v_set) < eps: # v at set
+                        Qtotal = 0.
+                        norm = 0.
                         for gen in bus.reg_generators:
-                            self.assertLessEqual(gen.Q, gen.Q_max+eps)
-                            self.assertGreaterEqual(gen.Q, gen.Q_min-eps)
-                        if np.abs(bus.v_mag-bus.v_set) < eps: # v at set
-                            Qtotal = 0.
-                            norm = 0.
-                            for gen in bus.reg_generators:
-                                if np.abs(gen.Q-gen.Q_max) > eps and np.abs(gen.Q-gen.Q_min) > eps:
-                                    Qtotal += gen.Q
-                                    norm += gen.Q_par
-                            for gen in bus.reg_generators:
-                                if np.abs(gen.Q-gen.Q_max) > eps and np.abs(gen.Q-gen.Q_min) > eps:
-                                    self.assertLess(np.abs(gen.Q-gen.Q_par*Qtotal/norm), eps)
-                        else: # v not at set
-                            num = 0
-                            for gen in bus.reg_generators:
-                                if np.abs(gen.Q-gen.Q_max) <= eps or np.abs(gen.Q-gen.Q_min) <= eps:
-                                    num += 1
-                            self.assertGreaterEqual(num, 1)                                
+                            if np.abs(gen.Q-gen.Q_max) > eps and np.abs(gen.Q-gen.Q_min) > eps:
+                                Qtotal += gen.Q
+                                norm += gen.Q_par
+                        for gen in bus.reg_generators:
+                            if np.abs(gen.Q-gen.Q_max) > eps and np.abs(gen.Q-gen.Q_min) > eps:
+                                self.assertLess(np.abs(gen.Q-gen.Q_par*Qtotal/norm), eps)
+                    else: # v not at set
+                        num = 0
+                        for gen in bus.reg_generators:
+                            if np.abs(gen.Q-gen.Q_max) <= eps or np.abs(gen.Q-gen.Q_min) <= eps:
+                                num += 1
+                        self.assertGreaterEqual(num, 1)                                
                                 
     def test_ACPF_solutions(self):
 
@@ -177,13 +179,17 @@ class TestPowerFlow(unittest.TestCase):
                     # Only small
                     if net.num_buses > 4000:
                         continue
+
+                    # Skip csc
+                    if net.num_csc_converters > 0:
+                        continue
                     
                     sol_file = utils.get_pf_solution_file(case, utils.DIR_PFSOL, sol)
                     sol_data = utils.read_pf_solution_file(sol_file)
                                           
                     # Set parameters
                     if sol == 'sol1':
-                        method.set_parameters({'limit_gens': False})
+                        method.set_parameters({'limit_vars': False})
                     elif sol == 'sol2':
                         pass # defaults
                     elif sol == 'sol3':
@@ -267,7 +273,7 @@ class TestPowerFlow(unittest.TestCase):
         method_ipopt = gopt.power_flow.new_method('ACOPF')
         method_ipopt.set_parameters(params={'solver':'ipopt','quiet': True})
         method_augl = gopt.power_flow.new_method('ACOPF')
-        method_augl.set_parameters(params={'solver':'augl','quiet': True, 'kappa': 1e-2, 'lam_reg': 1e-4})
+        method_augl.set_parameters(params={'solver':'augl','quiet': True, 'kappa': 1e-2, 'lam_reg': 1e-2})
         method_inlp = gopt.power_flow.new_method('ACOPF')
         method_inlp.set_parameters(params={'solver':'inlp','quiet': True})
 
@@ -282,6 +288,10 @@ class TestPowerFlow(unittest.TestCase):
 
             # Only small
             if net.num_buses > 3300:
+                continue
+
+            # Skip csc
+            if net.num_csc_converters > 0:
                 continue
             
             self.assertEqual(net.num_periods,1)

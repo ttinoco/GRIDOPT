@@ -21,14 +21,17 @@ class ACPF(PFmethod):
 
     name = 'ACPF'
     
-    _parameters = {'weight_vmag': 1e0,         # weight for reg voltage magnitude penalty
-                   'weight_vang': 1e0,         # weight for angle difference penalty
-                   'weight_pq': 1e-3,          # weight for gen powers penalty
-                   'weight_t': 1e-3,           # weight for tap ratios penalty
-                   'weight_b': 1e-3,           # weight for shunt susceptances penalty
-                   'limit_gens': True,         # flag for enforcing generator reactive power limits
+    _parameters = {'weight_vmag': 1e0,         # weight for voltage magnitude regularization
+                   'weight_vang': 1e0,         # weight for angle difference regularization
+                   'weight_powers': 1e-3,      # weight for gen powers regularization
+                   'weight_taps': 1e-3,        # weight for tap ratios regularization
+                   'weight_shunts': 1e-3,      # weight for shunt susceptances regularization
+                   'weight_controls': 1e0,     # weight for control deviation penalty
+                   'weight_var': 1e-5,         # weight for generic regularization
+                   'limit_vars': True,         # flag for enforcing generator and VSC reactive power limits
                    'lock_taps': True,          # flag for locking transformer tap ratios
                    'lock_shunts': True,        # flag for locking swtiched shunts
+                   'vdep_loads': False,        # flag for voltage dependent loads
                    'tap_step': 0.5,            # tap ratio acceleration factor (NR only)
                    'shunt_step': 0.5,          # susceptance acceleration factor (NR only)
                    'dtap': 1e-5,               # tap ratio perturbation (NR only)
@@ -81,12 +84,15 @@ class ACPF(PFmethod):
         params = self._parameters
         wm = params['weight_vmag']
         wa = params['weight_vang']
-        wp = params['weight_pq']
-        wt = params['weight_t']
-        wb = params['weight_b']
-        limit_gens = params['limit_gens']
+        wp = params['weight_powers']
+        wt = params['weight_taps']
+        wb = params['weight_shunts']
+        wc = params['weight_controls']
+        wv = params['weight_var']
+        limit_vars = params['limit_vars']
         lock_taps = params['lock_taps']
         lock_shunts = params['lock_shunts']
+        vdep_loads = params['vdep_loads']
         solver_name = params['solver']
         
         # Clear flags
@@ -95,17 +101,19 @@ class ACPF(PFmethod):
         # OPT-based
         ###########
         if solver_name != 'nr':
-            
-            # Set up variables
+
+            # Buses
             net.set_flags('bus',
                           'variable',
                           'not slack',
-                          ['voltage angle','voltage magnitude'])
-            if not limit_gens:
+                          ['voltage angle', 'voltage magnitude'])
+            if not limit_vars:
                 net.set_flags('bus',
                               'fixed',
                               'regulated by generator',
                               'voltage magnitude')
+
+            # Genertors
             net.set_flags('generator',
                           'variable',
                           'slack',
@@ -114,50 +122,96 @@ class ACPF(PFmethod):
                           'variable',
                           'regulator',
                           'reactive power')
-        
-            # Tap ratios
+
+            # Loads
+            if vdep_loads:
+                for load in net.loads:
+                    if load.is_voltage_dependent():
+                        net.set_flags_of_component(load,
+                                                   'variable',
+                                                   ['active power', 'reactive power'])
+            # VSC HVDC
+            net.set_flags('vsc converter',
+                          'variable',
+                          'any',
+                          ['dc power', 'active power', 'reactive power'])
+
+            # DC buses
+            net.set_flags('dc bus',
+                          'variable',
+                          'any',
+                          'voltage')
+
+            # FACTS
+            for facts in net.facts:
+                net.set_flags_of_component(facts,
+                                           'variable',
+                                           'all')
+
+            # Tap changers
             if not lock_taps:
                 net.set_flags('branch', 
                               'variable',
                               'tap changer - v',
                               'tap ratio')
 
-            # Shunt voltage control
+            # Swtiched shunts
             if not lock_shunts:
                 net.set_flags('shunt', 
                               'variable',
                               'switching - v',
                               'susceptance')
 
+            # Checks
             try:
                 num_vars = (2*(net.num_buses-net.get_num_slack_buses()) +
+                            net.get_num_dc_buses() +
                             net.get_num_slack_gens() +
-                            net.get_num_reg_gens())*net.num_periods
+                            net.get_num_reg_gens() +
+                            net.get_num_vsc_converters()*4 +
+                            net.get_num_facts()*9)*net.num_periods
                 if not lock_taps:
                     num_vars += net.get_num_tap_changers_v()*net.num_periods
                 if not lock_shunts:
                     num_vars += net.get_num_switched_v_shunts()*net.num_periods
+                if vdep_loads:
+                    num_vars += 2*net.get_num_vdep_loads()*net.num_periods
+                    
                 assert(net.num_vars == num_vars)
                 assert(net.num_bounded == 0)
-                if limit_gens:
+                if limit_vars:
                     assert(net.num_fixed == 0)
-                else:
+                else:                    
                     assert(net.num_fixed == net.get_num_buses_reg_by_gen()*net.num_periods)
             except AssertionError:
                 raise PFmethodError_BadProblem()  
             
             # Set up problem
             problem = pfnet.Problem(net)
+
             problem.add_constraint(pfnet.Constraint('AC power balance', net))
-            problem.add_constraint(pfnet.Constraint('generator active power participation', net))
+            problem.add_constraint(pfnet.Constraint('HVDC power balance', net))
+            problem.add_constraint(pfnet.Constraint('VSC converter equations', net))
+            problem.add_constraint(pfnet.Constraint('VSC DC voltage control', net))
+            problem.add_constraint(pfnet.Constraint('power factor regulation', net))
+            problem.add_constraint(pfnet.Constraint('FACTS equations', net))
+
+            problem.add_function(pfnet.Function('variable regularization',
+                                                wv/max([net.num_vars,1.]), net))
             problem.add_function(pfnet.Function('voltage magnitude regularization',
                                                 wm/max([net.num_buses,1.]), net))
             problem.add_function(pfnet.Function('voltage angle regularization',
-                                                wa/max([net.num_buses,1.]),net))
+                                                wa/max([net.num_buses,1.]), net))
             problem.add_function(pfnet.Function('generator powers regularization',
                                                 wp/max([net.num_generators,1.]), net))
-            if limit_gens:
-                problem.add_constraint(pfnet.Constraint('voltage regulation by generators', net))
+            problem.add_function(pfnet.Function('VSC DC power control',
+                                                wc/max([net.num_vsc_converters,1.]), net))
+            problem.add_function(pfnet.Function('FACTS active power control',
+                                                wc/max([net.num_facts,1.]), net))
+            problem.add_function(pfnet.Function('FACTS reactive power control',
+                                                wc/max([net.num_facts,1.]), net))
+            if limit_vars:
+                problem.add_constraint(pfnet.Constraint('voltage set point regulation', net))
             else:
                 problem.add_constraint(pfnet.Constraint('variable fixing', net))
             if not lock_taps:
@@ -168,8 +222,10 @@ class ACPF(PFmethod):
                 problem.add_constraint(pfnet.Constraint('voltage regulation by shunts', net))
                 problem.add_function(pfnet.Function('susceptance regularization',
                                                     wb/max([net.get_num_switched_v_shunts(),1.]), net))
+            if vdep_loads:
+                problem.add_constraint(pfnet.Constraint('load voltage dependence', net))
             problem.analyze()
-            
+
             # Return
             return problem
 
@@ -177,42 +233,74 @@ class ACPF(PFmethod):
         ##########
         elif solver_name == 'nr':
 
-            # Voltages
+            # Buses
             net.set_flags('bus',
                           'variable',
                           'not slack',
-                          ['voltage magnitude','voltage angle'])
+                          ['voltage magnitude', 'voltage angle'])
 
-            # Gen active powers
+            # DC buses
+            net.set_flags('dc bus',
+                          'variable',
+                          'any',
+                          'voltage')
+
+            # Generators
             net.set_flags('generator',
                           'variable',
                           'slack',
                           'active power')
 
-            # Gen reactive powers
             net.set_flags('generator',
                           'variable',
                           'regulator',
                           'reactive power')
+            
+            # VSC HVDC
+            net.set_flags('vsc converter',
+                          'variable',
+                          'any',
+                          ['dc power', 'active power', 'reactive power'])
+            # FACTS
+            for facts in net.facts:
+                net.set_flags_of_component(facts,
+                                           'variable',
+                                           'all')
+            
+            # Loads
+            if vdep_loads:
+                for load in net.loads:
+                    if load.is_voltage_dependent():
+                        net.set_flags_of_component(load,
+                                                   'variable',
+                                                   ['active power', 'reactive power'])
 
-            # Tap ratios
+            # Tap changers
             net.set_flags('branch',
                           ['variable','fixed'],
                           'tap changer - v',
                           'tap ratio')
 
-            # Shunt susceptances
+            # Switched shunts
             net.set_flags('shunt',
                           ['variable','fixed'],
                           'switching - v',
                           'susceptance')
-
+                  
+            # Checks
             try:
-                assert(net.num_vars == (2*(net.num_buses-net.get_num_slack_buses()) +
-                                        net.get_num_slack_gens() +
-                                        net.get_num_reg_gens() +
-                                        net.get_num_tap_changers_v() +
-                                        net.get_num_switched_v_shunts())*net.num_periods)
+                num_vars = (2*(net.num_buses-net.get_num_slack_buses()) +
+                            net.get_num_dc_buses() +
+                            net.get_num_slack_gens() +
+                            net.get_num_reg_gens() +
+                            net.get_num_tap_changers_v() +
+                            net.get_num_switched_v_shunts() +
+                            net.get_num_vsc_converters()*4 +
+                            net.get_num_facts()*9)*net.num_periods
+                if vdep_loads:
+                    num_vars += 2*net.get_num_vdep_loads()*net.num_periods
+                    
+                assert(net.num_vars == num_vars)
                 assert(net.num_fixed == (net.get_num_tap_changers_v() +
                                          net.get_num_switched_v_shunts())*net.num_periods)
             except AssertionError:
@@ -220,13 +308,25 @@ class ACPF(PFmethod):
 
             # Set up problem
             problem = pfnet.Problem(net)
-            problem.add_constraint(pfnet.Constraint('AC power balance',net))
+            
+            problem.add_constraint(pfnet.Constraint('AC power balance', net))
+            problem.add_constraint(pfnet.Constraint('HVDC power balance', net))
             problem.add_constraint(pfnet.Constraint('generator active power participation', net))
-            problem.add_constraint(pfnet.Constraint('PVPQ switching', net))
             problem.add_constraint(pfnet.Constraint('variable fixing', net))
-            if limit_gens:
+            problem.add_constraint(pfnet.Constraint('PVPQ switching', net))
+            problem.add_constraint(pfnet.Constraint('VSC converter equations', net))
+            problem.add_constraint(pfnet.Constraint('VSC DC voltage control', net))
+            problem.add_constraint(pfnet.Constraint('VSC DC power control', net))
+            problem.add_constraint(pfnet.Constraint('switching power factor regulation', net))
+            problem.add_constraint(pfnet.Constraint('FACTS equations', net))
+            problem.add_constraint(pfnet.Constraint('switching FACTS active power control', net))
+            problem.add_constraint(pfnet.Constraint('switching FACTS reactive power control', net))
+            if vdep_loads:
+                problem.add_constraint(pfnet.Constraint('load voltage dependence', net))
+            if limit_vars:
                 problem.add_heuristic(pfnet.Heuristic('PVPQ switching', net))
-            problem.analyze()
+                problem.add_heuristic(pfnet.Heuristic('switching power factor regulation', net))
+            problem.analyze()            
 
             # Return
             return problem
@@ -269,7 +369,7 @@ class ACPF(PFmethod):
         t0 = time.time()
         problem = self.create_problem(net)
         problem_time = time.time()-t0
-        
+
         # Callbacks
         def c1(s):
             if (s.k != 0 and
