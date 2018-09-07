@@ -115,10 +115,6 @@ class TestPowerFlow(unittest.TestCase):
 
             net = pf.Parser(case).parse(case)
 
-            # Skip
-            if net.num_csc_converters > 0:
-                continue
-
             method = gopt.power_flow.new_method('ACPF')
             method.set_parameters(params={'solver': 'nr',
                                           'quiet': True})
@@ -178,10 +174,6 @@ class TestPowerFlow(unittest.TestCase):
 
                     # Only small
                     if net.num_buses > 4000:
-                        continue
-
-                    # Skip csc
-                    if net.num_csc_converters > 0:
                         continue
                     
                     sol_file = utils.get_pf_solution_file(case, utils.DIR_PFSOL, sol)
@@ -288,10 +280,6 @@ class TestPowerFlow(unittest.TestCase):
 
             # Only small
             if net.num_buses > 3300:
-                continue
-
-            # Skip csc
-            if net.num_csc_converters > 0:
                 continue
             
             self.assertEqual(net.num_periods,1)

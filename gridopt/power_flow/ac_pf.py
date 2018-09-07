@@ -136,6 +136,12 @@ class ACPF(PFmethod):
                           'any',
                           ['dc power', 'active power', 'reactive power'])
 
+            # CSC HVDC
+            net.set_flags('csc converter',
+                          'variable',
+                          'any',
+                          ['dc power', 'active power', 'reactive power'])
+
             # DC buses
             net.set_flags('dc bus',
                           'variable',
@@ -169,6 +175,7 @@ class ACPF(PFmethod):
                             net.get_num_slack_gens() +
                             net.get_num_reg_gens() +
                             net.get_num_vsc_converters()*4 +
+                            net.get_num_csc_converters()*4 +
                             net.get_num_facts()*9)*net.num_periods
                 if not lock_taps:
                     num_vars += net.get_num_tap_changers_v()*net.num_periods
@@ -192,7 +199,9 @@ class ACPF(PFmethod):
             problem.add_constraint(pfnet.Constraint('AC power balance', net))
             problem.add_constraint(pfnet.Constraint('HVDC power balance', net))
             problem.add_constraint(pfnet.Constraint('VSC converter equations', net))
+            problem.add_constraint(pfnet.Constraint('CSC converter equations', net))
             problem.add_constraint(pfnet.Constraint('VSC DC voltage control', net))
+            problem.add_constraint(pfnet.Constraint('CSC DC voltage control', net))
             problem.add_constraint(pfnet.Constraint('power factor regulation', net))
             problem.add_constraint(pfnet.Constraint('FACTS equations', net))
 
@@ -206,6 +215,8 @@ class ACPF(PFmethod):
                                                 wp/max([net.num_generators,1.]), net))
             problem.add_function(pfnet.Function('VSC DC power control',
                                                 wc/max([net.num_vsc_converters,1.]), net))
+            problem.add_function(pfnet.Function('CSC DC power control',
+                                                wc/max([net.num_csc_converters,1.]), net))
             problem.add_function(pfnet.Function('FACTS active power control',
                                                 wc/max([net.num_facts,1.]), net))
             problem.add_function(pfnet.Function('FACTS reactive power control',
@@ -261,6 +272,13 @@ class ACPF(PFmethod):
                           'variable',
                           'any',
                           ['dc power', 'active power', 'reactive power'])
+
+            # CSC HVDC
+            net.set_flags('csc converter',
+                          'variable',
+                          'any',
+                          ['dc power', 'active power', 'reactive power'])
+            
             # FACTS
             for facts in net.facts:
                 net.set_flags_of_component(facts,
@@ -296,6 +314,7 @@ class ACPF(PFmethod):
                             net.get_num_tap_changers_v() +
                             net.get_num_switched_v_shunts() +
                             net.get_num_vsc_converters()*4 +
+                            net.get_num_csc_converters()*4 +
                             net.get_num_facts()*9)*net.num_periods
                 if vdep_loads:
                     num_vars += 2*net.get_num_vdep_loads()*net.num_periods
@@ -315,8 +334,11 @@ class ACPF(PFmethod):
             problem.add_constraint(pfnet.Constraint('variable fixing', net))
             problem.add_constraint(pfnet.Constraint('PVPQ switching', net))
             problem.add_constraint(pfnet.Constraint('VSC converter equations', net))
+            problem.add_constraint(pfnet.Constraint('CSC converter equations', net))
             problem.add_constraint(pfnet.Constraint('VSC DC voltage control', net))
+            problem.add_constraint(pfnet.Constraint('CSC DC voltage control', net))
             problem.add_constraint(pfnet.Constraint('VSC DC power control', net))
+            problem.add_constraint(pfnet.Constraint('CSC DC power control', net))
             problem.add_constraint(pfnet.Constraint('switching power factor regulation', net))
             problem.add_constraint(pfnet.Constraint('FACTS equations', net))
             problem.add_constraint(pfnet.Constraint('switching FACTS active power control', net))
@@ -326,7 +348,7 @@ class ACPF(PFmethod):
             if limit_vars:
                 problem.add_heuristic(pfnet.Heuristic('PVPQ switching', net))
                 problem.add_heuristic(pfnet.Heuristic('switching power factor regulation', net))
-            problem.analyze()            
+            problem.analyze()
 
             # Return
             return problem
