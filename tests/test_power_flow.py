@@ -109,12 +109,83 @@ class TestPowerFlow(unittest.TestCase):
             self.assertTrue(results['solver name'] in ['mumps','superlu'])
             self.assertTrue(isinstance(results['network snapshot'], pf.Network))
 
+    def test_ACPF_with_gen_outages(self):
+
+        case = os.path.join('tests', 'resources', 'cases', 'ieee25.raw')
+        if not os.path.isfile(case):
+            raise unittest.SkipTest('file not available')
+
+        net = pf.Parser(case).parse(case)
+
+        net.show_components()
+
+        method = gopt.power_flow.new_method('ACPF')
+        
+        for solver in ['nr', 'augl']:
+            method.set_parameters(params={'solver': solver,
+                                          'quiet': True})
+            method.solve(net)
+
+            self.assertEqual(method.get_results()['solver status'], 'solved')
+            net1 = method.get_results()['network snapshot']
+            
+            for bus in net.buses:
+                if bus.is_v_set_regulated():
+                    reg_gens = [g.index for g in bus.reg_generators]
+                    gen = bus.reg_generators[-1]
+                    gen.outage = True
+                    method.solve(net)
+                    self.assertEqual(method.get_results()['solver status'], 'solved')
+                    net2 = method.get_results()['network snapshot']
+                    self.assertEqual(net.get_generator(gen.index).Q,
+                                     net2.get_generator(gen.index).Q) 
+                    self.assertNotEqual(net.get_generator(gen.index).Q,
+                                        net1.get_generator(gen.index).Q)
+                    gen.outage = False
+
+    def test_ACPF_with_branch_outages(self):
+            
+        case = os.path.join('tests', 'resources', 'cases', 'ieee300.raw')
+        if not os.path.isfile(case):
+            raise unittest.SkipTest('file not available')
+
+        net = pf.Parser(case).parse(case)
+
+        method = gopt.power_flow.new_method('ACPF')
+        
+        for solver in ['nr','augl']:
+            method.set_parameters(params={'solver': solver,
+                                          'lock_taps': False,
+                                          'quiet': True})
+            method.solve(net)
+
+            self.assertEqual(method.get_results()['solver status'], 'solved')
+            net1 = method.get_results()['network snapshot']
+
+            tested = False
+            for bus in net.buses:
+                if bus.is_regulated_by_tran() and bus.number == 1:
+                    reg_trans = [br.index for br in bus.reg_trans]
+                    tran = bus.reg_trans[-1]
+                    tran.outage = True
+                    method.solve(net)
+                    self.assertEqual(method.get_results()['solver status'], 'solved')
+                    net2 = method.get_results()['network snapshot']
+                    self.assertFalse(net.get_branch(tran.index).has_flags('variable', 'tap ratio'))
+                    self.assertTrue(net1.get_branch(tran.index).has_flags('variable', 'tap ratio'))
+                    self.assertFalse(net2.get_branch(tran.index).has_flags('variable', 'tap ratio'))
+                    self.assertNotEqual(net1.num_vars, net2.num_vars)
+                    self.assertGreater(net1.num_vars, net2.num_vars)
+                    tran.outage = False
+                    tested = True
+            self.assertTrue(tested)
+
     def test_ACPF_nr_heuristics(self):
 
         for case in utils.test_cases:
 
             net = pf.Parser(case).parse(case)
-
+            
             method = gopt.power_flow.new_method('ACPF')
             method.set_parameters(params={'solver': 'nr',
                                           'quiet': True})

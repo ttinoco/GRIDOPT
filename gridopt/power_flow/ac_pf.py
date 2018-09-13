@@ -110,17 +110,17 @@ class ACPF(PFmethod):
             if not limit_vars:
                 net.set_flags('bus',
                               'fixed',
-                              'regulated by generator',
+                              'v set regulated',
                               'voltage magnitude')
 
             # Genertors
             net.set_flags('generator',
                           'variable',
-                          'slack',
+                          ['slack', 'not on outage'],
                           'active power')
             net.set_flags('generator',
                           'variable',
-                          'regulator',
+                          ['regulator', 'not on outage'],
                           'reactive power')
 
             # Loads
@@ -158,7 +158,7 @@ class ACPF(PFmethod):
             if not lock_taps:
                 net.set_flags('branch', 
                               'variable',
-                              'tap changer - v',
+                              ['tap changer - v', 'not on outage'],
                               'tap ratio')
 
             # Swtiched shunts
@@ -172,13 +172,13 @@ class ACPF(PFmethod):
             try:
                 num_vars = (2*(net.num_buses-net.get_num_slack_buses()) +
                             net.get_num_dc_buses() +
-                            net.get_num_slack_gens() +
-                            net.get_num_reg_gens() +
+                            len([g for g in net.generators if g.is_slack() and not g.is_on_outage()]) +
+                            len([g for g in net.generators if g.is_regulator() and not g.is_on_outage()]) +
                             net.get_num_vsc_converters()*4 +
                             net.get_num_csc_converters()*4 +
                             net.get_num_facts()*9)*net.num_periods
                 if not lock_taps:
-                    num_vars += net.get_num_tap_changers_v()*net.num_periods
+                    num_vars += len([b for b in net.branches if b.is_tap_changer_v() and not b.is_on_outage()])*net.num_periods
                 if not lock_shunts:
                     num_vars += net.get_num_switched_v_shunts()*net.num_periods
                 if vdep_loads:
@@ -189,7 +189,7 @@ class ACPF(PFmethod):
                 if limit_vars:
                     assert(net.num_fixed == 0)
                 else:                    
-                    assert(net.num_fixed == net.get_num_buses_reg_by_gen()*net.num_periods)
+                    assert(net.num_fixed == len([b for b in net.buses if b.is_v_set_regulated()])*net.num_periods)
             except AssertionError:
                 raise PFmethodError_BadProblem()  
             
@@ -259,12 +259,12 @@ class ACPF(PFmethod):
             # Generators
             net.set_flags('generator',
                           'variable',
-                          'slack',
+                          ['slack', 'not on outage'],
                           'active power')
 
             net.set_flags('generator',
                           'variable',
-                          'regulator',
+                          ['regulator', 'not on outage'],
                           'reactive power')
             
             # VSC HVDC
@@ -296,7 +296,7 @@ class ACPF(PFmethod):
             # Tap changers
             net.set_flags('branch',
                           ['variable','fixed'],
-                          'tap changer - v',
+                          ['tap changer - v', 'not on outage'],
                           'tap ratio')
 
             # Switched shunts
@@ -309,9 +309,9 @@ class ACPF(PFmethod):
             try:
                 num_vars = (2*(net.num_buses-net.get_num_slack_buses()) +
                             net.get_num_dc_buses() +
-                            net.get_num_slack_gens() +
-                            net.get_num_reg_gens() +
-                            net.get_num_tap_changers_v() +
+                            len([g for g in net.generators if g.is_slack() and not g.is_on_outage()]) +
+                            len([g for g in net.generators if g.is_regulator() and not g.is_on_outage()]) +
+                            len([b for b in net.branches if b.is_tap_changer_v() and not b.is_on_outage()]) +
                             net.get_num_switched_v_shunts() +
                             net.get_num_vsc_converters()*4 +
                             net.get_num_csc_converters()*4 +
@@ -320,7 +320,7 @@ class ACPF(PFmethod):
                     num_vars += 2*net.get_num_vdep_loads()*net.num_periods
                     
                 assert(net.num_vars == num_vars)
-                assert(net.num_fixed == (net.get_num_tap_changers_v() +
+                assert(net.num_fixed == (len([b for b in net.branches if b.is_tap_changer_v() and not b.is_on_outage()])+
                                          net.get_num_switched_v_shunts())*net.num_periods)
             except AssertionError:
                 raise PFmethodError_BadProblem()
@@ -349,7 +349,7 @@ class ACPF(PFmethod):
                 problem.add_heuristic(pfnet.Heuristic('PVPQ switching', net))
                 problem.add_heuristic(pfnet.Heuristic('switching power factor regulation', net))
             problem.analyze()
-
+            
             # Return
             return problem
 
@@ -649,9 +649,12 @@ class ACPF(PFmethod):
                     if v > vmax or v < vmin:
                         
                         for reg_tran in bus.reg_trans:
-                    
+
+                            if reg_tran.is_on_outage():
+                                continue
+                            
                             assert(reg_tran.has_flags('variable','tap ratio'))
-                                
+                            
                             t = x[reg_tran.index_ratio[tau]]
                             tmax = reg_tran.ratio_max
                             tmin = reg_tran.ratio_min
