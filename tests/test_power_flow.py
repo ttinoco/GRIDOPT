@@ -117,8 +117,6 @@ class TestPowerFlow(unittest.TestCase):
 
         net = pf.Parser(case).parse(case)
 
-        net.show_components()
-
         method = gopt.power_flow.new_method('ACPF')
         
         for solver in ['nr', 'augl']:
