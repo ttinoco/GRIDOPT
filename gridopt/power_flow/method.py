@@ -20,7 +20,7 @@ class PFmethod:
         
         self.results = {'solver name': 'unknown',
                         'solver status': 'unknown',
-                        'solver message': '',
+                        'solver message': 'none',
                         'solver iterations': 0,
                         'solver time': np.nan,
                         'solver primal variables': None,
