@@ -28,6 +28,7 @@ class ACPF(PFmethod):
                    'weight_shunts': 1e-3,      # weight for shunt susceptances regularization
                    'weight_controls': 1e0,     # weight for control deviation penalty
                    'weight_var': 1e-5,         # weight for generic regularization
+                   'lin_pf': False,            # flag for using linearized power flow 
                    'limit_vars': True,         # flag for enforcing generator and VSC reactive power limits
                    'lock_taps': True,          # flag for locking transformer tap ratios
                    'lock_shunts': True,        # flag for locking swtiched shunts
@@ -89,11 +90,16 @@ class ACPF(PFmethod):
         wb = params['weight_shunts']
         wc = params['weight_controls']
         wv = params['weight_var']
+        lin_pf = params['lin_pf']
         limit_vars = params['limit_vars']
         lock_taps = params['lock_taps']
         lock_shunts = params['lock_shunts']
         vdep_loads = params['vdep_loads']
         solver_name = params['solver']
+
+        # Linearized model
+        if lin_pf:
+            limit_vars = False
         
         # Clear flags
         net.clear_flags()
@@ -196,7 +202,10 @@ class ACPF(PFmethod):
             # Set up problem
             problem = pfnet.Problem(net)
 
-            problem.add_constraint(pfnet.Constraint('AC power balance', net))
+            if lin_pf:
+                problem.add_constraint(pfnet.Constraint('linearized AC power balance', net))
+            else:
+                problem.add_constraint(pfnet.Constraint('AC power balance', net))
             problem.add_constraint(pfnet.Constraint('HVDC power balance', net))
             problem.add_constraint(pfnet.Constraint('VSC converter equations', net))
             problem.add_constraint(pfnet.Constraint('CSC converter equations', net))
@@ -327,8 +336,11 @@ class ACPF(PFmethod):
 
             # Set up problem
             problem = pfnet.Problem(net)
-            
-            problem.add_constraint(pfnet.Constraint('AC power balance', net))
+
+            if lin_pf:
+                problem.add_constraint(pfnet.Constraint('linearized AC power balance', net))
+            else:
+                problem.add_constraint(pfnet.Constraint('AC power balance', net))
             problem.add_constraint(pfnet.Constraint('HVDC power balance', net))
             problem.add_constraint(pfnet.Constraint('generator active power participation', net))
             problem.add_constraint(pfnet.Constraint('variable fixing', net))

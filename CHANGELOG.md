@@ -5,6 +5,7 @@ Unreleased
 * Made unittests' handling of test cases and solution files cross-platform.
 * Made test utils more flexible to be used from outside unittests.
 * Added HVDC, FACTS and vdep-loads to ACPF.
+* Added option for using linearized AC power flow equations in ACPF. 
 
 Version 1.3.5
 -------------
