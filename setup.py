@@ -6,7 +6,7 @@
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
 
-from setuptools import setup
+from setuptools import setup, find_packages
 
 setup(name='GRIDOPT',
       zip_safe=False,
@@ -16,9 +16,8 @@ setup(name='GRIDOPT',
       author='Tomas Tinoco De Rubira',
       author_email='ttinoco5687@gmail.com',
       license='BSD 2-Clause License',
-      packages=['gridopt',
-                'gridopt.power_flow'],
-      scripts=['./script/gridopt'],
+      packages=find_packages(),
+      entry_points={'console_scripts': ['gridopt=gridopt.scripts.gridopt:main']},
       classifiers=['Development Status :: 5 - Production/Stable',
                    'License :: OSI Approved :: BSD License',
                    'Programming Language :: Python :: 2.7',

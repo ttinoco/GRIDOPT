@@ -409,7 +409,7 @@ class TestPowerFlow(unittest.TestCase):
 
         T = 2
 
-        infcases = ['ieee25.raw']
+        infcases = ['ieee25.raw', 'ieee25.m']
 
         skipcases = ['case1354.mat','case2869.mat',
                      'case3375wp.mat','case9241.mat']
