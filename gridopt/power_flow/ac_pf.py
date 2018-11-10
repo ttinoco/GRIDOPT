@@ -39,7 +39,7 @@ class ACPF(PFmethod):
                    'dsus': 1e-5,               # susceptance perturbation (NR only)
                    'pvpq_start_k': 0,          # start iteration number for PVPQ switching heuristics
                    'vmin_thresh': 0.1,         # threshold for vmin
-                   'solver': 'augl'}           # OPTALG optimization solver (augl, ipopt, nr, inlp)
+                   'solver': 'nr'}             # OPTALG optimization solver (augl, ipopt, nr, inlp)
 
     _parameters_augl = {'feastol' : 1e-4,
                         'optol' : 1e-4,
