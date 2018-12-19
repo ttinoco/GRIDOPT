@@ -27,7 +27,7 @@ class ACOPF(PFmethod):
                    'weight_b' : 0.,          # weight for shunt susceptances regularization
                    'thermal_limits': 'none', # none, linear, nonlinear
                    'vmin_thresh': 0.1,       # threshold for vmin termination
-                   'solver': 'augl'}         # OPTALG optimization solver (augl, ipopt, inlp)
+                   'solver': 'inlp'}         # OPTALG optimization solver (augl, ipopt, inlp)
 
     _parameters_augl = {'feastol' : 1e-4,
                         'optol' : 1e-4,
@@ -177,11 +177,7 @@ class ACOPF(PFmethod):
             else:
                 return False
         solver.add_termination(OptTermination(t1,'low voltage'))
-        
-        # Info printer
-        info_printer = self.get_info_printer()
-        solver.set_info_printer(info_printer)
-        
+                
         # Solve
         update = True
         t0 = time.time()
@@ -212,22 +208,4 @@ class ACOPF(PFmethod):
             self.set_problem(None) # skip for now
             self.set_problem_time(problem_time)
             self.set_network_snapshot(net)
-
-    def get_info_printer(self):
-
-        def info_printer(solver,header):
-            net = solver.problem.wrapped_problem.network
-            if header:
-                print('{0:^5}'.format('vmax'), end=' ')
-                print('{0:^5}'.format('vmin'), end=' ')
-                print('{0:^6}'.format('bvvio'), end=' ')
-                print('{0:^6}'.format('gQvio'), end=' ')
-                print('{0:^6}'.format('gPvio'))
-            else:
-                print('{0:^5.2f}'.format(np.average(net.bus_v_max)), end=' ')
-                print('{0:^5.2f}'.format(np.average(net.bus_v_min)), end=' ')
-                print('{0:^6.0e}'.format(np.average(net.bus_v_vio)), end=' ')
-                print('{0:^6.0e}'.format(np.average(net.gen_Q_vio)), end=' ')
-                print('{0:^6.0e}'.format(np.average(net.gen_P_vio)))
-        return info_printer
 
