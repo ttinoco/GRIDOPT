@@ -1,12 +1,12 @@
-Unreleased
-----------
+Version 1.3.6
+-------------
 * Added slack P participation to non-nr acpf for consistency.
 * Updated to modular heuristic.
-* Made unittests' handling of test cases and solution files cross-platform.
+* Made unittests handling of test cases and solution files cross-platform.
 * Made test utils more flexible to be used from outside unittests.
 * Added HVDC, FACTS and vdep-loads to ACPF.
 * Added option for using linearized AC power flow equations in ACPF. 
-* Specified gridopt command-line utility using setup.py console entry point.
+* Specified gridopt command-line utility using console entry point.
 * Added command-line utility option for writing network to file.
 
 Version 1.3.5

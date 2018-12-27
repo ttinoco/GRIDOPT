@@ -8,3 +8,5 @@
 
 from . import power_flow
 from . import scripts
+
+from .version import __version__

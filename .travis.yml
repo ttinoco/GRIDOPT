@@ -11,9 +11,6 @@ matrix:
       language: generic
 
 install:
-  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then 
-      sudo apt-get -y purge libgraphviz-dev;
-    fi
   - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
       sudo easy_install nose;
     fi

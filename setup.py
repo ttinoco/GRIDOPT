@@ -6,11 +6,14 @@
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
 
+import os
 from setuptools import setup, find_packages
+
+exec(open(os.path.join('gridopt', 'version.py')).read())
 
 setup(name='GRIDOPT',
       zip_safe=False,
-      version='1.3.5rc2',
+      version=__version__,
       description='Power Grid Optimization Library',
       url='https://github.com/ttinoco/GRIDOPT',
       author='Tomas Tinoco De Rubira',
@@ -26,5 +29,5 @@ setup(name='GRIDOPT',
                         'numpy>=1.11.2',
                         'scipy>=0.18.1',
                         'pfnet==1.3.4rc1',
-                        'optalg==1.1.6rc1',
+                        'optalg==1.1.7rc1',
                         'nose'])
