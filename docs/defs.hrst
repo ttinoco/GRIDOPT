@@ -16,14 +16,11 @@
 .. _7-Zip: http://www.7-zip.org/
 .. |7-Zip| replace:: `7-Zip`_
 
-.. _MinGW: https://anaconda.org/carlkl/mingwpy
-.. |MinGW| replace:: `MinGW`_
+.. _mingwpy: https://anaconda.org/carlkl/mingwpy
+.. |mingwpy| replace:: `mingwpy`_
 
 .. _ieee14: https://github.com/ttinoco/GRIDOPT/tree/master/tests/resources/cases
 .. |ieee14| replace:: `ieee14`_
-
-.. _ARTERE: http://www.montefiore.ulg.ac.be/~vct/software.html
-.. |ARTERE| replace:: `ARTERE`_
 
 .. _MATLAB: http://www.mathworks.com/products/matlab/
 .. |MATLAB| replace:: `MATLAB`_
@@ -36,11 +33,6 @@
 
 .. _Cython: http://cython.org
 .. |Cython| replace:: `Cython`_
-
-.. _Graphviz: http://www.graphviz.org/Documentation.php
-.. _Graphviz Output Formats: http://www.graphviz.org/content/output-formats
-.. |Graphviz| replace:: `Graphviz`_
-.. |GraphvizOutputFormats| replace:: `Graphviz Output Formats`_
 
 .. _Numpy: http://docs.scipy.org/doc/numpy/
 .. |Numpy| replace:: `Numpy`_
@@ -106,9 +98,6 @@
 .. |RefVarGeneratorProperties| replace:: :ref:`ref_vargen_prop`
 .. |RefProperties| replace:: |RefBusProperties|, |RefBranchProperties|, |RefGeneratorProperties|,  |RefShuntProperties|, |RefLoadProperties|, |RefVarGeneratorProperties|, |RefBatteryProperties| 
 
-.. |RefBusSensitivities| replace:: :ref:`ref_bus_sens`
-.. |RefBusMismatches| replace:: :ref:`ref_bus_mis`
-
 .. |RefVarValueOptions| replace:: :ref:`ref_var_values`
 
 .. |FunctionGEN_COST| replace:: :ref:`prob_func_GEN_COST`
@@ -120,5 +109,3 @@
 .. |ConstraintDC_FLOW_LIM| replace:: :ref:`prob_constr_DC_FLOW_LIM`
 .. |ConstraintBOUND| replace:: :ref:`prob_constr_BOUND`
 .. |ConstraintREG_GEN| replace:: :ref:`prob_constr_REG_GEN`
-.. |ConstraintREG_TRAN| replace:: :ref:`prob_constr_REG_TRAN`
-.. |ConstraintREG_SHUNT| replace:: :ref:`prob_constr_REG_SHUNT`

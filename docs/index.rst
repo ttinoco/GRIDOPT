@@ -29,11 +29,6 @@ GRIDOPT is released under the BSD 2-clause license.
    Command-Line Utility<script>	      
    API Reference<reference>
 
-**Contributors (alphabetical)**
-
-* Martin Baltzinger
-* `Tomas Tinoco De Rubira <http://ttinoco.github.io/>`_
-
 Indices and tables
 ==================
 

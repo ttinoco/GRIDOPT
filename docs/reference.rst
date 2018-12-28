@@ -45,16 +45,5 @@ Error Exceptions
 .. autoclass:: gridopt.power_flow.method_error.PFmethodError_BadOptSolver			      
 
 .. autoclass:: gridopt.power_flow.method_error.PFmethodError_ParamNotBool
-
-.. autoclass:: gridopt.power_flow.method_error.PFmethodError_TranVReg
-
-.. autoclass:: gridopt.power_flow.method_error.PFmethodError_ShuntVReg
 			      
 .. autoclass:: gridopt.power_flow.method_error.PFmethodError_SolverError
-  
-.. _ref_references:
-
-References
-==========
-
-.. [TTR2015] T\. Tinoco De Rubira, *Numerical Optimization and Modeling Techniques for Power System Operations and Planning*. PhD thesis, Stanford University, March 2015 (`link <https://ttinoco.github.io/papers/Phd_thesis_manuscript.pdf>`_).

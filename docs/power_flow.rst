@@ -25,11 +25,11 @@ Once a method has been instantiated, its parameters can be set using the functio
 
   >>> method.set_parameters({'solver': 'nr', 'quiet': True, 'feastol': 1e-4})
 
-After configuring parameters, a method can be used to solve a problem using the function :func:`solve() <gridopt.power_flow.method.PFmethod.solve>`. This function takes as argument a |network| object, as follows::
+After configuring parameters, a method can be used to solve a problem using the function :func:`solve() <gridopt.power_flow.method.PFmethod.solve>`. This function takes as argument a |PFNET| |network| object, as follows::
 
   >>> import pfnet
 
-  >>> net = pfnet.ParserMAT().parse('ieee14.mat')
+  >>> net = pfnet.PyParserMAT().parse('ieee14.m')
 
   >>> method.solve(net)
 
@@ -50,7 +50,7 @@ If desired, one can update the input |Network| object with the solution found by
 
   >>> method.update_network(net)
 
-  >>> print '%.2e %.2e' %(net.bus_P_mis,net.bus_Q_mis)
+  >>> print '%.2e %.2e' %(net.bus_P_mis, net.bus_Q_mis)
   5.16e-04 5.67e-03
     
 .. _dc_pf: 
@@ -58,96 +58,65 @@ If desired, one can update the input |Network| object with the solution found by
 DCPF
 ====
 
-This method is represented by an object of type :class:`DCPF <gridopt.power_flow.dc_pf.DCPF>` and solves a DC power flow problem, which is just a linear system of equations representing |ConstraintDCPF| constraints. The system is solved using one of the |LinSolvers| available in |OPTALG|.
+This method is represented by an object of type :class:`DCPF <gridopt.power_flow.dc_pf.DCPF>` and solves a DC power flow problem, which is just a linear system of equations representing |ConstraintDCPF| constraints.
+
+The parameters of this method are the following:
+
+=========================== ====================================================== =============
+Name                        Description                                            Default  
+=========================== ====================================================== =============
+``'solver'``                OPTALG linear solver ``{'superlu','mumps','umfpack'}`` ``'superlu'``
+``'quiet'``                 Flag for disabling output                              ``False`` 
+=========================== ====================================================== =============
 
 .. _dc_opf: 
 
 DCOPF
 =====
 
-This method is represented by an object of type :class:`DCOPF <gridopt.power_flow.dc_opf.DCOPF>` and solves a DC optimal power flow problem, which is just a quadratic program that considers |FunctionGEN_COST|, |FunctionLOAD_UTIL|, |ConstraintDCPF|, |ConstraintBOUND|, *e.g.*, generator and load limits, and |ConstraintDC_FLOW_LIM|. For solving the problem, this method uses by default the |IQP| solver from |OPTALG|.
+This method is represented by an object of type :class:`DCOPF <gridopt.power_flow.dc_opf.DCOPF>` and solves a DC optimal power flow problem, which is just a quadratic program that considers |FunctionGEN_COST|, |FunctionLOAD_UTIL|, |ConstraintDCPF|, |ConstraintBOUND|, *e.g.*, generator and load limits, and |ConstraintDC_FLOW_LIM|.
 
 The parameters of this method are the following:
 
-=========================== ===================================================== =========
-Name                        Description                                           Default  
-=========================== ===================================================== =========
-``'thermal_limits'``        Flag for considering branch flow limits               ``False``
-``'renewable_curtailment'`` Flag for allowing curtailment of renewable generators ``False``
-``'solver'``                OPTALG optimization solver ``{'iqp','augl','ipopt'}`` ``'iqp'``
-=========================== ===================================================== =========
-
-The following example illustrates how to solve a DC OPF problem and extract the optimal generation cost::
-
-  >>> method = gridopt.power_flow.new_method('DCOPF')
-
-  >>> method.solve(net)
-
-  >>> print method.results['solver status']
-  solved
-
-  >>> method.update_network(net)
-
-  >>> # generation cost ($/hour)
-  >>> print net.gen_P_cost
-  7642.63
-
-The sensitivity of the optimal objective value with respect to the power balance constraints can be easily extracted from the network buses::
-
-  >>> bus = net.get_bus(4)
-  >>> print "bus %2d %.2e" %(bus.index,bus.sens_P_balance)
-  bus 4 3.90e+03
-  
-Similarly, the sensitivity with respect to branch flow limits can be easily extracted from the network branches::
-
-  >>> branch = net.get_branch(6)
-  >>> print "branch %2d %.2e %.2e" %(branch.index,
-  ...                                branch.sens_P_u_bound,
-  ...                                branch.sens_P_l_bound)
-  branch 6 0.00e-00 0.00e-00
-
-Lastly, the sensitivity with respect to generator active power limits can be easily extracted from the network generators::
-
-  >>> gen = net.get_generator(2)
-  >>> print "gen %2d %.2e %.2e" %(gen.index,
-  ...                             gen.sens_P_u_bound,
-  ...                             gen.sens_P_l_bound)
-  gen  2 6.36e-04 9.87e+01
-
-As the examples show, GRIDOPT and |PFNET| take care of all the details and allow one to extract solution information easily and intuitively from the |Network| components.
+=========================== ============================================================ =========
+Name                        Description                                                  Default  
+=========================== ============================================================ =========
+``'thermal_limits'``        Flag for considering branch flow limits                      ``False``
+``'renewable_curtailment'`` Flag for allowing curtailment of renewable generators        ``False``
+``'solver'``                OPTALG optimization solver ``{'iqp','inlp','augl','ipopt'}`` ``'iqp'``
+=========================== ============================================================ =========
 
 .. _ac_pf:
 
 ACPF
 ====
 
-This method is represented by an object of type :class:`ACPF <gridopt.power_flow.ac_pf.ACPF>` and solves an AC power flow problem. For doing this, it can use the |NR| solver from |OPTALG| together with "switching" heuristics for modeling local controls. Alternatively, it can formulate the problem as an optimization problem with a convex objective function and *complementarity constraints*, *e.g.*, |ConstraintREG_GEN|, |ConstraintREG_TRAN|, and |ConstraintREG_SHUNT|, for modeling local controls, and solve it using the |AUGL|, |INLP|, or |IPOPT| solver available through |OPTALG|. For now, the parameters of this power flow method are the following:
+This method is represented by an object of type :class:`ACPF <gridopt.power_flow.ac_pf.ACPF>` and solves an AC power flow problem. For doing this, it can use the |NR| solver from |OPTALG| together with "switching" heuristics for modeling local controls. Alternatively, it can formulate the problem as an optimization problem with a convex objective function and *complementarity constraints*, *e.g.*, |ConstraintREG_GEN|, for modeling local controls, and solve it using the |AUGL|, |INLP|, or |IPOPT| solver available through |OPTALG|.
 
-================= ============================================================ ===========
-Name              Description                                                  Default  
-================= ============================================================ ===========
-``'weight_vmag'`` Weight for bus voltage magnitude regularization              ``1e0``
-``'weight_vang'`` Weight for bus voltage angle regularization                  ``1e0``
-``'weight_pq'``   Weight for generator power regularization                    ``1e-3``
-``'weight_t'``    Weight for transformer tap ratio regularization              ``1e-3``
-``'weight_b'``    Weight for shunt susceptance regularization                  ``1e-3``
-``'limit_gens'``  Flag for enforcing generator reactive power limits           ``True``
-``'lock_taps'``   Flag for locking transformer tap ratios                      ``True``
-``'lock_shunts'`` Flag for locking swtiched shunts                             ``True``
-``'tap_step'``    Tap ratio acceleration factor (NR heuristics)                ``0.5``
-``'shunt_step'``  Susceptance acceleration factor (NR heuristics)              ``0.5``
-``'dtap'``        Tap ratio perturbation (NR heuristics)                       ``1e-5``
-``'dsus'``        Susceptance perturbation (NR heuristics)                     ``1e-5``
-``'vmin_thresh'`` Low-voltage threshold                                        ``1e-1``
-``'solver'``      OPTALG optimization solver ``{'nr','inlp','augl','ipopt'}``  ``'augl'``
-================= ============================================================ ===========
+The parameters of this power flow method are the following:
+
+=================== ============================================================ ===========
+Name                Description                                                  Default  
+=================== ============================================================ ===========
+``'weight_vmag'``   Weight for bus voltage magnitude regularization              ``1e0``
+``'weight_vang'``   Weight for bus voltage angle regularization                  ``1e0``
+``'weight_powers'`` Weight for generator power regularization                    ``1e-3``
+``'weight_var'``    Weight for generic regularization                            ``1e-5``
+``'lin_pf'``        Flag for using linearized power flow equations               ``False``
+``'limit_vars'``    Flag for enforcing reactive power limits                     ``True``
+``'pvpq_start_k'``  Start iteration number for PVPQ switching heuristics         ``0``
+``'vmin_thresh'``   Low-voltage threshold                                        ``1e-1``
+``'solver'``        OPTALG optimization solver ``{'nr','inlp','augl','ipopt'}``  ``'nr'``
+=================== ============================================================ ===========
 
 .. _ac_opf: 
 
 ACOPF
 =====
 
-This method is represented by an object of type :class:`ACOPF <gridopt.power_flow.ac_opf.ACOPF>` and solves an AC optimal power flow problem. For doing this, it uses the |AUGL|, |INLP|, or |IPOPT| solver from |OPTALG|. By default, it minimizes |FunctionGEN_COST| subject to voltage magnitude limits, generator power limits, *e.g.*, |ConstraintBOUND|, and |ConstraintACPF|. For now, the parameters of this optimal power flow method are the following:
+This method is represented by an object of type :class:`ACOPF <gridopt.power_flow.ac_opf.ACOPF>` and solves an AC optimal power flow problem. For doing this, it uses the |AUGL|, |INLP|, or |IPOPT| solver from |OPTALG|. By default, it minimizes |FunctionGEN_COST| subject to voltage magnitude limits, generator power limits, *e.g.*, |ConstraintBOUND|, and |ConstraintACPF|.
+
+The parameters of this optimal power flow method are the following:
 
 ==================== ============================================================ ===========
 Name                 Description                                                  Default  
@@ -156,9 +125,7 @@ Name                 Description                                                
 ``'weight_vmag'``    Weight for bus voltage magnitude regularization              ``0.``
 ``'weight_vang'``    Weight for bus voltage angle regularization                  ``0.``
 ``'weight_pq'``      Weight for generator power regularization                    ``0``
-``'weight_t'``       Weight for transformer tap ratio regularization              ``0``
-``'weight_b'``       Weight for shunt susceptance regularization                  ``0``
-``'thermal_limits'`` Flag for considering |ConstraintAC_FLOW_LIM|                 ``False``
+``'thermal_limits'`` Branch thermal limits ``{'none','linear','nonlinear'}``      ``'none'``
 ``'vmin_thresh'``    Low-voltage threshold                                        ``1e-1``
-``'solver'``         OPTALG optimization solver ``{'augl','inlp','ipopt'}``       ``'augl'``
+``'solver'``         OPTALG optimization solver ``{'augl','inlp','ipopt'}``       ``'inlp'``
 ==================== ============================================================ ===========

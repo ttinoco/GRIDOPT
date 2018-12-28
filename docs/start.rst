@@ -6,30 +6,28 @@
 Getting Started
 ***************
 
-This section describes how to get started with GRIDOPT. In particular, it covers dependencies, installation, and provides a quick example showing how to use this package.
-
-.. _start_dependencies:
-
-Dependencies
-============
-
-GRIDOPT has the following dependencies:
-
-* |Cython| (>=0.20.1)
-* |Numpy| (>=1.11.2)
-* |Scipy| (>=0.18.1)
-* |OPTALG| (== 1.1.6r1)
-* |PFNET| (== 1.3.3r1)
+This section describes how to get started with GRIDOPT. In particular, it covers installation and provides a quick example that shows how to use this package.
 
 .. _start_installation:
 
 Installation
 ============
 
-In order to install the GRIDOPT, the following tools are needed:
+In order to install GRIDOPT, the following tools are needed:
 
-* Linux and Mac OS X: a C compiler, |Make|, |Python| and |pip|.
-* Windows : |Anaconda|, |CMake|, |7-Zip|, and |MinGW|.
+* Linux and macOS:
+
+  * C compiler
+  * |make|
+  * |python| (2 or 3)
+  * |pip|
+  
+* Windows:
+
+  * |anaconda| (for Python 2.7)
+  * |cmake| (choose "Add CMake to the system PATH for all users" during installation)
+  * |7-zip| (update system path to include the 7z executable, typically in ``C:\Program Files\7-Zip``)
+  * |mingwpy| (use ``pip install -i https://pypi.anaconda.org/carlkl/simple mingwpy``)
 
 After getting these tools, the GRIDOPT Python module can be easily installed by executing the following commands on the terminal or Anaconda prompt::
 
@@ -45,6 +43,7 @@ To install the module from source, the code can be obtained from `<https://githu
 
 Running the unit tests can be done with::
 
+    pip install nose
     nosetests -s -v
 
 .. _start_example:
@@ -57,7 +56,7 @@ The following example shows how to solve the power flow problem associated with 
   >>> import pfnet
   >>> import gridopt
 
-  >>> net = pfnet.ParserMAT().parse('ieee14.mat')
+  >>> net = pfnet.PyParserMAT().parse('ieee14.m')
 
   >>> # max mismatches (MW,MVAr)
   >>> print '%.2e %.2e' %(net.bus_P_mis,net.bus_Q_mis)
@@ -78,6 +77,6 @@ The following example shows how to solve the power flow problem associated with 
 
   >>> # max mismatches (MW,MVAr)
   >>> print '%.2e %.2e' %(net.bus_P_mis,net.bus_Q_mis)
-  5.14e-04 5.70e-03
+  5.16e-04 5.67e-03
 
-In this example, it is assumed that the Python interpreter was started from a directory where the sample case |ieee14| is located.
+In this example, it is assumed that the Python interpreter is started from a directory where the sample case |ieee14| is located.

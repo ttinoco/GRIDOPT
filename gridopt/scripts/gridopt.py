@@ -27,7 +27,7 @@ def create_parser():
 
     # Method
     parser.add_argument('method', choices=methods,metavar='method',
-                        help='PF or OPF method { %(choices)s }')
+                        help='PF or OPF method')
     
     # Params
     class ParamAction(argparse.Action):
