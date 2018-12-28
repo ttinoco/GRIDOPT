@@ -8,7 +8,6 @@
 
 from __future__ import print_function
 import time
-import pfnet
 import numpy as np
 from .method_error import *
 from .method import PFmethod

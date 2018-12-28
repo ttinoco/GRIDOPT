@@ -8,7 +8,6 @@
 
 from __future__ import print_function
 import sys
-import pfnet
 import pstats
 import argparse
 import cProfile
@@ -63,6 +62,8 @@ def create_parser():
     return parser
 
 def main(args=None):
+
+    import pfnet
 
     parser = create_parser()
     args = parser.parse_args(args=args if args is not None else sys.argv[1:])
