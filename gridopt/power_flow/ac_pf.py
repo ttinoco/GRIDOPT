@@ -369,7 +369,7 @@ class ACPF(PFmethod):
         else:
             raise PFmethodError_BadOptSolver()
             
-    def solve(self,net):
+    def solve(self, net, save_problem=False):
 
         from optalg.opt_solver import OptSolverError, OptTermination, OptCallback
         from optalg.opt_solver import OptSolverAugL, OptSolverIpopt, OptSolverNR, OptSolverINLP
@@ -472,7 +472,7 @@ class ACPF(PFmethod):
             self.set_solver_time(time.time()-t0)
             self.set_solver_primal_variables(solver.get_primal_variables())
             self.set_solver_dual_variables(solver.get_dual_variables())
-            self.set_problem(None) # skip for now
+            self.set_problem(problem if save_problem else None)
             self.set_problem_time(problem_time)
             self.set_network_snapshot(net)
  
