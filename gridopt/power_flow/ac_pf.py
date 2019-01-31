@@ -111,7 +111,11 @@ class ACPF(PFmethod):
             net.set_flags('bus',
                           'variable',
                           'not slack',
-                          ['voltage angle', 'voltage magnitude'])
+                          'voltage angle')
+            net.set_flags('bus',
+                          'variable',
+                          'any',
+                          'voltage magnitude')
             if not limit_vars:
                 net.set_flags('bus',
                               'fixed',
@@ -175,7 +179,7 @@ class ACPF(PFmethod):
 
             # Checks
             try:
-                num_vars = (2*(net.num_buses-net.get_num_slack_buses()) +
+                num_vars = (2*net.num_buses-net.get_num_slack_buses() +
                             net.get_num_dc_buses() +
                             len([g for g in net.generators if g.is_slack() and not g.is_on_outage()]) +
                             len([g for g in net.generators if g.is_regulator() and not g.is_on_outage()]) +
@@ -256,7 +260,11 @@ class ACPF(PFmethod):
             net.set_flags('bus',
                           'variable',
                           'not slack',
-                          ['voltage magnitude', 'voltage angle'])
+                          'voltage angle')
+            net.set_flags('bus',
+                          'variable',
+                          'any',
+                          'voltage magnitude')
 
             # DC buses
             net.set_flags('dc bus',
@@ -315,7 +323,7 @@ class ACPF(PFmethod):
                   
             # Checks
             try:
-                num_vars = (2*(net.num_buses-net.get_num_slack_buses()) +
+                num_vars = (2*net.num_buses-net.get_num_slack_buses() +
                             net.get_num_dc_buses() +
                             len([g for g in net.generators if g.is_slack() and not g.is_on_outage()]) +
                             len([g for g in net.generators if g.is_regulator() and not g.is_on_outage()]) +

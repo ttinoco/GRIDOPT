@@ -1,3 +1,7 @@
+Unreleased
+----------
+* Updated ACPF to treat slack bus voltage mag as variable.
+
 Version 1.3.6
 -------------
 * Added slack P participation to non-nr acpf for consistency.
