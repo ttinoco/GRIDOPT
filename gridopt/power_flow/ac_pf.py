@@ -214,6 +214,9 @@ class ACPF(PFmethod):
             problem.add_constraint(pfnet.Constraint('CSC converter equations', net))
             problem.add_constraint(pfnet.Constraint('VSC DC voltage control', net))
             problem.add_constraint(pfnet.Constraint('CSC DC voltage control', net))
+            problem.add_constraint(pfnet.Constraint('VSC DC power control', net))
+            problem.add_constraint(pfnet.Constraint('CSC DC power control', net))
+            problem.add_constraint(pfnet.Constraint('CSC DC current control', net))
             problem.add_constraint(pfnet.Constraint('power factor regulation', net))
             problem.add_constraint(pfnet.Constraint('FACTS equations', net))
 
@@ -358,6 +361,7 @@ class ACPF(PFmethod):
             problem.add_constraint(pfnet.Constraint('CSC DC voltage control', net))
             problem.add_constraint(pfnet.Constraint('VSC DC power control', net))
             problem.add_constraint(pfnet.Constraint('CSC DC power control', net))
+            problem.add_constraint(pfnet.Constraint('CSC DC current control', net))
             problem.add_constraint(pfnet.Constraint('switching power factor regulation', net))
             problem.add_constraint(pfnet.Constraint('FACTS equations', net))
             problem.add_constraint(pfnet.Constraint('switching FACTS active power control', net))
@@ -368,6 +372,11 @@ class ACPF(PFmethod):
                 problem.add_heuristic(pfnet.Heuristic('PVPQ switching', net))
                 problem.add_heuristic(pfnet.Heuristic('switching power factor regulation', net))
             problem.analyze()
+
+            # Check
+            if (problem.J.shape[0] + problem.A.shape[0] !=
+                problem.get_num_primal_variables()):
+                raise PFmethodError_BadProblem()
             
             # Return
             return problem
