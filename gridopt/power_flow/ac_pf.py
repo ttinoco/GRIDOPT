@@ -27,6 +27,8 @@ class ACPF(PFmethod):
                    'weight_shunts': 1e-3,      # weight for shunt susceptances regularization
                    'weight_controls': 1e0,     # weight for control deviation penalty
                    'weight_var': 1e-5,         # weight for generic regularization
+                   'v_min_clip': 0.5,          # min v threshold for clipping
+                   'v_max_clip': 1.5,          # max v threshold for clipping
                    'lin_pf': False,            # flag for using linearized power flow 
                    'limit_vars': True,         # flag for enforcing generator and VSC reactive power limits
                    'lock_taps': True,          # flag for locking transformer tap ratios
@@ -210,6 +212,7 @@ class ACPF(PFmethod):
             else:
                 problem.add_constraint(pfnet.Constraint('AC power balance', net))
             problem.add_constraint(pfnet.Constraint('HVDC power balance', net))
+            problem.add_constraint(pfnet.Constraint('generator active power participation', net))
             problem.add_constraint(pfnet.Constraint('VSC converter equations', net))
             problem.add_constraint(pfnet.Constraint('CSC converter equations', net))
             problem.add_constraint(pfnet.Constraint('VSC DC voltage control', net))
@@ -398,6 +401,8 @@ class ACPF(PFmethod):
         vmin_thresh = params['vmin_thresh']
         solver_name = params['solver']
         solver_params = params['solver_parameters']
+        v_min_clip = params['v_min_clip']
+        v_max_clip = params['v_max_clip']
 
         # Opt solver
         if solver_name == 'augl':
@@ -414,6 +419,10 @@ class ACPF(PFmethod):
 
         # Copy network
         net = net.get_copy()
+
+        # Clipping
+        for bus in net.buses:
+            bus.v_mag = np.minimum(np.maximum(bus.v_mag, v_min_clip), v_max_clip)
 
         # Problem
         t0 = time.time()
