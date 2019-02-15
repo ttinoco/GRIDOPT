@@ -128,7 +128,7 @@ class DCOPF(PFmethod):
         solver.set_parameters(solver_params[solver_name])
 
         # Copy network
-        net = net.get_copy()
+        net = net.get_copy(merge_buses=True)
 
         # Problem
         t0 = time.time()

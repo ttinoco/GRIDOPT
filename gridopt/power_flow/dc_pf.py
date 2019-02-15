@@ -76,7 +76,7 @@ class DCPF(PFmethod):
         solver_name = params['solver']
 
         # Copy network
-        net = net.get_copy()
+        net = net.get_copy(merge_buses=True)
         
         # Problem
         t0 = time.time()

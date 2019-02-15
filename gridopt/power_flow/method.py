@@ -279,7 +279,7 @@ class PFmethod:
         
         pass
 
-    def update_network(self,net):
+    def update_network(self, net):
         """
         Updates network with results.
 
@@ -289,6 +289,6 @@ class PFmethod:
         """
 
         if self.results['network snapshot'] is not None:
-            net.copy_from_network(self.results['network snapshot'])
+            net.copy_from_network(self.results['network snapshot'], merged=True)
             net.update_properties()
 
