@@ -216,7 +216,13 @@ class TestPowerFlow(unittest.TestCase):
                         for gen in bus.reg_generators:
                             if np.abs(gen.Q-gen.Q_max) <= eps or np.abs(gen.Q-gen.Q_min) <= eps:
                                 num += 1
-                        self.assertGreaterEqual(num, 1)                                
+                        self.assertGreaterEqual(num, 1)
+
+            method.update_network(net)
+            self.assertEqual(net.bus_P_mis, net_snap.bus_P_mis)
+            self.assertEqual(net.bus_Q_mis, net_snap.bus_Q_mis)
+            self.assertLess(np.abs(net.bus_P_mis), 1e-2) # MW
+            self.assertLess(np.abs(net.bus_Q_mis), 1e-2) # MVAr
                                 
     def test_ACPF_solutions(self):
 
@@ -271,15 +277,37 @@ class TestPowerFlow(unittest.TestCase):
                     self.assertLessEqual(results['network snapshot'].bus_P_mis,bus_P_mis)
                     method.update_network(net)
 
+                    net_snap = results['network snapshot']
+                    for bus in net_snap.buses:
+                        obus = net.get_bus_from_number(bus.number)
+                        self.assertEqual(bus.v_ang, obus.v_ang)
+                        self.assertEqual(bus.v_mag, obus.v_mag)
+                        self.assertAlmostEqual(bus.P_mismatch, net.get_bus_from_number(bus.number).P_mismatch, places=10)
+                    for gen in net_snap.generators:
+                        self.assertEqual(gen.P, net.get_generator(gen.index).P)
+                    for load in net_snap.loads:
+                        self.assertEqual(load.P, net.get_load(load.index).P)
+                    for shunt in net_snap.shunts:
+                        self.assertEqual(shunt.g, net.get_shunt(shunt.index).g)
+
+                    self.assertLess(abs(net.bus_P_mis), 1e-2) # MW
+                    self.assertLess(abs(net.bus_Q_mis), 1e-2) # MVAr
+                    
+                    self.assertAlmostEqual(results['network snapshot'].bus_P_mis, net.bus_P_mis, places=10)
+                    self.assertAlmostEqual(results['network snapshot'].bus_Q_mis, net.bus_Q_mis, places=10)
+
                     method.solve(netMP)
                     resultsMP = method.get_results()
                     self.assertEqual(resultsMP['solver status'],'solved')
                     method.update_network(netMP)
 
+                    self.assertLess(np.max(np.abs(netMP.bus_P_mis)), 1e-2) # MW
+                    self.assertLess(np.max(np.abs(netMP.bus_Q_mis)), 1e-2) # MVAr
+
                     self.assertLess(norm(resultsMP['network snapshot'].bus_P_mis-netMP.bus_P_mis,np.inf),1e-10)
                     self.assertLess(norm(resultsMP['network snapshot'].bus_Q_mis-netMP.bus_Q_mis,np.inf),1e-10)
                     self.assertLess(norm(resultsMP['network snapshot'].gen_P_cost-netMP.gen_P_cost,np.inf),1e-10)
-
+                    
                     # Sol validation
                     validated = ''
                     if sol_data is not None:
@@ -405,6 +433,11 @@ class TestPowerFlow(unittest.TestCase):
             self.assertLess(np.abs(error),eps)
             self.assertNotEqual(p2,p3)
 
+            # Feasibility
+            method_augl.update_network(net)
+            self.assertLess(abs(net.bus_P_mis), 1e-2) # MW
+            self.assertLess(abs(net.bus_Q_mis), 1e-2) # MVAR
+
     def test_DCOPF_solutions(self):
 
         T = 2
@@ -447,7 +480,7 @@ class TestPowerFlow(unittest.TestCase):
                 
             results = method.get_results()
                 
-            method.update_network(net)
+            net = results['network snapshot']
            
             self.assertLess(norm(results['network snapshot'].bus_P_mis-net.bus_P_mis,np.inf),1e-10)
             self.assertLess(norm(results['network snapshot'].bus_Q_mis-net.bus_Q_mis,np.inf),1e-10)
@@ -494,7 +527,7 @@ class TestPowerFlow(unittest.TestCase):
             method.solve(net)
             self.assertEqual(method.results['solver status'],'solved')
             results = method.get_results()
-            method.update_network(net)
+            net = results['network snapshot']
             gen_P_cost1 = net.gen_P_cost
             load_P_util1 = net.load_P_util
             lam1,nu1,mu1,pi1 = results['solver dual variables']
@@ -515,7 +548,7 @@ class TestPowerFlow(unittest.TestCase):
                 self.assertFalse(load.has_flags('variable','active power'))
                 self.assertFalse(load.has_flags('bounded','active power'))
             results = method.get_results()
-            method.update_network(net)
+            net = results['network snapshot']
             for load in net.loads:
                 self.assertTrue(load.has_flags('variable','active power'))
                 self.assertTrue(load.has_flags('bounded','active power'))
