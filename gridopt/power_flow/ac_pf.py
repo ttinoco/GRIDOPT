@@ -43,8 +43,9 @@ class ACPF(PFmethod):
                    'solver': 'nr'}             # OPTALG optimization solver (augl, ipopt, nr, inlp)
 
     _parameters_augl = {'feastol' : 1e-4,
-                        'optol' : 1e-4,
-                        'kappa' : 1e-5}
+                        'optol' : 1e-2,
+                        'kappa' : 1e-5,
+                        'theta_max': 1e-6}
 
     _parameters_ipopt = {}
 

@@ -5,6 +5,7 @@ Unreleased
 * Added voltage clipping to acpf.
 * Added gen P participation constr to opt-base acpf (for consistency).
 * All methods automatically merge buses when creating network copy.
+* Overwrote barrier parameter bound for ACPF with augl.
 
 Version 1.3.6
 -------------
