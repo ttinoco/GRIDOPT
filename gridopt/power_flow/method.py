@@ -22,11 +22,11 @@ class PFmethod:
                         'solver status': 'unknown',
                         'solver message': 'none',
                         'solver iterations': 0,
-                        'solver time': np.nan,
+                        'solver time': 0.,
                         'solver primal variables': None,
                         'solver dual variables': None,
                         'problem' : None,
-                        'problem time' : np.nan,
+                        'problem time' : 0.,
                         'network snapshot' : None}
 
     def create_problem(self,net):

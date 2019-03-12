@@ -420,6 +420,7 @@ class ACPF(PFmethod):
 
         # Copy network
         net = net.get_copy(merge_buses=True)
+        self.set_network_snapshot(net)
 
         # Clipping
         for bus in net.buses:

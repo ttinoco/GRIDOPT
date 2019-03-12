@@ -164,6 +164,7 @@ class ACOPF(PFmethod):
 
         # Copy network
         net = net.get_copy(merge_buses=True)
+        self.set_network_snapshot(net)
         
         # Problem
         t0 = time.time()
