@@ -269,7 +269,7 @@ class TestPowerFlow(unittest.TestCase):
                     bus_P_mis = net.bus_P_mis
                     try:
                         method.solve(net)
-                    except optalg.opt_solver.OptSolverError_NotAvailable:
+                    except ImportError:
                         continue # no ipopt
                     results = method.get_results()
                     self.assertEqual(results['solver name'], solver)
@@ -396,7 +396,7 @@ class TestPowerFlow(unittest.TestCase):
                 i1 = method_ipopt.get_results()['solver iterations']
                 p1 = method_ipopt.get_results()['network snapshot'].gen_P_cost
                 print("%s\t%s\t%d" %(case.split(os.sep)[-1],'ipopt',i1))
-            except optalg.opt_solver.OptSolverError_NotAvailable:
+            except ImportError:
                 has_ipopt = False
 
             # INLP
