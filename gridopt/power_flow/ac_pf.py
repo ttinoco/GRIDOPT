@@ -1,7 +1,7 @@
 #*****************************************************#
 # This file is part of GRIDOPT.                       #
 #                                                     #
-# Copyright (c) 2015, Tomas Tinoco De Rubira.         #
+# Copyright (c) 2019, Tomas Tinoco De Rubira.         #
 #                                                     #
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
@@ -33,6 +33,9 @@ class ACPF(PFmethod):
                    'limit_vars': True,         # flag for enforcing generator and VSC reactive power limits
                    'lock_taps': True,          # flag for locking transformer tap ratios
                    'lock_shunts': True,        # flag for locking swtiched shunts
+                   'lock_vsc_P_dc': True,      # flag for locking vsc P dc
+                   'lock_csc_P_dc': True,      # flag for locking csc P dc
+                   'lock_csc_i_dc': True,      # flag for locking csc i dc
                    'vdep_loads': False,        # flag for voltage dependent loads
                    'tap_step': 0.5,            # tap ratio acceleration factor (NR only)
                    'shunt_step': 0.5,          # susceptance acceleration factor (NR only)
@@ -43,14 +46,14 @@ class ACPF(PFmethod):
                    'solver': 'nr'}             # OPTALG optimization solver (augl, ipopt, nr, inlp)
 
     _parameters_augl = {'feastol' : 1e-4,
-                        'optol' : 1e-1,
+                        'optol' : 1e0,
                         'kappa' : 1e-5,
                         'theta_max': 1e-6}
 
     _parameters_ipopt = {}
 
     _parameters_inlp = {'feastol' : 1e-4,
-                        'optol' : 1e-1}
+                        'optol' : 1e0}
     
     _parameters_nr = {}
                   
@@ -97,6 +100,9 @@ class ACPF(PFmethod):
         limit_vars = params['limit_vars']
         lock_taps = params['lock_taps']
         lock_shunts = params['lock_shunts']
+        lock_vsc_P_dc = params['lock_vsc_P_dc']
+        lock_csc_P_dc = params['lock_csc_P_dc']
+        lock_csc_i_dc = params['lock_csc_i_dc']
         vdep_loads = params['vdep_loads']
         solver_name = params['solver']
 
@@ -219,11 +225,14 @@ class ACPF(PFmethod):
             problem.add_constraint(pfnet.Constraint('CSC converter equations', net))
             problem.add_constraint(pfnet.Constraint('VSC DC voltage control', net))
             problem.add_constraint(pfnet.Constraint('CSC DC voltage control', net))
-            problem.add_constraint(pfnet.Constraint('VSC DC power control', net))
-            problem.add_constraint(pfnet.Constraint('CSC DC power control', net))
-            problem.add_constraint(pfnet.Constraint('CSC DC current control', net))
             problem.add_constraint(pfnet.Constraint('power factor regulation', net))
             problem.add_constraint(pfnet.Constraint('FACTS equations', net))
+            if lock_vsc_P_dc:
+                problem.add_constraint(pfnet.Constraint('VSC DC power control', net))
+            if lock_csc_P_dc:
+                problem.add_constraint(pfnet.Constraint('CSC DC power control', net))
+            if lock_csc_i_dc:
+                problem.add_constraint(pfnet.Constraint('CSC DC current control', net))
 
             problem.add_function(pfnet.Function('variable regularization',
                                                 wv/max([net.num_vars,1.]), net))
@@ -236,6 +245,8 @@ class ACPF(PFmethod):
             problem.add_function(pfnet.Function('VSC DC power control',
                                                 wc/max([net.num_vsc_converters,1.]), net))
             problem.add_function(pfnet.Function('CSC DC power control',
+                                                wc/max([net.num_csc_converters,1.]), net))
+            problem.add_function(pfnet.Function('CSC DC current control',
                                                 wc/max([net.num_csc_converters,1.]), net))
             problem.add_function(pfnet.Function('FACTS active power control',
                                                 wc/max([net.num_facts,1.]), net))
