@@ -18,21 +18,23 @@ class ACPF(PFmethod):
     AC power flow method.
     """
 
+    SHUNTS_MODE_LOCKED = 'locked'
+    SHUNTS_MODE_FREE = 'free'
+    SHUNTS_MODE_REG = 'regulating'
+
     name = 'ACPF'
     
     _parameters = {'weight_vmag': 1e0,         # weight for voltage magnitude regularization
                    'weight_vang': 1e0,         # weight for angle difference regularization
                    'weight_powers': 1e-3,      # weight for gen powers regularization
-                   'weight_taps': 1e-3,        # weight for tap ratios regularization
-                   'weight_shunts': 1e-3,      # weight for shunt susceptances regularization
                    'weight_controls': 1e0,     # weight for control deviation penalty
                    'weight_var': 1e-5,         # weight for generic regularization
                    'v_min_clip': 0.5,          # min v threshold for clipping
                    'v_max_clip': 1.5,          # max v threshold for clipping
                    'lin_pf': False,            # flag for using linearized power flow 
                    'limit_vars': True,         # flag for enforcing generator and VSC reactive power limits
+                   'shunts_mode': 'locked',    # switched shunts mode: locked, free, regulating
                    'lock_taps': True,          # flag for locking transformer tap ratios
-                   'lock_shunts': True,        # flag for locking swtiched shunts
                    'lock_vsc_P_dc': True,      # flag for locking vsc P dc
                    'lock_csc_P_dc': True,      # flag for locking csc P dc
                    'lock_csc_i_dc': True,      # flag for locking csc i dc
@@ -92,19 +94,23 @@ class ACPF(PFmethod):
         wm = params['weight_vmag']
         wa = params['weight_vang']
         wp = params['weight_powers']
-        wt = params['weight_taps']
-        wb = params['weight_shunts']
         wc = params['weight_controls']
         wv = params['weight_var']
         lin_pf = params['lin_pf']
         limit_vars = params['limit_vars']
+        shunts_mode = params['shunts_mode']
         lock_taps = params['lock_taps']
-        lock_shunts = params['lock_shunts']
         lock_vsc_P_dc = params['lock_vsc_P_dc']
         lock_csc_P_dc = params['lock_csc_P_dc']
         lock_csc_i_dc = params['lock_csc_i_dc']
         vdep_loads = params['vdep_loads']
         solver_name = params['solver']
+
+        # Shunts mode
+        if shunts_mode not in [self.SHUNTS_MODE_LOCKED,
+                               self.SHUNTS_MODE_FREE,
+                               self.SHUNTS_MODE_REG]:
+            raise ValueError('invalid shunts mode')
 
         # Linearized model
         if lin_pf:
@@ -181,7 +187,7 @@ class ACPF(PFmethod):
                               'tap ratio')
 
             # Swtiched shunts
-            if not lock_shunts:
+            if shunts_mode != self.SHUNTS_MODE_LOCKED:
                 net.set_flags('shunt', 
                               'variable',
                               'switching - v',
@@ -198,7 +204,7 @@ class ACPF(PFmethod):
                             net.get_num_facts()*9)*net.num_periods
                 if not lock_taps:
                     num_vars += len([b for b in net.branches if b.is_tap_changer_v() and not b.is_on_outage()])*net.num_periods
-                if not lock_shunts:
+                if shunts_mode != self.SHUNTS_MODE_LOCKED:
                     num_vars += net.get_num_switched_v_shunts()*net.num_periods
                 if vdep_loads:
                     num_vars += 2*net.get_num_vdep_loads()*net.num_periods
@@ -259,11 +265,12 @@ class ACPF(PFmethod):
             if not lock_taps:
                 problem.add_constraint(pfnet.Constraint('voltage regulation by transformers', net))
                 problem.add_function(pfnet.Function('tap ratio regularization',
-                                                    wt/max([net.get_num_tap_changers_v(),1.]), net))
-            if not lock_shunts:
-                problem.add_constraint(pfnet.Constraint('voltage regulation by shunts', net))
+                                                    wc/max([net.get_num_tap_changers_v(),1.]), net))
+            if shunts_mode != self.SHUNTS_MODE_LOCKED:
+                if shunts_mode == self.SHUNTS_MODE_REG:
+                    problem.add_constraint(pfnet.Constraint('voltage regulation by shunts', net))
                 problem.add_function(pfnet.Function('susceptance regularization',
-                                                    wb/max([net.get_num_switched_v_shunts(),1.]), net))
+                                                    wc/max([net.get_num_switched_v_shunts(),1.]), net))
             if vdep_loads:
                 problem.add_constraint(pfnet.Constraint('load voltage dependence', net))
             problem.analyze()
@@ -409,8 +416,8 @@ class ACPF(PFmethod):
         
         # Parameters
         params = self._parameters
+        shunts_mode = params['shunts_mode']
         lock_taps= params['lock_taps']
-        lock_shunts = params['lock_shunts']
         vmin_thresh = params['vmin_thresh']
         solver_name = params['solver']
         solver_params = params['solver_parameters']
@@ -454,7 +461,8 @@ class ACPF(PFmethod):
             
         def c2(s):
             if (s.k != 0 and
-                (not lock_shunts) and norm(s.problem.f,np.inf) < 100.*solver_params['nr']['feastol']):
+                (shunts_mode == self.SHUNTS_MODE_REG) and
+                norm(s.problem.f,np.inf) < 100.*solver_params['nr']['feastol']):
                 try:
                     self.apply_shunt_v_regulation(s)
                 except Exception as e:
