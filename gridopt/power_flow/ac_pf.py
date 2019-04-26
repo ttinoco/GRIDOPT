@@ -25,7 +25,7 @@ class ACPF(PFmethod):
     name = 'ACPF'
     
     _parameters = {'weight_vmag': 1e0,         # weight for voltage magnitude regularization
-                   'weight_vang': 1e0,         # weight for angle difference regularization
+                   'weight_vang': 1e-3,        # weight for angle difference regularization
                    'weight_powers': 1e-3,      # weight for gen powers regularization
                    'weight_controls': 1e0,     # weight for control deviation penalty
                    'weight_var': 1e-5,         # weight for generic regularization
@@ -50,7 +50,8 @@ class ACPF(PFmethod):
     _parameters_augl = {'feastol' : 1e-4,
                         'optol' : 1e0,
                         'kappa' : 1e-5,
-                        'theta_max': 1e-6}
+                        'theta_max': 1e-6,
+                        'sigma_init_max': 1e9}
 
     _parameters_ipopt = {}
 
