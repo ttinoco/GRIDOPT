@@ -91,14 +91,14 @@ class ACOPF(PFmethod):
         # Generator powers
         net.set_flags('generator',
                       ['variable','bounded'],
-                      'not on outage',
+                      'any',
                       ['active power','reactive power'])
 
         try:
-            assert(net.num_vars == (2*net.num_buses-net.get_num_slack_buses() +
-                                    2*net.get_num_generators_not_on_outage())*net.num_periods)
-            assert(net.num_bounded == (2*net.get_num_generators_not_on_outage() +
-                                       net.num_buses)*net.num_periods)
+            assert(net.num_vars == (2*net.get_num_buses(True)-net.get_num_slack_buses(True) +
+                                    2*net.get_num_generators(True))*net.num_periods)
+            assert(net.num_bounded == (2*net.get_num_generators(True) +
+                                       net.get_num_buses(True))*net.num_periods)
         except AssertionError:
             raise PFmethodError_BadProblem()
                                     
@@ -119,22 +119,22 @@ class ACOPF(PFmethod):
 
         # Functions
         problem.add_function(pfnet.Function('generation cost',
-                                            wcost/max([net.num_generators,1.]),net))
+                                            wcost/max([net.get_num_generators(True),1.]),net))
         if wvmag:
             problem.add_function(pfnet.Function('voltage magnitude regularization',
-                                                wvmag/max([net.num_buses,1.]),net))
+                                                wvmag/max([net.get_num_buses(True),1.]),net))
         if wvang:
             problem.add_function(pfnet.Function('voltage angle regularization',
-                                                wvang/max([net.num_buses,1.]),net))
+                                                wvang/max([net.get_num_buses(True),1.]),net))
         if wpq:
             problem.add_function(pfnet.Function('generator powers regularization',
-                                                wpq/max([net.num_generators,1.]),net))
+                                                wpq/max([net.get_num_generators(True),1.]),net))
         if wt:
             problem.add_function(pfnet.Function('tap ratio regularization',
-                                                wt/max([net.get_num_tap_changers(),1.]),net))
+                                                wt/max([net.get_num_tap_changers(True),1.]),net))
         if wb:
             problem.add_function(pfnet.Function('susceptance regularization',
-                                                wb/max([net.get_num_switched_shunts(),1.]),net))
+                                                wb/max([net.get_num_switched_shunts(True),1.]),net))
         problem.analyze()
         
         # Return

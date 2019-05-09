@@ -7,6 +7,7 @@ Unreleased
 * All methods automatically merge buses when creating network copy.
 * Overwrote barrier parameter bound for ACPF with augl.
 * Shunts mode in ACPF.
+* Support for net components being in or out of service.
 
 Version 1.3.6
 -------------

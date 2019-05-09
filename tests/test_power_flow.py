@@ -23,6 +23,45 @@ class TestPowerFlow(unittest.TestCase):
                     
         pass
 
+    def test_ACPF_keep_all(self):
+
+        for case in utils.test_cases:
+
+            if os.path.splitext(case)[1] == '.raw':
+
+                parser = pf.ParserRAW()
+                net = parser.parse(case)
+
+                parser.set('keep_all_out_of_service', True)
+                net_oos = parser.parse(case)
+
+                if (net.num_buses == net_oos.num_buses and
+                    net.num_generators == net_oos.num_generators and
+                    net.num_loads == net_oos.num_loads and
+                    net.num_shunts == net_oos.num_shunts and
+                    net.num_branches == net_oos.num_branches):
+                    continue
+
+                print(case)
+
+                method = gopt.power_flow.ACPF()
+                method.set_parameters({'solver': 'augl', 'quiet': True})
+
+                method.solve(net)
+                r = method.get_results()
+
+                method.solve(net_oos)
+                r_oos = method.get_results()
+
+                self.assertEqual(r['solver status'], r_oos['solver status'])
+                self.assertEqual(r['solver iterations'], r_oos['solver iterations'])
+                self.assertEqual(r['network snapshot'].bus_v_max, r_oos['network snapshot'].bus_v_max)
+                self.assertEqual(r['network snapshot'].bus_v_min, r_oos['network snapshot'].bus_v_min)
+                self.assertEqual(r['network snapshot'].bus_P_mis, r_oos['network snapshot'].bus_P_mis)
+                self.assertEqual(r['network snapshot'].bus_Q_mis, r_oos['network snapshot'].bus_Q_mis)
+
+                self.assertRaises(AssertionError, pf.tests.utils.compare_networks, self, r['network snapshot'], r_oos['network snapshot'])
+                
     def test_ACOPF_parameters(self):
 
         acopf = gopt.power_flow.ACOPF()
@@ -132,7 +171,7 @@ class TestPowerFlow(unittest.TestCase):
                 if bus.is_v_set_regulated():
                     reg_gens = [g.index for g in bus.reg_generators]
                     gen = bus.reg_generators[-1]
-                    gen.outage = True
+                    gen.in_service = False
                     method.solve(net)
                     self.assertEqual(method.get_results()['solver status'], 'solved')
                     net2 = method.get_results()['network snapshot']
@@ -140,7 +179,7 @@ class TestPowerFlow(unittest.TestCase):
                                      net2.get_generator(gen.index).Q) 
                     self.assertNotEqual(net.get_generator(gen.index).Q,
                                         net1.get_generator(gen.index).Q)
-                    gen.outage = False
+                    gen.in_service = True
 
     def test_ACPF_with_branch_outages(self):
             
@@ -166,7 +205,7 @@ class TestPowerFlow(unittest.TestCase):
                 if bus.is_regulated_by_tran() and bus.number == 1:
                     reg_trans = [br.index for br in bus.reg_trans]
                     tran = bus.reg_trans[-1]
-                    tran.outage = True
+                    tran.in_service = False
                     method.solve(net)
                     self.assertEqual(method.get_results()['solver status'], 'solved')
                     net2 = method.get_results()['network snapshot']
@@ -175,7 +214,7 @@ class TestPowerFlow(unittest.TestCase):
                     self.assertFalse(net2.get_branch(tran.index).has_flags('variable', 'tap ratio'))
                     self.assertNotEqual(net1.num_vars, net2.num_vars)
                     self.assertGreater(net1.num_vars, net2.num_vars)
-                    tran.outage = False
+                    tran.in_service = True
                     tested = True
             self.assertTrue(tested)
 
@@ -497,7 +536,7 @@ class TestPowerFlow(unittest.TestCase):
 
             self.assertTupleEqual(x.shape,((net.num_buses-
                                             net.get_num_slack_buses()+
-                                            net.get_num_P_adjust_gens())*T,))
+                                            net.get_num_generators())*T,))
             self.assertTupleEqual(x.shape,(net.num_vars,))
             self.assertTupleEqual(lam0.shape,(net.num_buses*T,))
             self.assertTrue(nu0.size == 0)
@@ -518,10 +557,9 @@ class TestPowerFlow(unittest.TestCase):
                         self.assertEqual(branch.sens_P_l_bound[t],pi0[net.num_vars+row])
                         row += 1
                 for gen in net.generators:
-                    if gen.is_P_adjustable():
-                        self.assertEqual(gen.P[t],xx[gen.index_P[t]])
-                        self.assertEqual(gen.sens_P_u_bound[t],mu0[gen.index_P[t]])
-                        self.assertEqual(gen.sens_P_l_bound[t],pi0[gen.index_P[t]])
+                    self.assertEqual(gen.P[t],xx[gen.index_P[t]])
+                    self.assertEqual(gen.sens_P_u_bound[t],mu0[gen.index_P[t]])
+                    self.assertEqual(gen.sens_P_l_bound[t],pi0[gen.index_P[t]])
 
             # No thermal limits
             method.set_parameters({'thermal_limits':False})
@@ -562,7 +600,7 @@ class TestPowerFlow(unittest.TestCase):
             self.assertTupleEqual(x.shape,((net.get_num_P_adjust_loads()+
                                             net.num_buses-
                                             net.get_num_slack_buses()+
-                                            net.get_num_P_adjust_gens())*net.num_periods,))
+                                            net.get_num_generators())*net.num_periods,))
             self.assertTupleEqual(x.shape,(net.num_vars,))
             self.assertTupleEqual(lam2.shape,(net.num_buses*net.num_periods,))
             self.assertTrue(nu2.size == 0)
@@ -577,10 +615,9 @@ class TestPowerFlow(unittest.TestCase):
                         self.assertEqual(bus.sens_v_ang_u_bound[t],mu2[bus.index_v_ang[t]])
                         self.assertEqual(bus.sens_v_ang_l_bound[t],pi2[bus.index_v_ang[t]])
                 for gen in net.generators:
-                    if gen.is_P_adjustable():
-                        self.assertEqual(gen.P[t],xx[gen.index_P[t]])
-                        self.assertEqual(gen.sens_P_u_bound[t],mu2[gen.index_P[t]])
-                        self.assertEqual(gen.sens_P_l_bound[t],pi2[gen.index_P[t]])
+                    self.assertEqual(gen.P[t],xx[gen.index_P[t]])
+                    self.assertEqual(gen.sens_P_u_bound[t],mu2[gen.index_P[t]])
+                    self.assertEqual(gen.sens_P_l_bound[t],pi2[gen.index_P[t]])
                 for load in net.loads:
                     if load.is_P_adjustable():
                         self.assertEqual(load.P[t],xx[load.index_P[t]])

@@ -70,7 +70,7 @@ class DCOPF(PFmethod):
                       'voltage angle')
         net.set_flags('generator',
                       ['variable','bounded'],
-                      ['adjustable active power','not on outage'],
+                      'any',
                       'active power')
         net.set_flags('load',
                       ['variable','bounded'],
@@ -83,8 +83,7 @@ class DCOPF(PFmethod):
                           'active power')
 
         try:
-            num_gvar =  len([g for g in net.generators if 
-                             (not g.is_on_outage()) and g.is_P_adjustable()])
+            num_gvar = net.get_num_generators()
             num_cur = net.num_var_generators if params['renewable_curtailment'] else 0
             assert(net.num_bounded == (num_gvar+net.get_num_P_adjust_loads()+num_cur)*net.num_periods)
             assert(net.num_vars == (net.num_buses-net.get_num_slack_buses()+
