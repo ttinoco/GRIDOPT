@@ -41,8 +41,8 @@ class ACPF(PFmethod):
                    'vdep_loads': False,        # flag for voltage dependent loads
                    'tap_step': 0.5,            # tap ratio acceleration factor (NR only)
                    'shunt_step': 0.5,          # susceptance acceleration factor (NR only)
-                   'dtap': 1e-5,               # tap ratio perturbation (NR only)
-                   'dsus': 1e-5,               # susceptance perturbation (NR only)
+                   'dtap': 1e-4,               # tap ratio perturbation (NR only)
+                   'dsus': 1e-4,               # susceptance perturbation (NR only)
                    'pvpq_start_k': 0,          # start iteration number for PVPQ switching heuristics
                    'vmin_thresh': 0.1,         # threshold for vmin
                    'solver': 'nr'}             # OPTALG optimization solver (augl, ipopt, nr, inlp)
@@ -653,7 +653,7 @@ class ACPF(PFmethod):
                             b[i] = snew
                             if np.abs(snew-s) > eps:
                                 break
-
+                            
         # Update
         solver.func(x)
         p.update_lin()
@@ -711,7 +711,7 @@ class ACPF(PFmethod):
 
                             if not reg_tran.is_in_service():
                                 continue
-                            
+                                                        
                             assert(reg_tran.has_flags('variable','tap ratio'))
                             
                             t = x[reg_tran.index_ratio[tau]]

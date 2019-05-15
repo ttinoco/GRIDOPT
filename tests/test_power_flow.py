@@ -25,13 +25,15 @@ class TestPowerFlow(unittest.TestCase):
 
     def test_ACPF_keep_all(self):
 
+        print('')
+
         for case in utils.test_cases:
 
             if os.path.splitext(case)[1] == '.raw':
 
                 parser = pf.ParserRAW()
                 net = parser.parse(case)
-
+                
                 parser.set('keep_all_out_of_service', True)
                 net_oos = parser.parse(case)
 
@@ -335,7 +337,7 @@ class TestPowerFlow(unittest.TestCase):
                     
                     self.assertAlmostEqual(results['network snapshot'].bus_P_mis, net.bus_P_mis, places=10)
                     self.assertAlmostEqual(results['network snapshot'].bus_Q_mis, net.bus_Q_mis, places=10)
-
+                    
                     method.solve(netMP)
                     resultsMP = method.get_results()
                     self.assertEqual(resultsMP['solver status'],'solved')
