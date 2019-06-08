@@ -44,10 +44,8 @@ class TestPowerFlow(unittest.TestCase):
                     net.num_branches == net_oos.num_branches):
                     continue
 
-                print(case)
-
                 method = gopt.power_flow.ACPF()
-                method.set_parameters({'solver': 'augl', 'quiet': True})
+                method.set_parameters({'solver': 'augl', 'quiet': True, 'v_mag_warm_ref': True})
 
                 method.solve(net)
                 r = method.get_results()

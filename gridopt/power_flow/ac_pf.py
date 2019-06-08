@@ -45,6 +45,7 @@ class ACPF(PFmethod):
                    'dsus': 1e-4,               # susceptance perturbation (NR only)
                    'pvpq_start_k': 0,          # start iteration number for PVPQ switching heuristics
                    'vmin_thresh': 0.1,         # threshold for vmin
+                   'v_mag_warm_ref': False,    # flag for using current voltage magnitudes as reference in regularization
                    'solver': 'nr'}             # OPTALG optimization solver (augl, ipopt, nr, inlp)
 
     _parameters_augl = {'feastol' : 1e-4,
@@ -106,6 +107,7 @@ class ACPF(PFmethod):
         lock_csc_i_dc = params['lock_csc_i_dc']
         vdep_loads = params['vdep_loads']
         solver_name = params['solver']
+        v_mag_warm_ref = params['v_mag_warm_ref']
 
         # Shunts mode
         if shunts_mode not in [self.SHUNTS_MODE_LOCKED,
@@ -243,8 +245,10 @@ class ACPF(PFmethod):
 
             problem.add_function(pfnet.Function('variable regularization',
                                                 wv/max([net.num_vars,1.]), net))
-            problem.add_function(pfnet.Function('voltage magnitude regularization',
-                                                wm/max([net.get_num_buses(True),1.]), net))
+            func = pfnet.Function('voltage magnitude regularization',
+                                  wm/max([net.get_num_buses(True),1.]), net)
+            func.set_parameter('v_set_reference', not v_mag_warm_ref)
+            problem.add_function(func)
             problem.add_function(pfnet.Function('voltage angle regularization',
                                                 wa/max([net.get_num_buses(True),1.]), net))
             problem.add_function(pfnet.Function('generator powers regularization',

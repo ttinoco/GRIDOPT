@@ -8,6 +8,7 @@ Unreleased
 * Overwrote barrier parameter bound for ACPF with augl.
 * Shunts mode in ACPF.
 * Support for net components being in or out of service.
+* v_mag_warm_ref parameter to ACPF method.
 
 Version 1.3.6
 -------------
