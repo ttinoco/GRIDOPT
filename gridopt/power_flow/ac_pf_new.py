@@ -582,10 +582,8 @@ class ACPFnew(PFmethod):
                 s.problem.b = prob.b
 
         if solver_name == 'nr':
-            if not taps_round:
-                solver.add_callback(OptCallback(c1))
-            if not shunts_round:
-                solver.add_callback(OptCallback(c2))
+            solver.add_callback(OptCallback(c1))
+            solver.add_callback(OptCallback(c2))
             solver.add_callback(OptCallback(c3))
                 
         # Termination
