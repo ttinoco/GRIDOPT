@@ -38,7 +38,6 @@ class ACPFnew(PFmethod):
                    'weight_var': 1e-5,         # weight for generic regularization
                    'v_min_clip': 0.5,          # min v threshold for clipping
                    'v_max_clip': 1.5,          # max v threshold for clipping
-                   # 'lin_pf': False,            # flag for using linearized power flow 
                    'q_limit': True,            # flag for enforcing generator and VSC reactive power limits
                    'q_mode': 'free',           # generator reactive power mode: free, regulating
                    'shunts_limit': True,       # flag for enforcing switched shunts limit
@@ -110,7 +109,6 @@ class ACPFnew(PFmethod):
         wp = params['weight_powers']
         wc = params['weight_controls']
         wv = params['weight_var']
-        # lin_pf = params['lin_pf']
         q_mode = params['q_mode']
         q_limit = params['q_limit']
         shunts_mode = params['shunts_mode']
@@ -159,30 +157,30 @@ class ACPFnew(PFmethod):
                           'variable',
                           'any',
                           'voltage magnitude')
-            if q_mode == self.Q_MODE_REG and not q_limit:                         # opt spec
+            if q_mode == self.Q_MODE_REG and not q_limit: 
                 net.set_flags('bus',
                               'fixed',
                               'v set regulated',
                               'voltage magnitude')
-            # v_mag bounded: use flag or loop on get buses regulated by certain taps
+            
             if taps_mode == self.TAPS_MODE_REG and not taps_limit:
                 net.set_flags('bus',
                               'bounded',
-                              'v set regulated',  # by the certain taps
+                              'v set regulated',  
                               'voltage magnitude')
             if shunts_mode == self.SHUNTS_MODE_REG and not shunts_limit:
                 net.set_flags('bus',
                               'bounded',
-                              'v set regulated',  # by the certain shunts
+                              'v set regulated',  
                               'voltage magnitude')
 
-            # Genertors
-            if gens_redispatch:                            # redispatch
+            # Genertors 
+            if gens_redispatch:    
                 net.set_flags('generator',
                               ['variable', 'bounded'],
                               'not on outage',
                               'active power')                      
-            else:                                          # no redispatch
+            else:  
                 net.set_flags('generator',
                               'variable',
                               'slack',
@@ -192,7 +190,7 @@ class ACPFnew(PFmethod):
                           'variable',
                           'regulator',
                           'reactive power')
-            if q_mode == self.Q_MODE_FREE and q_limit:     # not reg but has limit
+            if q_mode == self.Q_MODE_FREE and q_limit: 
                 net.set_flags('generator',
                               'bounded',
                               'regulator',
@@ -211,7 +209,7 @@ class ACPFnew(PFmethod):
                           'variable',
                           'any',
                           ['dc power', 'active power', 'reactive power'])
-            if q_limit and q_mode == self.Q_MODE_FREE:                             # elastic
+            if q_limit and q_mode == self.Q_MODE_FREE: 
                 net.set_flags('vsc converter',
                               'bounded',
                               'any',
@@ -222,7 +220,7 @@ class ACPFnew(PFmethod):
                           'variable',
                           'any',
                           ['dc power', 'active power', 'reactive power'])
-            if q_limit and q_mode == self.Q_MODE_FREE:                             # elastic
+            if q_limit and q_mode == self.Q_MODE_FREE: 
                 net.set_flags('csc converter',
                               'bounded',
                               'any',
@@ -239,7 +237,7 @@ class ACPFnew(PFmethod):
                           'variable',
                           'any',
                           'all')
-            if q_limit and q_mode == self.Q_MODE_FREE:                             # elastic
+            if q_limit and q_mode == self.Q_MODE_FREE:        
                 net.set_flags('facts',
                               'bounded',
                               'any',
@@ -279,9 +277,9 @@ class ACPFnew(PFmethod):
                     num_bounded += len([b for b in net.buses if b.isregulatedbyshunts()])
                 '''
                 num_P = net.get_num_slack_gens(True)
-                num_Q = len([g for g in net.generators if g.is_regulator()]) # and not g.is_on_outage()
+                num_Q = len([g for g in net.generators if g.is_regulator()])
                 if gens_redispatch: 
-                    num_P = len([g for g in net.generators]) # if not g.is_on_outage()
+                    num_P = len([g for g in net.generators])
                     num_bounded += num_P*net.num_periods
                 if q_limit and q_mode == self.Q_MODE_FREE:
                     num_bounded += num_Q*net.num_periods
@@ -477,9 +475,6 @@ class ACPFnew(PFmethod):
             # Set up problem
             problem = pfnet.Problem(net)
 
-            # if lin_pf:
-            #     problem.add_constraint(pfnet.Constraint('linearized AC power balance', net))
-            # else:
             problem.add_constraint(pfnet.Constraint('AC power balance', net))
             problem.add_constraint(pfnet.Constraint('HVDC power balance', net))
             problem.add_constraint(pfnet.Constraint('generator active power participation', net))
@@ -520,7 +515,6 @@ class ACPFnew(PFmethod):
         # Parameters
         params = self._parameters
         shunts_mode = params['shunts_mode']
-        # lock_taps= params['lock_taps']
         shunts_round = params['shunts_round']
         taps_mode = params['taps_mode']
         taps_round = params['taps_round']
@@ -849,5 +843,3 @@ class ACPFnew(PFmethod):
         solver.problem.A = p.A
         solver.problem.b = p.b
 
-    def set_solver_name(self,solver_name):
-        self._parameters['solver'] = solver_name
