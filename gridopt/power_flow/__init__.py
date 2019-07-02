@@ -10,11 +10,10 @@ from .dc_pf import DCPF
 from .dc_opf import DCOPF
 from .ac_pf import ACPF
 from .ac_opf import ACOPF
-from .ac_pf_new import ACPFnew
 from .method import PFmethod
 from .method_error import PFmethodError
 
-methods = [DCPF,DCOPF,ACPF,ACOPF,ACPFnew]
+methods = [DCPF, DCOPF, ACPF, ACOPF]
 
 def new_method(name):
     """
