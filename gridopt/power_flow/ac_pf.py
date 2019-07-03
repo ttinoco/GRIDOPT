@@ -17,47 +17,41 @@ class ACPF(PFmethod):
     """
     AC power flow method.
     """
-
-    SHUNTS_MODE_LOCKED = 'locked'
-    SHUNTS_MODE_FREE = 'free'
-    SHUNTS_MODE_REG = 'regulating'
-
-    TAPS_MODE_LOCKED = 'locked'
-    TAPS_MODE_FREE = 'free'
-    TAPS_MODE_REG = 'regulating'
-
-    Q_MODE_FREE = 'free'
-    Q_MODE_REG = 'regulating'
+    
+    CONTROL_MODE_LOCKED = 'locked'
+    CONTROL_MODE_FREE = 'free'
+    CONTROL_MODE_REG = 'regulating'
 
     name = 'ACPF'
     
-    _parameters = {'weight_vmag': 1e0,         # weight for voltage magnitude regularization
-                   'weight_vang': 1e-3,        # weight for angle difference regularization
-                   'weight_powers': 1e-3,      # weight for gen powers regularization
-                   'weight_controls': 1e0,     # weight for control deviation penalty
-                   'weight_var': 1e-5,         # weight for generic regularization
-                   'v_min_clip': 0.5,          # min v threshold for clipping
-                   'v_max_clip': 1.5,          # max v threshold for clipping
-                   'q_limit': True,            # flag for enforcing generator and VSC reactive power limits
-                   'q_mode': 'free',           # generator reactive power mode: free, regulating
-                   'shunts_limit': True,       # flag for enforcing switched shunts limit
-                   'shunts_mode': 'locked',    # switched shunts mode: locked, free, regulating
-                   'taps_mode': 'locked',      # transformer tap mode: locked, free, regulating
-                   'taps_limit': True,         # flag for locking transformer tap ratios
-                   'lock_vsc_P_dc': True,      # flag for locking vsc P dc
-                   'lock_csc_P_dc': True,      # flag for locking csc P dc
-                   'lock_csc_i_dc': True,      # flag for locking csc i dc
-                   'vdep_loads': False,        # flag for voltage dependent loads
-                   'tap_step': 0.5,            # tap ratio acceleration factor (NR only)
-                   'shunt_step': 0.5,          # susceptance acceleration factor (NR only)
-                   'dtap': 1e-4,               # tap ratio perturbation (NR only)
-                   'dsus': 1e-4,               # susceptance perturbation (NR only)
-                   'pvpq_start_k': 0,          # start iteration number for PVPQ switching heuristics
-                   'vmin_thresh': 0.1,         # threshold for vmin
-                   'gens_redispatch': False,        # flag for allowing active power dispatch oo not
-                   'shunts_round': True,       # flag for rounding to discrete values of shunts or not
-                   'taps_round': True,         # flag for rounding to discrete values of tap changers or not 
-                   'solver': 'augl'}             # OPTALG optimization solver (augl, ipopt, nr, inlp)
+    _parameters = {'weight_vmag': 1e0,       # weight for voltage magnitude regularization
+                   'weight_vang': 1e-3,      # weight for angle difference regularization
+                   'weight_powers': 1e-3,    # weight for gen powers regularization
+                   'weight_controls': 1e0,   # weight for control deviation penalty
+                   'weight_var': 1e-5,       # weight for generic regularization
+                   'v_min_clip': 0.5,        # lower v threshold for clipping
+                   'v_max_clip': 1.5,        # upper v threshold for clipping
+                   'Q_limit': True,          # flag for enforcing generator, VSC and FACTS reactive power limits
+                   'Q_mode': 'free',         # reactive power mode: free, regulating
+                   'shunts_limit': True,     # flag for enforcing switched shunt susceptance limits
+                   'shunts_mode': 'locked',  # switched shunts mode: locked, free, regulating
+                   'taps_limit': True,       # flag for enforcing transformer tap ratio limits
+                   'taps_mode': 'locked',    # transformer tap ratio mode: locked, free, regulating
+                   'lock_vsc_P_dc': True,    # flag for locking vsc P dc
+                   'lock_csc_P_dc': True,    # flag for locking csc P dc
+                   'lock_csc_i_dc': True,    # flag for locking csc i dc
+                   'vdep_loads': False,      # flag for modeling voltage dependent loads
+                   'pvpq_start_k': 0,        # start iteration number for PVPQ switching heuristics
+                   'vmin_thresh': 0.1,       # minimum voltage magnitude threshold
+                   'gens_redispatch': False, # flag for allowing active power redispatch
+                   'shunts_round': True,     # flag for rounding discrete switched shunt susceptances
+                   'taps_round': True,       # flag for rounding discrete transformer tap ratios
+                   'v_mag_warm_ref': False,  # flag for using current v mag as reference in regularization
+                   'solver': 'augl',         # OPTALG optimization solver (augl, ipopt, nr, inlp)
+                   'tap_step': 0.5,          # tap ratio acceleration factor (NR only)
+                   'shunt_step': 0.5,        # susceptance acceleration factor (NR only)
+                   'dtap': 1e-4,             # tap ratio perturbation (NR only)
+                   'dsus': 1e-4}             # susceptance perturbation (NR only)
 
     _parameters_augl = {'feastol' : 1e-4,
                         'optol' : 1e0,
@@ -98,7 +92,119 @@ class ACPF(PFmethod):
                                                  'nr': nr_params,
                                                  'inlp': inlp_params}
 
-    def create_problem(self,net):
+    def create_problem(self, net):
+
+        solver_name = params['solver']
+
+        if solver_name == 'nr':
+            return self.create_problem_nr(net)
+        else:
+            return self.create_problem_opt(net)
+
+    def create_problem_nr(self, net):
+
+        import pfnet
+
+        # Buses
+        net.set_flags('bus',
+                      'variable',
+                      'not slack',
+                      'voltage angle')
+        net.set_flags('bus',
+                      'variable',
+                      'any',
+                      'voltage magnitude')
+        
+        # DC buses
+        net.set_flags('dc bus',
+                      'variable',
+                      'any',
+                      'voltage')
+        
+        # Generators
+        net.set_flags('generator',
+                      'variable',
+                      'slack',
+                      'active power')
+        
+        net.set_flags('generator',
+                      'variable',
+                      'regulator',
+                      'reactive power')
+        
+        # VSC HVDC
+        net.set_flags('vsc converter',
+                      'variable',
+                      'any',
+                      ['dc power', 'active power', 'reactive power'])
+        
+        # CSC HVDC
+        net.set_flags('csc converter',
+                      'variable',
+                      'any',
+                      ['dc power', 'active power', 'reactive power'])
+        
+        # FACTS
+        net.set_flags('facts',
+                      'variable',
+                      'any',
+                      'all')
+        
+        # Loads
+        if vdep_loads:
+            for load in net.loads:
+                if load.is_voltage_dependent() and load.is_in_service():
+                    net.set_flags_of_component(load,
+                                               'variable',
+                                               ['active power', 'reactive power'])
+                    
+        # Tap changers
+        net.set_flags('branch',
+                      ['variable','fixed'],
+                      'tap changer - v',
+                      'tap ratio')
+        
+        # Switched shunts
+        net.set_flags('shunt',
+                      ['variable','fixed'],
+                      'switching - v',
+                      'susceptance')
+        
+        # Set up problem
+        problem = pfnet.Problem(net)
+        
+        problem.add_constraint(pfnet.Constraint('AC power balance', net))
+        problem.add_constraint(pfnet.Constraint('HVDC power balance', net))
+        problem.add_constraint(pfnet.Constraint('generator active power participation', net))
+        problem.add_constraint(pfnet.Constraint('variable fixing', net))
+        problem.add_constraint(pfnet.Constraint('PVPQ switching', net))
+        problem.add_constraint(pfnet.Constraint('VSC converter equations', net))
+        problem.add_constraint(pfnet.Constraint('CSC converter equations', net))
+        problem.add_constraint(pfnet.Constraint('VSC DC voltage control', net))
+        problem.add_constraint(pfnet.Constraint('CSC DC voltage control', net))
+        problem.add_constraint(pfnet.Constraint('VSC DC power control', net))
+        problem.add_constraint(pfnet.Constraint('CSC DC power control', net))
+        problem.add_constraint(pfnet.Constraint('CSC DC current control', net))
+        problem.add_constraint(pfnet.Constraint('switching power factor regulation', net))
+        problem.add_constraint(pfnet.Constraint('FACTS equations', net))
+        problem.add_constraint(pfnet.Constraint('switching FACTS active power control', net))
+        problem.add_constraint(pfnet.Constraint('switching FACTS reactive power control', net))
+        if vdep_loads:
+            problem.add_constraint(pfnet.Constraint('load voltage dependence', net))
+        if q_limit:
+            problem.add_heuristic(pfnet.Heuristic('PVPQ switching', net))
+            problem.add_heuristic(pfnet.Heuristic('switching power factor regulation', net))
+        problem.analyze()
+        
+        # Check
+        if (problem.J.shape[0] + problem.A.shape[0] !=
+            problem.get_num_primal_variables()):
+            raise PFmethodError_BadProblem()
+        
+        # Return
+        return problem
+
+    def create_problem_opt(self, net):
 
         import pfnet
 
@@ -109,8 +215,8 @@ class ACPF(PFmethod):
         wp = params['weight_powers']
         wc = params['weight_controls']
         wv = params['weight_var']
-        q_mode = params['q_mode']
-        q_limit = params['q_limit']
+        Q_mode = params['Q_mode']
+        Q_limit = params['Q_limit']
         shunts_mode = params['shunts_mode']
         shunts_limit = params['shunts_limit']
         taps_mode = params['taps_mode']
@@ -119,393 +225,198 @@ class ACPF(PFmethod):
         lock_csc_P_dc = params['lock_csc_P_dc']
         lock_csc_i_dc = params['lock_csc_i_dc']
         vdep_loads = params['vdep_loads']
+        v_mag_warm_ref = params['v_mag_warm_ref']
         gens_redispatch = params['gens_redispatch']
-        shunts_round = params['shunts_round']
-        taps_round = params['taps_round']
-        solver_name = params['solver']
-
-        # Shunts mode
-        if shunts_mode not in [self.SHUNTS_MODE_LOCKED,
-                               self.SHUNTS_MODE_FREE,
-                               self.SHUNTS_MODE_REG]:
-            raise ValueError('invalid shunts mode')
-
-        # Tap changer mode
-        if taps_mode not in [self.TAPS_MODE_LOCKED,
-                               self.TAPS_MODE_FREE,
-                               self.TAPS_MODE_REG]:
-            raise ValueError('invalid tap changer mode')
-
-        # Generator reactive power mode
-        if q_mode not in [self.Q_MODE_REG,
-                               self.Q_MODE_FREE]:
-            raise ValueError('invalid generator Q mode')
         
+        # Check shunt options
+        if shunts_mode not in [self.CONTROL_MODE_LOCKED,
+                               self.CONTROL_MODE_FREE,
+                               self.CONTROL_MODE_REG]:
+            raise ValueError('invalid shunts mode')
+        if shunts_mode == self.CONTROL_MODE_REG and not shunts_limit:
+            raise ValueError('unsupported shunts configuration')
+
+        # Check tap options
+        if taps_mode not in [self.CONTROL_MODE_LOCKED,
+                             self.CONTROL_MODE_FREE,
+                             self.CONTROL_MODE_REG]:
+            raise ValueError('invalid tap changer mode')
+        if taps_mode == self.CONTROL_MODE_REG and not taps_limit:
+             raise ValueError('unsupported taps configuration')
+
+        # Check Q options
+        if Q_mode not in [self.CONTROL_MODE_REG,
+                          self.CONTROL_MODE_FREE]:
+            raise ValueError('invalid reactive power mode')
+
         # Clear flags
         net.clear_flags()
 
-        # OPT-based or Elastic
-        ###########
-        if solver_name != 'nr':
-
-            # Buses
+        # Buses
+        net.set_flags('bus',
+                      'variable',
+                      'not slack',
+                      'voltage angle')
+        net.set_flags('bus',
+                      'variable',
+                      'any',
+                      'voltage magnitude')
+        if Q_mode == self.CONTROL_MODE_REG and not Q_limit: 
             net.set_flags('bus',
-                          'variable',
-                          'not slack',
-                          'voltage angle')
-            net.set_flags('bus',
-                          'variable',
-                          'any',
+                          'fixed',
+                          'v set regulated',
                           'voltage magnitude')
-            if q_mode == self.Q_MODE_REG and not q_limit: 
-                net.set_flags('bus',
-                              'fixed',
-                              'v set regulated',
-                              'voltage magnitude')
             
-            if taps_mode == self.TAPS_MODE_REG and not taps_limit:
-                net.set_flags('bus',
-                              'bounded',
-                              'v set regulated',  
-                              'voltage magnitude')
-            if shunts_mode == self.SHUNTS_MODE_REG and not shunts_limit:
-                net.set_flags('bus',
-                              'bounded',
-                              'v set regulated',  
-                              'voltage magnitude')
-
-            # Genertors 
-            if gens_redispatch:    
-                net.set_flags('generator',
-                              ['variable', 'bounded'],
-                              'not on outage',
-                              'active power')                      
-            else:  
-                net.set_flags('generator',
-                              'variable',
-                              'slack',
-                              'active power')
-            
+        # Genertors 
+        if gens_redispatch:    
             net.set_flags('generator',
-                          'variable',
-                          'regulator',
-                          'reactive power')
-            if q_mode == self.Q_MODE_FREE and q_limit: 
-                net.set_flags('generator',
-                              'bounded',
-                              'regulator',
-                              'reactive power')
-                
-
-            # Loads
-            if vdep_loads:
-                for load in net.loads:
-                    if load.is_voltage_dependent() and load.is_in_service():
-                        net.set_flags_of_component(load,
-                                                   'variable',
-                                                   ['active power', 'reactive power'])
-            # VSC HVDC
-            net.set_flags('vsc converter',
-                          'variable',
+                          ['variable', 'bounded'],
                           'any',
-                          ['dc power', 'active power', 'reactive power'])
-            if q_limit and q_mode == self.Q_MODE_FREE: 
-                net.set_flags('vsc converter',
-                              'bounded',
-                              'any',
-                              'reactive power')
-
-            # CSC HVDC
-            net.set_flags('csc converter',
-                          'variable',
-                          'any',
-                          ['dc power', 'active power', 'reactive power'])
-            if q_limit and q_mode == self.Q_MODE_FREE: 
-                net.set_flags('csc converter',
-                              'bounded',
-                              'any',
-                              'reactive power')
-
-            # DC buses
-            net.set_flags('dc bus',
-                          'variable',
-                          'any',
-                          'voltage')
-
-            # FACTS
-            net.set_flags('facts',
-                          'variable',
-                          'any',
-                          'all')
-            if q_limit and q_mode == self.Q_MODE_FREE:        
-                net.set_flags('facts',
-                              'bounded',
-                              'any',
-                              'reactive power')
-
-            # Tap changers 
-            if taps_mode != self.TAPS_MODE_LOCKED:
-                net.set_flags('branch', 
-                              'variable',
-                              ['tap changer - v', 'not on outage'],
-                              'tap ratio')
-                if taps_limit and taps_mode == self.TAPS_MODE_FREE:
-                    net.set_flags('branch',
-                                  'bounded',
-                                  ['tap changer -v', 'not on outage'],
-                                  'tap ratio')
-
-            # Swtiched shunts
-            if shunts_mode != self.SHUNTS_MODE_LOCKED:
-                net.set_flags('shunt', 
-                              'variable',
-                              'switching - v',
-                              'susceptance')
-                if shunts_limit and shunts_mode == self.SHUNTS_MODE_FREE:
-                    net.set_flags('shunt',
-                                  'bounded',
-                                  'switching -v',
-                                  'susceptance')
-
-            # Checks
-            try:
-                num_bounded = 0
-                '''
-                if taps_mode == self.TAPS_MODE_REG and not taps_limit:
-                    num_bounded += len([b for b in net.buses if b.isregulatedbytaps()])
-                if shunts_mode == self.SHUNTS_MODE_REG and not shunts_limit:
-                    num_bounded += len([b for b in net.buses if b.isregulatedbyshunts()])
-                '''
-                num_P = net.get_num_slack_gens(True)
-                num_Q = len([g for g in net.generators if g.is_regulator()])
-                if gens_redispatch: 
-                    num_P = len([g for g in net.generators])
-                    num_bounded += num_P*net.num_periods
-                if q_limit and q_mode == self.Q_MODE_FREE:
-                    num_bounded += num_Q*net.num_periods
-                num_vars = (2*net.get_num_buses(True)-net.get_num_slack_buses(True) +
-                            net.get_num_dc_buses(True) +
-                            num_P +
-                            num_Q +
-                            net.get_num_vsc_converters(True)*4 +
-                            net.get_num_csc_converters(True)*4 +
-                            net.get_num_facts(True)*9)*net.num_periods
-                if taps_mode != self.TAPS_MODE_LOCKED:
-                    num_taps = len([b for b in net.branches if b.is_tap_changer_v() and not b.is_on_outage()])*net.num_periods
-                    num_vars += num_taps
-                    if taps_limit and taps_mode == self.TAPS_MODE_FREE:
-                        num_bounded += num_taps
-                if shunts_mode != self.SHUNTS_MODE_LOCKED:
-                    num_shunts = net.get_num_switched_v_shunts(True)*net.num_periods
-                    num_vars += num_shunts
-                    if shunts_limit and shunts_mode == self.SHUNTS_MODE_FREE:
-                        num_bounded += num_shunts
-                if vdep_loads:
-                    num_vars += 2*net.get_num_vdep_loads(True)*net.num_periods
-                if q_limit and q_mode == self.Q_MODE_FREE:
-                    num_bounded += (
-                                   net.get_num_vsc_converters(True) +
-                                   net.get_num_csc_converters(True) +
-                                   net.get_num_facts()*4)*net.num_periods
-
-                assert(net.num_vars == num_vars)
-                assert(net.num_bounded == num_bounded)
-                if q_mode == self.Q_MODE_REG and not q_limit:
-                    assert(net.num_fixed == len([b for b in net.buses if b.is_v_set_regulated(True)])*net.num_periods)
-                else:                    
-                    assert(net.num_fixed == 0)
-            except AssertionError:
-                raise PFmethodError_BadProblem()  
-            
-            # Set up problem
-            problem = pfnet.Problem(net)
-
-            problem.add_constraint(pfnet.Constraint('AC power balance', net))
-            problem.add_constraint(pfnet.Constraint('HVDC power balance', net))
-            problem.add_constraint(pfnet.Constraint('generator active power participation', net))
-            problem.add_constraint(pfnet.Constraint('VSC converter equations', net))
-            problem.add_constraint(pfnet.Constraint('CSC converter equations', net))
-            problem.add_constraint(pfnet.Constraint('FACTS equations', net))
-            problem.add_constraint(pfnet.Constraint('VSC DC voltage control', net))
-            problem.add_constraint(pfnet.Constraint('CSC DC voltage control', net))
-            problem.add_constraint(pfnet.Constraint('power factor regulation', net))
-
-            if lock_vsc_P_dc:
-                problem.add_constraint(pfnet.Constraint('VSC DC power control', net))
-            if lock_csc_P_dc:
-                problem.add_constraint(pfnet.Constraint('CSC DC power control', net))
-            if lock_csc_i_dc:
-                problem.add_constraint(pfnet.Constraint('CSC DC current control', net))
-
-            problem.add_function(pfnet.Function('variable regularization',
-                                                wv/max([net.num_vars,1.]), net))
-            problem.add_function(pfnet.Function('voltage magnitude regularization',
-                                                wm/max([net.get_num_buses(True),1.]), net))
-            problem.add_function(pfnet.Function('voltage angle regularization',
-                                                wa/max([net.get_num_buses(True),1.]), net))
-            problem.add_function(pfnet.Function('generator powers regularization',
-                                                wp/max([net.get_num_generators(True),1.]), net))
-            problem.add_function(pfnet.Function('VSC DC power control',
-                                                wc/max([net.get_num_vsc_converters(True),1.]), net))
-            problem.add_function(pfnet.Function('CSC DC power control',
-                                                wc/max([net.get_num_csc_converters(True),1.]), net))
-            problem.add_function(pfnet.Function('CSC DC current control',
-                                                wc/max([net.get_num_csc_converters(True),1.]), net))
-            problem.add_function(pfnet.Function('FACTS active power control',
-                                                wc/max([net.num_facts,1.]), net))
-            problem.add_function(pfnet.Function('FACTS reactive power control',
-                                                wc/max([net.num_facts,1.]), net))
-            if gens_redispatch:
-                problem.add_function(pfnet.Function('generation redispatch penalty',
-                                                    wr/max([net.num_generators,1.]), net))
-            if q_mode == self.Q_MODE_REG and q_limit: 
-                problem.add_constraint(pfnet.Constraint('voltage set point regulation', net))
-            if net.num_fixed > 0:
-                problem.add_constraint(pfnet.Constraint('variable fixing', net))
-            
-            if taps_mode != self.TAPS_MODE_LOCKED:
-                if taps_mode == self.TAPS_MODE_REG and taps_limit: 
-                    problem.add_constraint(pfnet.Constraint('voltage regulation by transformers', net))
-                problem.add_function(pfnet.Function('tap ratio regularization',
-                                                    wc/max([net.get_num_tap_changers_v(True),1.]), net))
-            if shunts_mode != self.SHUNTS_MODE_LOCKED:
-                if shunts_mode == self.SHUNTS_MODE_REG and shunts_limit:
-                    problem.add_constraint(pfnet.Constraint('voltage regulation by shunts', net))
-                problem.add_function(pfnet.Function('susceptance regularization',
-                                                    wc/max([net.get_num_switched_v_shunts(True),1.]), net))
-            if vdep_loads:
-                problem.add_constraint(pfnet.Constraint('load voltage dependence', net))
-            
-            if num_bounded > 0: 
-                problem.add_constraint(pfnet.Constraint('variable bounds', net))
-            problem.analyze()
-
-            # Return
-            return problem
-
-        # NR-based
-        ##########
-        else: # solver_name == 'nr'
-
-            # Buses
-            net.set_flags('bus',
-                          'variable',
-                          'not slack',
-                          'voltage angle')
-            net.set_flags('bus',
-                          'variable',
-                          'any',
-                          'voltage magnitude')
-
-            # DC buses
-            net.set_flags('dc bus',
-                          'variable',
-                          'any',
-                          'voltage')
-
-            # Generators
+                          'active power')
+        else:  
             net.set_flags('generator',
                           'variable',
                           'slack',
                           'active power')
-
+        net.set_flags('generator',
+                      'variable',
+                      'regulator',
+                      'reactive power')
+        if Q_mode == self.CONTROL_MODE_FREE and Q_limit: 
             net.set_flags('generator',
-                          'variable',
+                          'bounded',
                           'regulator',
                           'reactive power')
             
-            # VSC HVDC
+        # Loads
+        if vdep_loads:
+            for load in net.loads:
+                if load.is_voltage_dependent() and load.is_in_service():
+                    net.set_flags_of_component(load,
+                                               'variable',
+                                               ['active power', 'reactive power'])
+
+        # VSC HVDC
+        net.set_flags('vsc converter',
+                      'variable',
+                      'any',
+                      ['dc power', 'active power', 'reactive power'])
+        if Q_mode == self.CONTROL_MODE_FREE and Q_limit: 
             net.set_flags('vsc converter',
-                          'variable',
+                          'bounded',
                           'any',
-                          ['dc power', 'active power', 'reactive power'])
-
-            # CSC HVDC
-            net.set_flags('csc converter',
-                          'variable',
-                          'any',
-                          ['dc power', 'active power', 'reactive power'])
+                          'reactive power')
             
-            # FACTS
+        # CSC HVDC
+        net.set_flags('csc converter',
+                      'variable',
+                      'any',
+                      ['dc power', 'active power', 'reactive power'])
+            
+        # DC buses
+        net.set_flags('dc bus',
+                      'variable',
+                      'any',
+                      'voltage')
+
+        # FACTS
+        net.set_flags('facts',
+                      'variable',
+                      'any',
+                      'all')
+        if Q_mode == self.CONTROL_MODE_FREE and Q_limit:        
             net.set_flags('facts',
-                          'variable',
+                          'bounded',
                           'any',
-                          'all')
+                          'reactive power')
             
-            # Loads
-            if vdep_loads:
-                for load in net.loads:
-                    if load.is_voltage_dependent() and load.is_in_service():
-                        net.set_flags_of_component(load,
-                                                   'variable',
-                                                   ['active power', 'reactive power'])
-
-            # Tap changers
-            net.set_flags('branch',
-                          ['variable','fixed'],
+        # Tap changers 
+        if taps_mode != self.CONTROL_MODE_LOCKED:
+            net.set_flags('branch', 
+                          'variable',
                           'tap changer - v',
                           'tap ratio')
-
-            # Switched shunts
-            net.set_flags('shunt',
-                          ['variable','fixed'],
+        if taps_mode == self.CONTROL_MODE_FREE and taps_limit:
+            net.set_flags('branch',
+                          'bounded',
+                          'tap changer - v',
+                          'tap ratio')
+            
+        # Swtiched shunts
+        if shunts_mode != self.CONTROL_MODE_LOCKED:
+            net.set_flags('shunt', 
+                          'variable',
                           'switching - v',
                           'susceptance')
-                  
-            # Checks
-            try:
-                num_vars = (2*net.get_num_buses(True)-net.get_num_slack_buses(True) +
-                            net.get_num_dc_buses(True) +
-                            net.get_num_slack_gens(True) +
-                            net.get_num_reg_gens(True) +
-                            net.get_num_tap_changers_v(True) +
-                            net.get_num_switched_v_shunts(True) +
-                            net.get_num_vsc_converters(True)*4 +
-                            net.get_num_csc_converters(True)*4 +
-                            net.get_num_facts(True)*9)*net.num_periods
-                if vdep_loads:
-                    num_vars += 2*net.get_num_vdep_loads(True)*net.num_periods
-                    
-                assert(net.num_vars == num_vars)
-                assert(net.num_fixed == (net.get_num_tap_changers_v(True) +
-                                         net.get_num_switched_v_shunts(True))*net.num_periods)
-            except AssertionError:
-                raise PFmethodError_BadProblem()
-
-            # Set up problem
-            problem = pfnet.Problem(net)
-
-            problem.add_constraint(pfnet.Constraint('AC power balance', net))
-            problem.add_constraint(pfnet.Constraint('HVDC power balance', net))
-            problem.add_constraint(pfnet.Constraint('generator active power participation', net))
-            problem.add_constraint(pfnet.Constraint('variable fixing', net))
-            problem.add_constraint(pfnet.Constraint('PVPQ switching', net))
-            problem.add_constraint(pfnet.Constraint('VSC converter equations', net))
-            problem.add_constraint(pfnet.Constraint('CSC converter equations', net))
-            problem.add_constraint(pfnet.Constraint('VSC DC voltage control', net))
-            problem.add_constraint(pfnet.Constraint('CSC DC voltage control', net))
-            problem.add_constraint(pfnet.Constraint('VSC DC power control', net))
-            problem.add_constraint(pfnet.Constraint('CSC DC power control', net))
-            problem.add_constraint(pfnet.Constraint('CSC DC current control', net))
-            problem.add_constraint(pfnet.Constraint('switching power factor regulation', net))
-            problem.add_constraint(pfnet.Constraint('FACTS equations', net))
-            problem.add_constraint(pfnet.Constraint('switching FACTS active power control', net))
-            problem.add_constraint(pfnet.Constraint('switching FACTS reactive power control', net))
-            if vdep_loads:
-                problem.add_constraint(pfnet.Constraint('load voltage dependence', net))
-            if q_limit:
-                problem.add_heuristic(pfnet.Heuristic('PVPQ switching', net))
-                problem.add_heuristic(pfnet.Heuristic('switching power factor regulation', net))
-            problem.analyze()
-
-            # Check
-            if (problem.J.shape[0] + problem.A.shape[0] !=
-                problem.get_num_primal_variables()):
-                raise PFmethodError_BadProblem()
+        if shunts_mode == self.CONTROL_MODE_FREE and shunts_limit:
+            net.set_flags('shunt',
+                          'bounded',
+                          'switching - v',
+                          'susceptance')
             
-            # Return
-            return problem
+        # Set up problem
+        problem = pfnet.Problem(net)
+        
+        problem.add_constraint(pfnet.Constraint('AC power balance', net))
+        problem.add_constraint(pfnet.Constraint('HVDC power balance', net))
+        problem.add_constraint(pfnet.Constraint('generator active power participation', net))
+        problem.add_constraint(pfnet.Constraint('VSC converter equations', net))
+        problem.add_constraint(pfnet.Constraint('CSC converter equations', net))
+        problem.add_constraint(pfnet.Constraint('FACTS equations', net))
+        problem.add_constraint(pfnet.Constraint('VSC DC voltage control', net))
+        problem.add_constraint(pfnet.Constraint('CSC DC voltage control', net))
+        problem.add_constraint(pfnet.Constraint('power factor regulation', net))
+        
+        if lock_vsc_P_dc:
+            problem.add_constraint(pfnet.Constraint('VSC DC power control', net))
+        if lock_csc_P_dc:
+            problem.add_constraint(pfnet.Constraint('CSC DC power control', net))
+        if lock_csc_i_dc:
+            problem.add_constraint(pfnet.Constraint('CSC DC current control', net))
 
+        func = pfnet.Function('voltage magnitude regularization', wm/(net.get_num_buses(True)+1.), net)
+        func.set_parameter('v_set_reference', not v_mag_warm_ref)
+        problem.add_function(func)
+
+        problem.add_function(pfnet.Function('variable regularization', wv/(net.num_vars+1.), net))
+        problem.add_function(pfnet.Function('voltage angle regularization', wa/(net.get_num_buses(True)+1.), net))
+        problem.add_function(pfnet.Function('generator powers regularization', wp/(net.get_num_generators(True)+1.), net))
+        problem.add_function(pfnet.Function('VSC DC power control', wc/(net.get_num_vsc_converters(True)+1.), net))
+        problem.add_function(pfnet.Function('CSC DC power control', wc/(net.get_num_csc_converters(True)+1.), net))
+        problem.add_function(pfnet.Function('CSC DC current control', wc/(net.get_num_csc_converters(True)+1.), net))
+        problem.add_function(pfnet.Function('FACTS active power control', wc/(net.get_num_facts(True)+1.), net))
+        problem.add_function(pfnet.Function('FACTS reactive power control', wc/(net.get_num_facts(True)+1.), net))
+        
+        if gens_redispatch:
+            problem.add_function(pfnet.Function('generation redispatch penalty', wc/(net.get_num_generators(True)+1.), net))
+            
+        if Q_mode == self.CONTROL_MODE_REG and Q_limit: 
+            problem.add_constraint(pfnet.Constraint('voltage set point regulation', net))
+
+        if net.num_fixed > 0:
+            problem.add_constraint(pfnet.Constraint('variable fixing', net))
+            
+        if taps_mode != self.CONTROL_MODE_LOCKED:
+            problem.add_function(pfnet.Function('tap ratio regularization', wc/(net.get_num_tap_changers_v(True)+1.), net))
+            if taps_mode == self.CONTROL_MODE_REG and taps_limit: 
+                problem.add_constraint(pfnet.Constraint('voltage regulation by transformers', net))
+            
+        if shunts_mode != self.CONTROL_MODE_LOCKED:
+            problem.add_function(pfnet.Function('susceptance regularization', wc/(net.get_num_switched_v_shunts(True)+1.), net))
+            if shunts_mode == self.CONTROL_MODE_REG and shunts_limit:
+                problem.add_constraint(pfnet.Constraint('voltage regulation by shunts', net))
+            
+        if vdep_loads:
+            problem.add_constraint(pfnet.Constraint('load voltage dependence', net))
+            
+        if num_bounded > 0: 
+            problem.add_constraint(pfnet.Constraint('variable bounds', net))
+            
+        # Analyze
+        problem.analyze()
+        
+        # Return
+        return problem
             
     def solve(self, net, save_problem=False):
 

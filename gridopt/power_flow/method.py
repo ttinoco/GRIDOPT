@@ -75,7 +75,7 @@ class PFmethod:
         ----------
         name : string
         """
-        print(name)
+
         self.results['solver name'] = name
 
     def set_solver_status(self, status):
