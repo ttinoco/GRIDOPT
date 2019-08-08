@@ -13,7 +13,7 @@ from .ac_opf import ACOPF
 from .method import PFmethod
 from .method_error import PFmethodError
 
-methods = [DCPF,DCOPF,ACPF,ACOPF]
+methods = [DCPF, DCOPF, ACPF, ACOPF]
 
 def new_method(name):
     """
