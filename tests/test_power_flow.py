@@ -193,7 +193,7 @@ class TestPowerFlow(unittest.TestCase):
         
         for solver in ['nr','augl']:
             method.set_parameters(params={'solver': solver,
-                                          'lock_taps': False,
+                                          'tap_mode': 'regulating',
                                           'quiet': True})
             method.solve(net)
 
@@ -296,11 +296,11 @@ class TestPowerFlow(unittest.TestCase):
                                           
                     # Set parameters
                     if sol == 'sol1':
-                        method.set_parameters({'limit_vars': False})
+                        method.set_parameters({'Q_limits': False})
                     elif sol == 'sol2':
                         pass # defaults
                     elif sol == 'sol3':
-                        method.set_parameters({'lock_taps': False})
+                        method.set_parameters({'tap_mode': 'regulating'})
                     else:
                         raise ValueError('invalid solution type')
                     method.set_parameters({'quiet': True})
