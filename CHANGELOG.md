@@ -9,6 +9,7 @@ Unreleased
 * Shunts mode in ACPF.
 * Support for net components being in or out of service.
 * v_mag_warm_ref parameter to ACPF method.
+* Improved ACPF parameters and new options (e.g. gens_redispatch)
 
 Version 1.3.6
 -------------

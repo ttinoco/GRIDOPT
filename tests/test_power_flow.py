@@ -23,6 +23,148 @@ class TestPowerFlow(unittest.TestCase):
                     
         pass
 
+    def test_ACPF_opt_controls_support(self):
+
+        case = os.path.join('tests', 'resources', 'cases', 'aesoSL2014.raw')
+        if not os.path.isfile(case):
+            raise unittest.SkipTest('file not available')
+
+        raise unittest.SkipTest('test incomplete')
+
+    def test_ACPF_nr_controls_support(self):
+
+        case = os.path.join('tests', 'resources', 'cases', 'aesoSL2014.raw')
+        if not os.path.isfile(case):
+            raise unittest.SkipTest('file not available')
+
+        net = pf.Parser(case).parse(case)
+
+        # Default
+        method = gopt.power_flow.ACPF()
+        method.set_parameters({'quiet': True,
+                               'solver': 'nr'})
+        self.assertTrue(method._parameters['Q_limits'])
+        self.assertTrue(method._parameters['tap_limits'])
+        self.assertTrue(method._parameters['shunt_limits'])
+        self.assertEqual(method._parameters['Q_mode'], 'regulating')
+        self.assertEqual(method._parameters['tap_mode'], 'locked')
+        self.assertEqual(method._parameters['shunt_mode'], 'locked')
+        method.solve(net)
+        self.assertEqual(method.get_results()['solver status'], 'solved')
+
+        # Q
+        method = gopt.power_flow.ACPF()
+        method.set_parameters({'quiet': True,
+                               'solver': 'nr',
+                               'Q_mode': 'regulating',
+                               'Q_limits': False})
+        method.solve(net)
+        self.assertEqual(method.get_results()['solver status'], 'solved')
+
+        method = gopt.power_flow.ACPF()
+        method.set_parameters({'quiet': True,
+                               'solver': 'nr',
+                               'Q_mode': 'free',
+                               'Q_limits': False})
+        self.assertRaises(ValueError, method.solve, net)
+
+        method = gopt.power_flow.ACPF()
+        method.set_parameters({'quiet': True,
+                               'solver': 'nr',
+                               'Q_mode': 'free',
+                               'Q_limits': True})
+        self.assertRaises(ValueError, method.solve, net)
+
+        method = gopt.power_flow.ACPF()
+        method.set_parameters({'quiet': True,
+                               'solver': 'nr',
+                               'Q_mode': 'locked',
+                               'Q_limits': True})
+        self.assertRaises(ValueError, method.solve, net)
+
+        method = gopt.power_flow.ACPF()
+        method.set_parameters({'quiet': True,
+                               'solver': 'nr',
+                               'Q_mode': 'locked',
+                               'Q_limits': False})
+        self.assertRaises(ValueError, method.solve, net)
+        
+        # Shunts
+        method = gopt.power_flow.ACPF()
+        method.set_parameters({'quiet': True,
+                               'solver': 'nr',
+                               'shunt_mode': 'locked',
+                               'shunt_limits': False})
+        method.solve(net)
+        self.assertEqual(method.get_results()['solver status'], 'solved')
+
+        method = gopt.power_flow.ACPF()
+        method.set_parameters({'quiet': True,
+                               'solver': 'nr',
+                               'shunt_mode': 'regulating',
+                               'shunt_limits': False})
+        self.assertRaises(ValueError, method.solve, net)
+
+        method = gopt.power_flow.ACPF()
+        method.set_parameters({'quiet': True,
+                               'solver': 'nr',
+                               'shunt_mode': 'regulating',
+                               'shunt_limits': True})
+        method.solve(net)
+        self.assertEqual(method.get_results()['solver status'], 'solved')
+
+        method = gopt.power_flow.ACPF()
+        method.set_parameters({'quiet': True,
+                               'solver': 'nr',
+                               'shunt_mode': 'free',
+                               'shunt_limits': False})
+        self.assertRaises(ValueError, method.solve, net)
+
+        method = gopt.power_flow.ACPF()
+        method.set_parameters({'quiet': True,
+                               'solver': 'nr',
+                               'shunt_mode': 'free',
+                               'shunt_limits': True})
+        self.assertRaises(ValueError, method.solve, net)
+
+        # Taps
+        method = gopt.power_flow.ACPF()
+        method.set_parameters({'quiet': True,
+                               'solver': 'nr',
+                               'tap_mode': 'locked',
+                               'tap_limits': False})
+        method.solve(net)
+        self.assertEqual(method.get_results()['solver status'], 'solved')
+
+        method = gopt.power_flow.ACPF()
+        method.set_parameters({'quiet': True,
+                               'solver': 'nr',
+                               'tap_mode': 'regulating',
+                               'tap_limits': False})
+        self.assertRaises(ValueError, method.solve, net)
+
+        method = gopt.power_flow.ACPF()
+        method.set_parameters({'quiet': True,
+                               'solver': 'nr',
+                               'tap_mode': 'regulating',
+                               'tap_limits': True})
+        method.solve(net)
+        self.assertEqual(method.get_results()['solver status'], 'solved')
+
+        method = gopt.power_flow.ACPF()
+        method.set_parameters({'quiet': True,
+                               'solver': 'nr',
+                               'tap_mode': 'free',
+                               'tap_limits': False})
+        self.assertRaises(ValueError, method.solve, net)
+
+        method = gopt.power_flow.ACPF()
+        method.set_parameters({'quiet': True,
+                               'solver': 'nr',
+                               'tap_mode': 'free',
+                               'tap_limits': True})
+        self.assertRaises(ValueError, method.solve, net)
+
     def test_ACPF_keep_all(self):
 
         print('')
@@ -154,7 +296,7 @@ class TestPowerFlow(unittest.TestCase):
         case = os.path.join('tests', 'resources', 'cases', 'ieee25.raw')
         if not os.path.isfile(case):
             raise unittest.SkipTest('file not available')
-
+        
         net = pf.Parser(case).parse(case)
 
         method = gopt.power_flow.new_method('ACPF')
