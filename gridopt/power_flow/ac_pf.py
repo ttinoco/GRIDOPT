@@ -47,7 +47,7 @@ class ACPF(PFmethod):
                    'shunts_round': True,     # flag for rounding discrete switched shunt susceptances (not supported yet)
                    'taps_round': True,       # flag for rounding discrete transformer tap ratios (not supported yet)
                    'v_mag_warm_ref': False,  # flag for using current v_mag as reference in v_mag regularization
-                   'solver': 'augl',         # OPTALG optimization solver: augl, ipopt, nr, inlp
+                   'solver': 'nr',           # OPTALG optimization solver: augl, ipopt, nr, inlp
                    'tap_step': 0.5,          # tap ratio acceleration factor (NR only)
                    'shunt_step': 0.5,        # susceptance acceleration factor (NR only)
                    'dtap': 1e-4,             # tap ratio perturbation (NR only)
