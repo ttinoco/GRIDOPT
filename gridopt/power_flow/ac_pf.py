@@ -31,6 +31,7 @@ class ACPF(PFmethod):
                    'weight_var': 1e-5,       # weight for general variable regularization
                    'v_min_clip': 0.5,        # lower v threshold for clipping
                    'v_max_clip': 1.5,        # upper v threshold for clipping
+                   'v_limits': False,        # voltage magnitude limits
                    'Q_limits': True,         # flag for enforcing generator, VSC and FACTS reactive power limits
                    'Q_mode': 'regulating',   # reactive power mode: free, regulating
                    'shunt_limits': True,     # flag for enforcing switched shunt susceptance limits
@@ -265,6 +266,7 @@ class ACPF(PFmethod):
         wp = params['weight_powers']
         wc = params['weight_controls']
         wv = params['weight_var']
+        v_limits = params['v_limits']
         Q_mode = params['Q_mode']
         Q_limits = params['Q_limits']
         shunt_mode = params['shunt_mode']
@@ -315,6 +317,11 @@ class ACPF(PFmethod):
             net.set_flags('bus',
                           'fixed',
                           'v set regulated',
+                          'voltage magnitude')
+        if v_limits:
+            net.set_flags('bus',
+                          'bounded',
+                          'any',
                           'voltage magnitude')
             
         # Genertors 
