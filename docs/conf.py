@@ -52,7 +52,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'GRIDOPT'
-copyright = '2018, Tomas Tinoco De Rubira'
+copyright = '2019, Tomas Tinoco De Rubira'
 author = 'Tomas Tinoco De Rubira'
 
 # The version info for the project you're documenting, acts as replacement for

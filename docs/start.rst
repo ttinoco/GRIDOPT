@@ -77,6 +77,6 @@ The following example shows how to solve the power flow problem associated with 
 
   >>> # max mismatches (MW,MVAr)
   >>> print '%.2e %.2e' %(net.bus_P_mis,net.bus_Q_mis)
-  5.16e-04 5.67e-03
+  5.09e-06 9.70e-06
 
 In this example, it is assumed that the Python interpreter is started from a directory where the sample case |ieee14| is located.

@@ -33,7 +33,7 @@ After configuring parameters, a method can be used to solve a problem using the 
 
   >>> method.solve(net)
 
-Information about the execution of the method can be obtained from the :data:`results <gridopt.power_flow.method.PFmethod.results>` attribute of the :class:`method <gridopt.power_flow.method.PFmethod>` object. This dictionary of results includes information such as ``'solver status'``, *e.g.*, ``'solved'`` or ``'error'``, any ``'solver message'``, ``'solver iterations'``, a ``'network snapshot'`` reflecting the solution, and others. The following code sample shows how to extract some results::
+Information about the execution of the method can be obtained from the ``results`` attribute of the :class:`method <gridopt.power_flow.method.PFmethod>` object. This dictionary of results includes information such as ``'solver status'``, *e.g.*, ``'solved'`` or ``'error'``, any ``'solver message'``, ``'solver iterations'``, a ``'network snapshot'`` reflecting the solution, and others. The following code sample shows how to extract some results::
 
   >>> results = method.get_results()
 
@@ -51,7 +51,7 @@ If desired, one can update the input |Network| object with the solution found by
   >>> method.update_network(net)
 
   >>> print '%.2e %.2e' %(net.bus_P_mis, net.bus_Q_mis)
-  5.16e-04 5.67e-03
+  5.09e-06 9.70e-06
     
 .. _dc_pf: 
 
@@ -95,19 +95,19 @@ This method is represented by an object of type :class:`ACPF <gridopt.power_flow
 
 The parameters of this power flow method are the following:
 
-=================== ============================================================ ===========
+=================== ============================================================ ==============
 Name                Description                                                  Default  
-=================== ============================================================ ===========
+=================== ============================================================ ==============
 ``'weight_vmag'``   Weight for bus voltage magnitude regularization              ``1e0``
-``'weight_vang'``   Weight for bus voltage angle regularization                  ``1e0``
+``'weight_vang'``   Weight for bus voltage angle regularization                  ``1e-3``
 ``'weight_powers'`` Weight for generator power regularization                    ``1e-3``
 ``'weight_var'``    Weight for generic regularization                            ``1e-5``
-``'lin_pf'``        Flag for using linearized power flow equations               ``False``
-``'limit_vars'``    Flag for enforcing reactive power limits                     ``True``
+``'Q_limits'``      Flag for enforcing generator Q limits                        ``True``
+``'Q_mode'``        Reactive power mode (free or regulating)                     ``regulating``
 ``'pvpq_start_k'``  Start iteration number for PVPQ switching heuristics         ``0``
 ``'vmin_thresh'``   Low-voltage threshold                                        ``1e-1``
 ``'solver'``        OPTALG optimization solver ``{'nr','inlp','augl','ipopt'}``  ``'nr'``
-=================== ============================================================ ===========
+=================== ============================================================ ==============
 
 .. _ac_opf: 
 
