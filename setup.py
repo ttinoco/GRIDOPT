@@ -1,7 +1,7 @@
 #*****************************************************#
 # This file is part of GRIDOPT.                       #
 #                                                     #
-# Copyright (c) 2015, Tomas Tinoco De Rubira.         #
+# Copyright (c) 2019, Tomas Tinoco De Rubira.         #
 #                                                     #
 # GRIDOPT is released under the BSD 2-clause license. #
 #*****************************************************#
@@ -24,10 +24,10 @@ setup(name='GRIDOPT',
       classifiers=['Development Status :: 5 - Production/Stable',
                    'License :: OSI Approved :: BSD License',
                    'Programming Language :: Python :: 2.7',
-                   'Programming Language :: Python :: 3.5'],
+                   'Programming Language :: Python :: 3.6'],
       install_requires=['cython>=0.20.1',
                         'numpy>=1.11.2',
                         'scipy>=0.18.1',
-                        'pfnet==1.3.4rc1',
-                        'optalg==1.1.7rc1',
+                        'pfnet==1.3.5rc1',
+                        'optalg==1.1.8rc1',
                         'nose'])

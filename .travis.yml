@@ -5,15 +5,9 @@ matrix:
     - os: linux
       python: 2.7
     - os: linux
-      python: 3.5
-    - os: osx
-      osx_image: xcode7.3
-      language: generic
+      python: 3.6
 
 install:
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
-      sudo easy_install nose;
-    fi
   - pip install cython numpy
   - pip install optalg pfnet --verbose
 

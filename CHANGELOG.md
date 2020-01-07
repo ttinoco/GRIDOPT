@@ -1,5 +1,5 @@
-Unreleased
-----------
+Version 1.3.7
+-------------
 * Updated ACPF to treat slack bus voltage mag as variable.
 * ACPF includes CSC constant current control.
 * Added voltage clipping to acpf.
